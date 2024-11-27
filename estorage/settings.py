@@ -172,7 +172,7 @@ CSRF_COOKIE_SECURE = False  # В продакшене установить True
 SESSION_COOKIE_SECURE = False  # В продакшене установить True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_TRUSTED_ORIGINS = [f'https://{os.getenv('ALLOWED_HOSTS')}']
+CSRF_TRUSTED_ORIGINS = ['https://' + os.getenv('ALLOWED_HOSTS')]
 
 # Настройки сессии
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
@@ -194,7 +194,7 @@ MIDDLEWARE = [
 # Настройки CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    f'https://{os.getenv('ALLOWED_HOSTS')}'
+    'https://' + os.getenv('ALLOWED_HOSTS')
 ]
 
 # Настройки безопасности
