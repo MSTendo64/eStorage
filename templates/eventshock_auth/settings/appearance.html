@@ -1,0 +1,303 @@
+{% extends 'eventshock_auth/settings/base.html' %}
+
+{% block settings_content %}
+<h3>Внешний вид</h3>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Основные настройки</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Тема</label>
+                        <select name="theme" class="form-select">
+                            <option value="light" {% if user.userprofile.theme == 'light' %}selected{% endif %}>Светлая</option>
+                            <option value="dark" {% if user.userprofile.theme == 'dark' %}selected{% endif %}>Темная</option>
+                            <option value="auto" {% if user.userprofile.theme == 'auto' %}selected{% endif %}>Системная</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Язык</label>
+                        <select name="language" class="form-select">
+                            <option value="ru" {% if user.userprofile.language == 'ru' %}selected{% endif %}>Русский</option>
+                            <option value="en" {% if user.userprofile.language == 'en' %}selected{% endif %}>English</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Персонализация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Фоновое изображение</label>
+                        {% if user.userprofile.background_image %}
+                            <div class="mb-2">
+                                <img src="{{ user.userprofile.background_image.url }}" 
+                                     alt="Current background" 
+                                     class="img-thumbnail" 
+                                     style="max-height: 100px;">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" 
+                                           name="remove_background" id="removeBackground">
+                                    <label class="form-check-label" for="removeBackground">
+                                        Удалить фон
+                                    </label>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <input type="file" name="background_image" class="form-control" 
+                               accept="image/png,image/jpeg,image/gif">
+                        <small class="text-muted">Поддерживаются форматы: PNG, JPEG, GIF</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Акцентный цвет</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" 
+                                   name="accent_color" value="{{ user.userprofile.accent_color }}"
+                                   title="Выберите акцентный цвет">
+                            <input type="text" class="form-control" id="accentColorText" 
+                                   value="{{ user.userprofile.accent_color }}" 
+                                   pattern="#[0-9A-Fa-f]{6}" 
+                                   placeholder="#000000">
+                        </div>
+                        <div class="mt-2">
+                            <label class="form-label">Предустановленные цвета:</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm color-preset" 
+                                        data-color="#0d6efd" style="background-color: #0d6efd;">&nbsp;</button>
+                                <button type="button" class="btn btn-sm color-preset" 
+                                        data-color="#dc3545" style="background-color: #dc3545;">&nbsp;</button>
+                                <button type="button" class="btn btn-sm color-preset" 
+                                        data-color="#198754" style="background-color: #198754;">&nbsp;</button>
+                                <button type="button" class="btn btn-sm color-preset" 
+                                        data-color="#ffc107" style="background-color: #ffc107;">&nbsp;</button>
+                                <button type="button" class="btn btn-sm color-preset" 
+                                        data-color="#6f42c1" style="background-color: #6f42c1;">&nbsp;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+
+<style>
+.color-preset {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+    padding: 0;
+}
+
+.color-preset:hover {
+    border-color: #adb5bd;
+}
+
+input[type="color"] {
+    width: 50px;
+    padding: 0;
+    border: none;
+    height: 38px;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px 0 0 4px;
+}
+
+/* Стили для уведомлений */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    background: rgba(var(--bs-body-bg-rgb), 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--bs-primary);
+    color: var(--bs-body-color);
+}
+
+/* Стили для плееров */
+.plyr--video {
+    --plyr-color-main: var(--bs-primary);
+}
+
+.plyr--audio {
+    --plyr-color-main: var(--bs-primary);
+}
+
+.plyr__control--overlaid {
+    background: var(--bs-primary) !important;
+}
+
+.plyr--full-ui input[type=range] {
+    color: var(--bs-primary) !important;
+}
+
+.plyr__control:hover {
+    background: var(--bs-primary) !important;
+}
+</style>
+
+<script>
+document.querySelector('input[type="color"]').addEventListener('input', function(e) {
+    const color = e.target.value;
+    document.getElementById('accentColorText').value = color;
+    updateAccentColor(color);
+});
+
+document.getElementById('accentColorText').addEventListener('input', function(e) {
+    if (e.target.value.match(/#[0-9A-Fa-f]{6}/)) {
+        const color = e.target.value;
+        document.querySelector('input[type="color"]').value = color;
+        updateAccentColor(color);
+    }
+});
+
+document.querySelectorAll('.color-preset').forEach(button => {
+    button.addEventListener('click', function() {
+        const color = this.dataset.color;
+        document.querySelector('input[type="color"]').value = color;
+        document.getElementById('accentColorText').value = color;
+        updateAccentColor(color);
+    });
+});
+
+function updateAccentColor(color) {
+    document.documentElement.style.setProperty('--bs-primary', color);
+    document.documentElement.style.setProperty('--bs-link-color', color);
+    document.documentElement.style.setProperty('--bs-link-hover-color', adjustColor(color, -10));
+    
+    // Добавляем стили для плееров
+    const style = document.createElement('style');
+    style.textContent = `
+        .btn-primary {
+            background-color: ${color} !important;
+            border-color: ${color} !important;
+        }
+        .btn-primary:hover {
+            background-color: ${adjustColor(color, -10)} !important;
+            border-color: ${adjustColor(color, -10)} !important;
+        }
+        .btn-outline-primary {
+            color: ${color} !important;
+            border-color: ${color} !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: ${color} !important;
+            color: white !important;
+        }
+        .plyr--video {
+            --plyr-color-main: ${color};
+        }
+        .plyr--audio {
+            --plyr-color-main: ${color};
+        }
+        .plyr__control--overlaid {
+            background: ${color} !important;
+        }
+        .plyr--full-ui input[type=range] {
+            color: ${color} !important;
+        }
+        .plyr__control:hover {
+            background: ${color} !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function adjustColor(color, percent) {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return '#' + (0x1000000 +
+        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+        (B < 255 ? (B < 1 ? 0 : B) : 255)
+    ).toString(16).slice(1);
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    updateAccentColor('{{ user.userprofile.accent_color }}');
+});
+
+// Обновим обработчик формы
+document.querySelector('form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Обновляем настройки на странице
+            document.documentElement.setAttribute('data-bs-theme', data.theme);
+            updateAccentColor(data.accent_color);
+            
+            // Создаем и показываем уведомление
+            const toastContainer = document.querySelector('.toast-container') || 
+                                 document.createElement('div');
+            toastContainer.className = 'toast-container';
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.innerHTML = `
+                <div class="toast-body">
+                    Настройки успешно сохранены
+                </div>
+            `;
+            
+            if (!document.querySelector('.toast-container')) {
+                document.body.appendChild(toastContainer);
+            }
+            toastContainer.appendChild(toast);
+            
+            // Удаляем уведомление через 3 секунды
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                    if (toastContainer.children.length === 0) {
+                        toastContainer.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при сохранении настроек');
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+
+{% block title %}Регистрация | Eventshock Storage{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h3 class="text-center mb-0">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Создать аккаунт
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-primary"></i>
+                    </div>
+                    <h4>Добро пожаловать в Eventshock Storage!</h4>
+                    <p class="text-muted">
+                        Создайте аккаунт для доступа к облачному хранилищу и всем сервисам Eventshock
+                    </p>
+                    <small class="text-muted">используется Eventshock UID</small>
+                </div>
+                <form method="post" class="esuid-form" id="registerForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Придумайте имя пользователя</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Ваш email</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Придумайте пароль</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength mt-2" id="passwordStrength"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password2" class="form-label">Повторите пароль</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password2" name="password2" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password2')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Интерактивная капча -->
+                    <div class="mb-3">
+                        <div class="captcha-container card">
+                            <div class="card-body">
+                                <label class="form-label">Подтвердите, что вы человек</label>
+                                <div class="interactive-captcha" id="captcha">
+                                    <div class="captcha-task text-center p-3">
+                                        <p>Перетащите ползунок вправо</p>
+                                        <div class="slider-container">
+                                            <div class="slider-track"></div>
+                                            <div class="slider-handle" id="sliderHandle">
+                                                <i class="fas fa-arrows-alt-h"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="fas fa-user-plus me-2"></i>
+                            Создать аккаунт
+                        </button>
+                    </div>
+                </form>
+                <hr>
+                <p class="text-center mb-0">
+                    Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Стили для интерактивной капчи */
+.slider-container {
+    position: relative;
+    height: 40px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    margin: 20px auto;
+    max-width: 300px;
+}
+
+.slider-track {
+    position: absolute;
+    height: 100%;
+    background: var(--bs-primary);
+    border-radius: 20px;
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.slider-handle {
+    position: absolute;
+    width: 50px;
+    height: 40px;
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+}
+
+.slider-handle:hover {
+    transform: scale(1.1);
+}
+
+.slider-handle.success {
+    background: var(--bs-success);
+    color: white;
+}
+
+/* Стили для индикатора сложности пароля */
+.password-strength {
+    height: 5px;
+    background: #eee;
+    border-radius: 3px;
+    margin-top: 5px;
+}
+
+.password-strength div {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.strength-weak { background: #dc3545; }
+.strength-medium { background: #ffc107; }
+.strength-strong { background: #198754; }
+</style>
+
+<script>
+// Функция для переключения видимости пароля
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.nextElementSibling.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// Интерактивная капча
+const handle = document.getElementById('sliderHandle');
+const track = document.querySelector('.slider-track');
+const submitBtn = document.getElementById('submitBtn');
+let isDragging = false;
+let startX;
+let sliderLeft;
+
+handle.addEventListener('mousedown', startDragging);
+document.addEventListener('mousemove', drag);
+document.addEventListener('mouseup', stopDragging);
+
+handle.addEventListener('touchstart', startDragging);
+document.addEventListener('touchmove', drag);
+document.addEventListener('touchend', stopDragging);
+
+function startDragging(e) {
+    isDragging = true;
+    startX = e.type === 'mousedown' ? e.pageX : e.touches[0].pageX;
+    sliderLeft = handle.offsetLeft;
+}
+
+function drag(e) {
+    if (!isDragging) return;
+    
+    e.preventDefault();
+    const x = e.type === 'mousemove' ? e.pageX : e.touches[0].pageX;
+    const walk = x - startX;
+    const newLeft = Math.max(0, Math.min(sliderLeft + walk, 250));
+    
+    handle.style.left = `${newLeft}px`;
+    track.style.width = `${newLeft + 25}px`;
+    
+    if (newLeft > 200) {
+        handle.classList.add('success');
+        handle.innerHTML = '<i class="fas fa-check"></i>';
+        submitBtn.disabled = false;
+        stopDragging();
+    }
+}
+
+function stopDragging() {
+    isDragging = false;
+}
+
+// Проверка сложности пароля
+document.getElementById('password').addEventListener('input', function(e) {
+    const password = e.target.value;
+    const strength = checkPasswordStrength(password);
+    const strengthDiv = document.getElementById('passwordStrength');
+    
+    strengthDiv.innerHTML = `<div class="strength-${strength.class}" style="width: ${strength.score}%"></div>`;
+});
+
+function checkPasswordStrength(password) {
+    let score = 0;
+    
+    if (password.length > 6) score += 20;
+    if (password.length > 10) score += 20;
+    if (/[A-Z]/.test(password)) score += 20;
+    if (/[0-9]/.test(password)) score += 20;
+    if (/[^A-Za-z0-9]/.test(password)) score += 20;
+    
+    let strengthClass = 'weak';
+    if (score >= 80) strengthClass = 'strong';
+    else if (score >= 40) strengthClass = 'medium';
+    
+    return { score, class: strengthClass };
+}
+</script>
+{% endblock %} 

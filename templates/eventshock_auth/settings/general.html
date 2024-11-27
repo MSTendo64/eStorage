@@ -1,0 +1,21 @@
+{% extends 'eventshock_auth/settings/base.html' %}
+
+{% block settings_content %}
+<h3>Общие настройки</h3>
+<form method="post">
+    {% csrf_token %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="developer_mode" name="developer_mode" 
+                       {% if user.userprofile.developer_mode %}checked{% endif %}>
+                <label class="form-check-label" for="developer_mode">Режим разработчика</label>
+            </div>
+            <small class="text-muted d-block mt-2">
+                Включите режим разработчика для доступа к API и интеграциям
+            </small>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+{% endblock %} 

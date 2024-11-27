@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Документация API | Eventshock Storage{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Документация API</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Аутентификация</h3>
+        </div>
+        <div class="card-body">
+            <h4>1. Через API ключ</h4>
+            <p>Добавьте заголовок Authorization к каждому запросу:</p>
+            <pre class="bg-light p-3 rounded"><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+
+            <h4 class="mt-4">2. Через ESUID API</h4>
+            <p>Для использования ESUID API:</p>
+            <ol>
+                <li>Получите ESUID токен в настройках</li>
+                <li>Добавьте заголовок к запросам:</li>
+            </ol>
+            <pre class="bg-light p-3 rounded"><code>Authorization: ESUID YOUR_ESUID_TOKEN</code></pre>
+            
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle me-2"></i>
+                ESUID API позволяет интегрировать хранилище с другими сервисами Eventshock
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Endpoints</h3>
+        </div>
+        <div class="card-body">
+            <h4>Файлы</h4>
+            
+            <div class="mb-4">
+                <h5>GET /api/files/</h5>
+                <p>Получение списка файлов</p>
+                <pre class="bg-light p-3 rounded"><code>curl -X GET "{{ request.scheme }}://{{ request.get_host }}/api/files/" \
+    -H "Authorization: ESUID YOUR_ESUID_TOKEN"</code></pre>
+                <p>Ответ:</p>
+                <pre class="bg-light p-3 rounded"><code>{
+    "files": [
+        {
+            "id": 1,
+            "filename": "document.pdf",
+            "uploaded_at": "2024-01-01T12:00:00Z",
+            "size": 1024,
+            "type": "document",
+            "download_url": "http://localhost:8000/storage/download/TOKEN/",
+            "public": false
+        }
+    ],
+    "storage": {
+        "used": "1.5 GB",
+        "total": "10 GB",
+        "percent": 15
+    }
+}</code></pre>
+            </div>
+
+            <div class="mb-4">
+                <h5>POST /api/files/upload/</h5>
+                <p>Загрузка файла</p>
+                <pre class="bg-light p-3 rounded"><code>curl -X POST "{{ request.scheme }}://{{ request.get_host }}/api/files/upload/" \
+    -H "Authorization: ESUID YOUR_ESUID_TOKEN" \
+    -F "file=@local_file.pdf"</code></pre>
+                <p>Ответ:</p>
+                <pre class="bg-light p-3 rounded"><code>{
+    "success": true,
+    "file": {
+        "id": 2,
+        "filename": "local_file.pdf",
+        "size": 2048,
+        "download_url": "http://localhost:8000/storage/download/TOKEN/"
+    }
+}</code></pre>
+            </div>
+
+            <div class="mb-4">
+                <h5>GET /api/files/{id}/</h5>
+                <p>Информация о файле</p>
+                <pre class="bg-light p-3 rounded"><code>curl -X GET "{{ request.scheme }}://{{ request.get_host }}/api/files/1/" \
+    -H "Authorization: ESUID YOUR_ESUID_TOKEN"</code></pre>
+            </div>
+
+            <div class="mb-4">
+                <h5>DELETE /api/files/{id}/</h5>
+                <p>Удаление файла</p>
+                <pre class="bg-light p-3 rounded"><code>curl -X DELETE "{{ request.scheme }}://{{ request.get_host }}/api/files/1/" \
+    -H "Authorization: ESUID YOUR_ESUID_TOKEN"</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Примеры интеграции</h3>
+        </div>
+        <div class="card-body">
+            <h4>JavaScript</h4>
+            <pre class="bg-light p-3 rounded"><code>// Инициализация ESUID клиента
+const storage = new EventshockStorage({
+    token: 'YOUR_ESUID_TOKEN',
+    baseUrl: '{{ request.scheme }}://{{ request.get_host }}'
+});
+
+// Получение списка файлов
+storage.getFiles()
+    .then(files => console.log(files))
+    .catch(error => console.error(error));
+
+// Загрузка файла
+const file = document.querySelector('input[type="file"]').files[0];
+storage.uploadFile(file)
+    .then(result => console.log(result))
+    .catch(error => console.error(error));</code></pre>
+
+            <h4 class="mt-4">Python</h4>
+            <pre class="bg-light p-3 rounded"><code>from eventshock_storage import EventshockStorage
+
+# Инициализация клиента
+storage = EventshockStorage(
+    token='YOUR_ESUID_TOKEN',
+    base_url='{{ request.scheme }}://{{ request.get_host }}'
+)
+
+# Получение списка файлов
+files = storage.get_files()
+
+# Загрузка файла
+with open('local_file.pdf', 'rb') as f:
+    result = storage.upload_file(f)
+    print(result['download_url'])</code></pre>
+        </div>
+    </div>
+</div>
+
+<style>
+pre {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.alert i {
+    font-size: 1.1em;
+}
+</style>
+{% endblock %} 

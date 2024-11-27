@@ -1,0 +1,39 @@
+<div class="modal fade" id="newESIDTokenModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать новый ESID токен</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'create_esid_token' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="esid_token_name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="esid_token_name" name="name" 
+                               required placeholder="Например: Мой сайт">
+                    </div>
+                    <div class="mb-3">
+                        <label for="allowed_origins" class="form-label">Разрешенные домены</label>
+                        <textarea class="form-control" id="allowed_origins" name="allowed_origins" 
+                                  rows="3" placeholder="http://example.com&#10;https://myapp.com"></textarea>
+                        <small class="text-muted">Один домен на строку. Оставьте пустым для разрешения всех доменов</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expires_in" class="form-label">Срок действия</label>
+                        <select class="form-select" id="expires_in" name="expires_in">
+                            <option value="7">7 дней</option>
+                            <option value="30" selected>30 дней</option>
+                            <option value="90">90 дней</option>
+                            <option value="365">1 год</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 

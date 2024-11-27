@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group">
+            <a href="{% url 'settings_profile' %}" 
+               class="list-group-item list-group-item-action {% if active_tab == 'profile' %}active{% endif %}">
+                <i class="fas fa-user me-2"></i> Профиль
+            </a>
+            <a href="{% url 'settings_appearance' %}" 
+               class="list-group-item list-group-item-action {% if active_tab == 'appearance' %}active{% endif %}">
+                <i class="fas fa-paint-brush me-2"></i> Внешний вид
+            </a>
+            <a href="{% url 'settings_general' %}" 
+               class="list-group-item list-group-item-action {% if active_tab == 'general' %}active{% endif %}">
+                <i class="fas fa-cog me-2"></i> Общее
+            </a>
+            {% if user.userprofile.developer_mode %}
+            <a href="{% url 'settings_api' %}" 
+               class="list-group-item list-group-item-action {% if active_tab == 'api' %}active{% endif %}">
+                <i class="fas fa-code me-2"></i> API и Интеграции
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-9">
+        {% block settings_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %} 

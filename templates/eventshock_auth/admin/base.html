@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% if user.is_superuser %}
+<div class="row">
+    <!-- Боковое меню -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Панель управления</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="{% url 'esadmin:dashboard' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt me-2"></i>Обзор
+                </a>
+                <a href="{% url 'esadmin:users' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'users' %}active{% endif %}">
+                    <i class="fas fa-users me-2"></i>Пользователи
+                </a>
+                <a href="{% url 'esadmin:storage_stats' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'storage' %}active{% endif %}">
+                    <i class="fas fa-hdd me-2"></i>Хранилище
+                </a>
+                <a href="{% url 'esadmin:system_logs' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'logs' %}active{% endif %}">
+                    <i class="fas fa-list me-2"></i>Логи системы
+                </a>
+                <a href="{% url 'esadmin:system_settings' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'settings' %}active{% endif %}">
+                    <i class="fas fa-cogs me-2"></i>Настройки
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="col-md-9">
+        {% block admin_content %}{% endblock %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger">
+    У вас нет прав для доступа к панели управления.
+</div>
+{% endif %}
+{% endblock %}

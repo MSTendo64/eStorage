@@ -1,0 +1,64 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+{% load admin_filters %}
+
+{% block admin_content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Редактирование пользователя</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Имя пользователя</label>
+                <input type="text" class="form-control" name="username" value="{{ user_data.username }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="{{ user_data.email }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Новый пароль</label>
+                <input type="password" class="form-control" name="new_password">
+                <small class="text-muted">Оставьте пустым, чтобы не менять пароль</small>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="is_active" id="is_active" 
+                           {% if user_data.is_active %}checked{% endif %}>
+                    <label class="form-check-label" for="is_active">Активен</label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="is_staff" id="is_staff" 
+                           {% if user_data.is_staff %}checked{% endif %}>
+                    <label class="form-check-label" for="is_staff">Персонал</label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="is_superuser" id="is_superuser" 
+                           {% if user_data.is_superuser %}checked{% endif %}
+                           {% if user_data.id == request.user.id %}disabled{% endif %}>
+                    <label class="form-check-label" for="is_superuser">Администратор</label>
+                    {% if user_data.id == request.user.id %}
+                    <small class="text-muted d-block">Вы не можете снять с себя права администратора</small>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Квота хранилища (в ГБ)</label>
+                <input type="number" class="form-control" name="storage_quota" 
+                       value="{{ user_data.userprofile.storage_quota|filesizeformat_gb }}" 
+                       min="1" step="1">
+                <small class="text-muted">Текущее использование: {{ user_data.userprofile.get_used_storage_formatted }}</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a href="{% url 'esadmin:user_detail' user_data.id %}" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

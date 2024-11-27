@@ -1,0 +1,84 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+
+{% block admin_content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-hdd me-2"></i>Статистика хранилища</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <h2 class="text-primary">{{ total_storage }}</h2>
+                    <p class="text-muted">Общий объем файлов</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <h2 class="text-success">{{ total_files }}</h2>
+                    <p class="text-muted">Всего файлов</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Использование хранилища по пользователям</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Занято места</th>
+                        <th>Файлов</th>
+                        <th>Квота</th>
+                        <th>Использовано</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users_storage %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.storage_used|filesizeformat }}</td>
+                        <td>{{ user.files_count }}</td>
+                        <td>{{ user.userprofile.storage_quota|filesizeformat }}</td>
+                        <td>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: 0%"
+                                     data-value="{{ user.userprofile.get_storage_percent }}">
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ user.userprofile.get_storage_percent }}%</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Первое обновление через 100мс после загрузки
+    setTimeout(() => {
+        const bars = document.querySelectorAll('.progress-bar');
+        bars.forEach(bar => {
+            const value = bar.getAttribute('data-value');
+            bar.style.width = value + '%';
+        });
+    }, 100);
+});
+</script>
+
+<style>
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+</style>
+{% endblock %} 

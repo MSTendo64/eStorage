@@ -1,0 +1,46 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+
+{% block admin_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-user me-2"></i>{{ user_data.username }}</h5>
+        <a href="{% url 'esadmin:user_edit' user_data.id %}" class="btn btn-warning btn-sm">
+            <i class="fas fa-edit me-2"></i>Редактировать
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">Основная информация</h6>
+                <dl class="row">
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ user_data.email }}</dd>
+                    
+                    <dt class="col-sm-4">Дата регистрации</dt>
+                    <dd class="col-sm-8">{{ joined_at|date:"d.m.Y H:i" }}</dd>
+                    
+                    <dt class="col-sm-4">Последний вход</dt>
+                    <dd class="col-sm-8">{{ last_login|date:"d.m.Y H:i"|default:"Никогда" }}</dd>
+                    
+                    <dt class="col-sm-4">Статус</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge {% if user_data.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ user_data.is_active|yesno:"Активен,Заблокирован" }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h6 class="mb-3">Статистика хранилища</h6>
+                <dl class="row">
+                    <dt class="col-sm-4">Занято места</dt>
+                    <dd class="col-sm-8">{{ storage_used }}</dd>
+                    
+                    <dt class="col-sm-4">Файлов</dt>
+                    <dd class="col-sm-8">{{ files_count }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

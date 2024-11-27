@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Управление приложениями | Eventshock Storage{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Мои приложения</h2>
+        <div class="mb-4">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newAppModal">
+                Создать новое приложение
+            </button>
+        </div>
+        
+        {% if applications %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Client ID</th>
+                            <th>Client Secret</th>
+                            <th>Redirect URIs</th>
+                            <th>Дата создания</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for app in applications %}
+                            <tr>
+                                <td>{{ app.name }}</td>
+                                <td>{{ app.client_id }}</td>
+                                <td>
+                                    <code class="text-muted">{{ app.client_secret|truncatechars:10 }}</code>
+                                    <button class="btn btn-sm btn-secondary" onclick="showSecret(this)" 
+                                            data-secret="{{ app.client_secret }}">Показать</button>
+                                </td>
+                                <td>{{ app.redirect_uris }}</td>
+                                <td>{{ app.created_at }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>У вас пока нет зарегистрированных приложений.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="newAppModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новое приложение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название приложения</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="redirect_uris" class="form-label">Redirect URIs</label>
+                        <textarea class="form-control" id="redirect_uris" name="redirect_uris" 
+                                  required placeholder="http://localhost:8000/callback/"></textarea>
+                        <small class="text-muted">Один URI на строку</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showSecret(btn) {
+    const secret = btn.dataset.secret;
+    const td = btn.parentElement;
+    td.querySelector('code').textContent = secret;
+    btn.textContent = 'Скрыть';
+    btn.onclick = () => hideSecret(btn);
+}
+
+function hideSecret(btn) {
+    const td = btn.parentElement;
+    td.querySelector('code').textContent = btn.dataset.secret.substr(0, 10) + '...';
+    btn.textContent = 'Показать';
+    btn.onclick = () => showSecret(btn);
+}
+</script>
+{% endblock %} 

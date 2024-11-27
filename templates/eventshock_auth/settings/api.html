@@ -1,0 +1,332 @@
+{% extends 'eventshock_auth/settings/base.html' %}
+
+{% block settings_content %}
+<div class="mb-4">
+    <h3>API и Интеграции</h3>
+    <p class="text-muted">
+        Управляйте API ключами для прямого доступа к хранилищу и ESUID токенами для интеграции входа через Eventshock UID в ваши приложения
+    </p>
+</div>
+
+<!-- API Keys -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0"><i class="fas fa-key me-2"></i>API Ключи</h5>
+            <small class="text-muted">Для прямого доступа к API хранилища</small>
+        </div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newAPIKeyModal">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        {% if api_keys %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Ключ</th>
+                            <th>Создан</th>
+                            <th>Последнее использование</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key in api_keys %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-key text-primary me-2"></i>
+                                        {{ key.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               value="{{ key.key }}" readonly id="key_{{ key.id }}">
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                onclick="copyToClipboard('key_{{ key.id }}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>{{ key.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ key.last_used|default_if_none:"Никогда"|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if key.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ key.is_active|yesno:"Активен,Отключен" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="post" action="{% url 'revoke_api_key' key.id %}" 
+                                          class="d-inline-block" onsubmit="return confirm('Вы уверены?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-key fa-3x text-muted mb-3"></i>
+                <p class="text-muted">У вас пока нет API ключей</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ESUID Tokens -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>ESUID Токены</h5>
+            <small class="text-muted">Для интеграции входа через Eventshock UID в ваши приложения</small>
+        </div>
+        <button class="btn btn-sm btn-dark" disabled title="В разработке">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <i class="fas fa-tools me-2"></i>
+            <strong>В разработке!</strong>
+            <p class="mb-0">
+                ESUID API находится в стадии разработки. В ближайшее время здесь появится возможность интегрировать 
+                вход через Eventshock UID в ваши приложения. На данный момент для авторизации используйте API ключи.
+            </p>
+        </div>
+        
+        <!-- Добавим пример использования API ключей -->
+        <div class="mt-4">
+            <h5>Пример использования API для авторизации:</h5>
+            <pre class="bg-light p-3 rounded"><code>// JavaScript
+const apiKey = 'YOUR_API_KEY';
+
+// Авторизация
+fetch('/api/auth/', {
+    method: 'POST',
+    headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        username: 'user',
+        password: 'password'
+    })
+})
+.then(response => response.json())
+.then(data => {
+    const token = data.token;
+    // Используйте token для последующих запросов
+});</code></pre>
+
+            <h5 class="mt-4">Пример использования API для работы с файлами:</h5>
+            <pre class="bg-light p-3 rounded"><code>// JavaScript
+// Загрузка файла
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+fetch('/api/storage/upload/', {
+    method: 'POST',
+    headers: {
+        'Authorization': `Bearer ${apiKey}`
+    },
+    body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+// Получение списка файлов
+fetch('/api/storage/files/', {
+    headers: {
+        'Authorization': `Bearer ${apiKey}`
+    }
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+        </div>
+    </div>
+</div>
+
+<!-- Code Examples -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-code me-2"></i>Примеры интеграции API</h5>
+    </div>
+    <div class="card-body">
+        <nav>
+            <div class="nav nav-tabs" role="tablist">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#js">JavaScript</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#python">Python</button>
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#php">PHP</button>
+            </div>
+        </nav>
+        <div class="tab-content mt-3">
+            <div class="tab-pane fade show active" id="js">
+                <pre class="bg-light p-3 rounded"><code>// Класс для работы с API
+class EventshockAPI {
+    constructor(apiKey) {
+        this.apiKey = apiKey;
+        this.baseUrl = window.location.origin;
+    }
+
+    async auth(username, password) {
+        const response = await fetch(`${this.baseUrl}/api/auth/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        return response.json();
+    }
+
+    async uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${this.baseUrl}/api/storage/upload/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: formData
+        });
+        return response.json();
+    }
+
+    async getFiles() {
+        const response = await fetch(`${this.baseUrl}/api/storage/files/`, {
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`
+            }
+        });
+        return response.json();
+    }
+}</code></pre>
+            </div>
+            <div class="tab-pane fade" id="python">
+                <pre class="bg-light p-3 rounded"><code>import requests
+
+class EventshockAPI:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.base_url = 'https://your-domain.com'
+        
+    def auth(self, username, password):
+        response = requests.post(
+            f'{self.base_url}/api/auth/',
+            headers={'Authorization': f'Bearer {self.api_key}'},
+            json={'username': username, 'password': password}
+        )
+        return response.json()
+        
+    def upload_file(self, file_path):
+        with open(file_path, 'rb') as f:
+            response = requests.post(
+                f'{self.base_url}/api/storage/upload/',
+                headers={'Authorization': f'Bearer {self.api_key}'},
+                files={'file': f}
+            )
+        return response.json()
+        
+    def get_files(self):
+        response = requests.get(
+            f'{self.base_url}/api/storage/files/',
+            headers={'Authorization': f'Bearer {self.api_key}'}
+        )
+        return response.json()</code></pre>
+            </div>
+            <div class="tab-pane fade" id="php">
+                <pre class="bg-light p-3 rounded"><code>class EventshockAPI {
+    private $apiKey;
+    private $baseUrl;
+    
+    public function __construct($apiKey) {
+        $this->apiKey = $apiKey;
+        $this->baseUrl = 'https://your-domain.com';
+    }
+    
+    public function auth($username, $password) {
+        $ch = curl_init("{$this->baseUrl}/api/auth/");
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+            'username' => $username,
+            'password' => $password
+        ]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: Bearer {$this->apiKey}",
+            'Content-Type: application/json'
+        ]);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return json_decode($result, true);
+    }
+    
+    // ... другие методы для работы с файлами</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% include 'eventshock_auth/settings/modals/new_api_key.html' %}
+{% include 'eventshock_auth/settings/modals/new_esid_token.html' %}
+
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    document.execCommand('copy');
+    
+    // Показываем уведомление
+    const toast = document.createElement('div');
+    toast.className = 'toast position-fixed bottom-0 end-0 m-3';
+    toast.innerHTML = `
+        <div class="toast-body bg-success text-white">
+            <i class="fas fa-check me-2"></i>Скопировано в буфер обмена
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+</script>
+
+<style>
+.nav-tabs .nav-link {
+    color: var(--bs-body-color);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+pre {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.toast {
+    z-index: 1056;
+}
+
+.alert-info {
+    border-left: 4px solid var(--bs-primary);
+}
+</style>
+{% endblock %} 

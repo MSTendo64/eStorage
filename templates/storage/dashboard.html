@@ -1,0 +1,1274 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Мои файлы | Eventshock Storage{% endblock %}
+
+{% block content %}
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 3rem;
+    height: 3rem;
+}
+
+.loading-text {
+    color: white;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.progress-container {
+    width: 300px;
+    margin-top: 1rem;
+}
+
+.upload-progress {
+    height: 0.5rem;
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.upload-zone {
+    transition: all 0.3s ease;
+    border: 2px dashed #dee2e6;
+}
+
+.upload-zone.dragover {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-color: #007bff;
+}
+
+/* Стили для одиночных действий */
+.action-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.file-row {
+    position: relative;
+}
+
+.input-group .input-group-text {
+    background-color: transparent;
+    border-right: none;
+}
+
+.input-group .form-control {
+    border-left: none;
+}
+
+.input-group .form-control:focus {
+    border-color: #dee2e6;
+    box-shadow: none;
+}
+
+.input-group .form-control:focus + .input-group-text {
+    border-color: #dee2e6;
+}
+
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+</style>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+        <div class="spinner-border loading-spinner text-light" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <div class="loading-text" id="loadingText">Пожалуйста, подождите...</div>
+        <div class="progress-container d-none" id="progressContainer">
+            <div class="progress upload-progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%" id="uploadProgress"></div>
+            </div>
+            <small class="text-light" id="progressText">0%</small>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="storage-info mb-3 mb-md-0">
+                        <h5 class="mb-2">Использование хранилища</h5>
+                        <div class="progress" style="height: 10px; width: 200px;">
+                            <div class="progress-bar {% if user.userprofile.get_storage_percent > 90 %}bg-danger{% elif user.userprofile.get_storage_percent > 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: 0%"
+                                 data-value="{{ user.userprofile.get_storage_percent }}"
+                                 aria-valuenow="{{ user.userprofile.get_storage_percent }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            {{ user.userprofile.get_used_storage_formatted }} из 
+                            {{ user.userprofile.get_quota_formatted }}
+                            (<span class="storage-percent">{{ user.userprofile.get_storage_percent }}</span>%)
+                        </small>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="toggleUploadPanel()">
+                            <i class="fas fa-plus me-2"></i>Загрузить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-none d-md-block mb-3">
+    <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
+        <i class="fas fa-trash"></i> Удалить выбранные
+    </button>
+    <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
+        <i class="fas fa-download"></i> Скачать выбранные
+    </button>
+    <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
+        <i class="fas fa-archive"></i> Архивировать выбранные
+    </button>
+    <span class="ms-3" id="selectedCount"></span>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div id="uploadPanel" class="card mb-4" style="display: none;">
+            <div class="card-body">
+                <div class="upload-zone p-5 text-center border-2 border-dashed rounded" 
+                     ondrop="handleDrop(event)" ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+                    <h4>Перетащите файлы сюда</h4>
+                    <p class="text-muted">или</p>
+                    <form id="uploadForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" id="fileInput" name="file" class="d-none" multiple>
+                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                            Выберите файлы
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <h2>Мои файлы</h2>
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="fileSearch" 
+                           placeholder="Поиск файлов по имени...">
+                </div>
+            </div>
+        </div>
+
+        {% if files %}
+            <div class="d-none d-md-block">
+                <div class="files-container">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" class="form-check-input" id="selectAll">
+                                    </th>
+                                    <th>Название файла</th>
+                                    <th>Тип</th>
+                                    <th>Дата загрузки</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in files %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input file-checkbox" 
+                                                   value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                        </td>
+                                        <td>{{ file.filename }}</td>
+                                        <td>{{ file.get_file_type_display }}</td>
+                                        <td>{{ file.uploaded_at }}</td>
+                                        <td>
+                                            {% if file.is_image %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                                    <i class="fas fa-eye"></i> Просмотр
+                                                </button>
+                                            {% elif file.is_video %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                                    <i class="fas fa-play"></i> Просмотр
+                                                </button>
+                                            {% elif file.is_audio %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                                    <i class="fas fa-music"></i> Прослушать
+                                                </button>
+                                            {% elif file.is_archive %}
+                                                <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                                    <i class="fas fa-archive"></i> Просмотр содержимого
+                                                </button>
+                                                <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
+                                                    <i class="fas fa-box-open"></i> Распаковать
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
+                                                <i class="fas fa-download"></i> Скачать
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                                <i class="fas fa-trash"></i> Удалить
+                                            </button>
+                                            <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
+                                                    onclick="togglePublicity('{{ file.id }}', this)"
+                                                    data-public="{{ file.is_public|yesno:'true,false' }}">
+                                                <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                                {% if file.is_public %}Публичный{% else %}Приватный{% endif %}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-md-none">
+                <div class="files-container">
+                    <div class="list-group">
+                        {% for file in files %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input file-checkbox" 
+                                               value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                        <label class="form-check-label">{{ file.filename }}</label>
+                                    </div>
+                                    <small class="text-muted">{{ file.get_file_type_display }}</small>
+                                </div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% if file.is_image %}
+                                        <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% elif file.is_video %}
+                                        <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    {% elif file.is_audio %}
+                                        <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                            <i class="fas fa-music"></i>
+                                        </button>
+                                    {% elif file.is_archive %}
+                                        <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                            <i class="fas fa-archive"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
+                                            <i class="fas fa-box-open"></i>
+                                        </button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
+                                            onclick="togglePublicity('{{ file.id }}', this)"
+                                            data-public="{{ file.is_public|yesno:'true,false' }}">
+                                        <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">{{ file.uploaded_at|date:"d.m.Y H:i" }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p>У вас пока нет загруженных файлов.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для предпросмотра -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Просмотр файл</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-container">
+                    <!-- Контейнер для изображения -->
+                    <img id="imagePreview" class="img-fluid d-none" alt="Preview">
+                    
+                    <!-- Контейнер для видео -->
+                    <video id="videoPreview" class="d-none">
+                        <source type="video/mp4" src="">
+                    </video>
+                    
+                    <!-- Контейнер для аудио -->
+                    <audio id="audioPreview" class="d-none">
+                        <source type="audio/mpeg" src="">
+                    </audio>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Обновленное модальное окно для просмотра содержимого архива -->
+<div class="modal fade" id="archiveContentsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-archive me-2"></i>
+                    <span id="archiveFileName">Содержимое архива</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="archiveSearch" 
+                               placeholder="Поиск файлов в архиве...">
+                    </div>
+                </div>
+                <div class="archive-contents" style="max-height: 60vh; overflow-y: auto;">
+                    <div class="list-group" id="archiveFilesList">
+                        <!-- Здесь будет список файлов -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="me-auto text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Всего файлов: <span id="totalFiles">0</span>
+                </span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Добавьте стили -->
+<style>
+.archive-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    transition: background-color 0.2s;
+}
+
+.archive-item:hover {
+    background-color: rgba(0,0,0,.03);
+}
+
+.archive-item-icon {
+    margin-right: 1rem;
+    width: 24px;
+    text-align: center;
+}
+
+.archive-item-name {
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.archive-item-type {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-left: 1rem;
+    white-space: nowrap;
+}
+
+.archive-folder {
+    color: #ffc107;
+}
+
+.archive-file {
+    color: #6c757d;
+}
+
+.archive-image {
+    color: #28a745;
+}
+
+.archive-document {
+    color: #007bff;
+}
+
+.archive-video {
+    color: #dc3545;
+}
+
+.archive-audio {
+    color: #6f42c1;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+        min-width: 40px;
+    }
+    
+    .preview-container {
+        max-height: 50vh;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .list-group-item {
+        padding: 1rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .form-check-label {
+        word-break: break-all;
+    }
+}
+</style>
+
+<script>
+let player = null;
+let zoom = null;
+
+function showPreview(url, type) {
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const imagePreview = document.getElementById('imagePreview');
+    const videoPreview = document.getElementById('videoPreview');
+    const audioPreview = document.getElementById('audioPreview');
+    
+    // Скрываем все превью
+    imagePreview.classList.add('d-none');
+    videoPreview.classList.add('d-none');
+    audioPreview.classList.add('d-none');
+    
+    // Уничтожаем предыдущий плеер если он существует
+    if (player) {
+        player.destroy();
+        player = null;
+    }
+    
+    if (type === 'image') {
+        imagePreview.src = url;
+        imagePreview.classList.remove('d-none');
+        
+        // Инициализируем зум для изображения
+        if (zoom) {
+            zoom.detach();
+        }
+        zoom = mediumZoom(imagePreview, {
+            margin: 24,
+            background: '#000000e6',
+            scrollOffset: 0,
+        });
+    } 
+    else if (type === 'video') {
+        videoPreview.classList.remove('d-none');
+        videoPreview.querySelector('source').src = url;
+        
+        // Инициализируем видео плеер
+        player = new Plyr(videoPreview, {
+            controls: [
+                'play-large', 'play', 'progress', 'current-time', 
+                'duration', 'mute', 'volume', 'settings', 'fullscreen'
+            ],
+            settings: ['quality', 'speed'],
+            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+            keyboard: { focused: true, global: true },
+            tooltips: { controls: true, seek: true },
+            seekTime: 5
+        });
+    }
+    else if (type === 'audio') {
+        audioPreview.classList.remove('d-none');
+        audioPreview.querySelector('source').src = url;
+        
+        // Инициализируем аудио плеер
+        player = new Plyr(audioPreview, {
+            controls: [
+                'play', 'progress', 'current-time', 'duration',
+                'mute', 'volume', 'settings'
+            ],
+            settings: ['speed'],
+            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+            keyboard: { focused: true, global: true },
+            tooltips: { controls: true, seek: true },
+            seekTime: 5,
+            invertTime: false
+        });
+        
+        // Исправляем проблему с перемоткой
+        let isUserSeeking = false;
+        
+        player.on('seeking', () => {
+            if (!isUserSeeking) {
+                isUserSeeking = true;
+            }
+        });
+        
+        player.on('seeked', () => {
+            if (isUserSeeking) {
+                isUserSeeking = false;
+            }
+        });
+        
+        // Предотвращаем автоматическое воспроизведение при перемотке
+        player.on('play', () => {
+            if (isUserSeeking) {
+                player.pause();
+            }
+        });
+    }
+    
+    modal.show();
+}
+
+// Очистка при закрытии модального окна
+document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+    if (player) {
+        player.destroy();
+        player = null;
+    }
+    if (zoom) {
+        zoom.detach();
+        zoom = null;
+    }
+});
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    const videoExts = ['mp4', 'avi', 'mov', 'wmv', 'webm'];
+    const audioExts = ['mp3', 'wav', 'ogg', 'm4a'];
+    const documentExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'];
+
+    if (filename.endsWith('/')) {
+        return '<i class="fas fa-folder archive-folder"></i>';
+    } else if (imageExts.includes(ext)) {
+        return '<i class="fas fa-image archive-image"></i>';
+    } else if (videoExts.includes(ext)) {
+        return '<i class="fas fa-video archive-video"></i>';
+    } else if (audioExts.includes(ext)) {
+        return '<i class="fas fa-music archive-audio"></i>';
+    } else if (documentExts.includes(ext)) {
+        return '<i class="fas fa-file-alt archive-document"></i>';
+    }
+    return '<i class="fas fa-file archive-file"></i>';
+}
+
+function getFileType(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (filename.endsWith('/')) return 'Папка';
+    return ext.toUpperCase();
+}
+
+function showArchiveContents(fileId, fileName) {
+    showLoading('Получение содержимого архива...');
+    
+    fetch(`/storage/archive-contents/${fileId}/`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            const filesList = document.getElementById('archiveFilesList');
+            const totalFiles = document.getElementById('totalFiles');
+            const archiveFileName = document.getElementById('archiveFileName');
+            filesList.innerHTML = '';
+            
+            archiveFileName.textContent = `Содержимое архива: ${fileName}`;
+            
+            if (data.contents && data.contents.length > 0) {
+                // Сортируем: сначала папки, потом файлы
+                const sortedContents = data.contents.sort((a, b) => {
+                    const aIsDir = a.endsWith('/');
+                    const bIsDir = b.endsWith('/');
+                    if (aIsDir && !bIsDir) return -1;
+                    if (!aIsDir && bIsDir) return 1;
+                    return a.localeCompare(b);
+                });
+
+                sortedContents.forEach(file => {
+                    filesList.innerHTML += `
+                        <div class="archive-item">
+                            <div class="archive-item-icon">
+                                ${getFileIcon(file)}
+                            </div>
+                            <div class="archive-item-name" title="${file}">
+                                ${file}
+                            </div>
+                            <div class="archive-item-type">
+                                ${getFileType(file)}
+                            </div>
+                        </div>
+                    `;
+                });
+                totalFiles.textContent = data.contents.length;
+            } else {
+                filesList.innerHTML = `
+                    <div class="archive-item">
+                        <div class="text-muted">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Архив пуст или не удалось прочитать содержимое
+                        </div>
+                    </div>
+                `;
+                totalFiles.textContent = '0';
+            }
+            
+            new bootstrap.Modal(document.getElementById('archiveContentsModal')).show();
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error:', error);
+            alert('Ошибка при получении содержимого архива');
+        });
+}
+
+// Добавьте поиск по содержимому архива
+document.getElementById('archiveSearch').addEventListener('input', function(e) {
+    const searchText = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.archive-item');
+    
+    items.forEach(item => {
+        const fileName = item.querySelector('.archive-item-name').textContent.toLowerCase();
+        if (fileName.includes(searchText)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+function extractArchive(fileId) {
+    if (!confirm('Вы уверены, что хотите распаковать этот архив?')) {
+        return;
+    }
+    
+    showLoading('Распаковка архива...');
+    
+    fetch(`/storage/extract-archive/${fileId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            hideLoading();
+            alert(data.error || 'Ошибка при распаковке архива');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        alert('Ошибка при распаковке архива');
+    });
+}
+
+function togglePublicity(fileId, btn) {
+    fetch(`/storage/toggle-publicity/${fileId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            if (data.is_public) {
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = '<i class="fas fa-lock-open"></i> Публичный';
+                
+                // Показывам модальное окно с публичной ссылкой
+                showPublicLinkModal(data.public_url);
+            } else {
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-secondary');
+                btn.innerHTML = '<i class="fas fa-lock"></i> Приватный';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при изменении доступа к файлу');
+    });
+}
+
+function showPublicLinkModal(url) {
+    const modal = `
+        <div class="modal fade" id="publicLinkModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Публичная ссылка</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="${url}" readonly>
+                            <button class="btn btn-outline-secondary" onclick="copyToClipboard(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            Эту ссылку можно отправить другим пользователям для доступа к файлу
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+    const modalElement = document.getElementById('publicLinkModal');
+    const bsModal = new bootstrap.Modal(modalElement);
+    bsModal.show();
+    
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        modalElement.remove();
+    });
+}
+
+function copyToClipboard(btn) {
+    const input = btn.parentElement.querySelector('input');
+    input.select();
+    document.execCommand('copy');
+    
+    const icon = btn.querySelector('i');
+    icon.className = 'fas fa-check';
+    setTimeout(() => {
+        icon.className = 'fas fa-copy';
+    }, 2000);
+}
+
+const selectedFiles = new Set();
+const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
+const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
+const selectedCount = document.getElementById('selectedCount');
+
+// Обработка выбора всех файлов
+document.getElementById('selectAll').addEventListener('change', function(e) {
+    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+        checkbox.checked = e.target.checked;
+        if (e.target.checked) {
+            selectedFiles.add(checkbox.value);
+        } else {
+            selectedFiles.clear();
+        }
+    });
+    updateBulkButtons();
+});
+
+// Обаботка выбора отдельных файлов
+document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function(e) {
+        if (e.target.checked) {
+            selectedFiles.add(e.target.value);
+        } else {
+            selectedFiles.delete(e.target.value);
+        }
+        updateBulkButtons();
+    });
+});
+
+function updateBulkButtons() {
+    const count = selectedFiles.size;
+    bulkDeleteBtn.disabled = count === 0;
+    bulkDownloadBtn.disabled = count === 0;
+    bulkArchiveBtn.disabled = count === 0;
+    selectedCount.textContent = count > 0 ? `Выбрано файлов: ${count}` : '';
+}
+
+function bulkDelete() {
+    if (!confirm('Вы уверены, что хотите удалить выбранные файлы?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    selectedFiles.forEach(id => formData.append('file_ids[]', id));
+    
+    showLoading('Удалени файлов...');
+    
+    fetch('/storage/bulk-delete/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            hideLoading();
+            alert('Ошибка при удалении файлов');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Ошибка при удалении файлов');
+    });
+}
+
+function bulkDownload() {
+    showLoading('Подготовка файлов для скачивания...');
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/storage/bulk-download/';
+    
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.appendChild(csrf);
+    
+    selectedFiles.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'file_ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    // Скрываем спиннер через небольшую задержку
+    setTimeout(hideLoading, 1000);
+}
+
+function bulkArchive() {
+    const formData = new FormData();
+    selectedFiles.forEach(id => formData.append('file_ids[]', id));
+    
+    showLoading('Создание ахива...');
+    
+    fetch('/storage/bulk-archive/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            hideLoading();
+            alert('Ошибка при создании архива');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Ошибка при создании архива');
+    });
+}
+
+// Функции для управления оверлеем загрузки
+function showLoading(text = 'Пожалуйста, подождите...', showProgress = false) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const progressContainer = document.getElementById('progressContainer');
+    
+    loadingText.textContent = text;
+    progressContainer.classList.toggle('d-none', !showProgress);
+    overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'none';
+    
+    // Сбрасваем прогресс
+    const progressBar = document.getElementById('uploadProgress');
+    const progressText = document.getElementById('progressText');
+    progressBar.style.width = '0%';
+    progressText.textContent = '0%';
+}
+
+function updateProgress(percent) {
+    const progressBar = document.getElementById('uploadProgress');
+    const progressText = document.getElementById('progressText');
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+}
+
+// Обработка загрузки файла
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return;
+    
+    const formData = new FormData(this);
+    showLoading('Загрузка файла...', true);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', this.action || window.location.href, true);
+    
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            updateProgress(percent);
+        }
+    };
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            location.reload();
+        } else {
+            hideLoading();
+            alert('Ошибка при загрузке файла');
+        }
+    };
+    
+    xhr.onerror = function() {
+        hideLoading();
+        alert('Ошибка при загрузке файла');
+    };
+    
+    xhr.send(formData);
+});
+
+function toggleUploadPanel() {
+    const panel = document.getElementById('uploadPanel');
+    const searchInput = document.getElementById('fileSearch');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        // Очищаем поиск при открытии панели загрузки
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    handleFiles(files);
+}
+
+function handleFiles(files) {
+    Array.from(files).forEach(file => {
+        uploadFile(file);
+    });
+}
+
+function uploadFile(file) {
+    const usedStorage = {{ user.userprofile.get_used_storage }};
+    const quota = {{ user.userprofile.storage_quota }};
+    
+    if (usedStorage + file.size > quota) {
+        alert('Недостаточно места в хранилище');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    showLoading(`Загрузка файла ${file.name}...`, true);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', window.location.href, true);
+    
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            updateProgress(percent);
+        }
+    };
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            updateStorageProgress();  // Обновляем прогресс
+            location.reload();
+        } else {
+            hideLoading();
+            alert('Ошибка при загрузке файла');
+        }
+    };
+    
+    xhr.onerror = function() {
+        hideLoading();
+        alert('Ошибка при загрузке файла');
+    };
+    
+    xhr.send(formData);
+}
+
+// Обработка выбора файлов через кнопку
+const fileInput = document.getElementById('fileInput');
+if (fileInput) {
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(this.files);
+    });
+}
+
+// Функция для одиночного удаления файла
+function deleteFile(fileId, fileName) {
+    if (!confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`)) {
+        return;
+    }
+    
+    showLoading('Удаление файла...');
+    
+    fetch(`/storage/delete/${fileId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            hideLoading();
+            alert('Ошибка при удалении файла');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Ошибка ри удалении файла');
+    });
+}
+
+// Обновим функцию для скачивания одного файла
+function downloadFile(fileId) {
+    showLoading('Подготовка файла для скачивания...');
+    
+    fetch(`/storage/generate-link/${fileId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.download_url) {
+            // Создаем полный URL для скачивания
+            const fullUrl = window.location.origin + data.download_url;
+            
+            // Создаем скрытый iframe для скачивания
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = fullUrl;
+            document.body.appendChild(iframe);
+            
+            // Удаляем iframe после начала скачивания
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 2000);
+        } else {
+            alert('Ошибка при подготовке файла для скачивания');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ошибка при скачивании файла');
+    })
+    .finally(() => {
+        setTimeout(hideLoading, 1000);
+    });
+}
+
+// Добавим функцию поиска файлов
+const fileSearch = document.getElementById('fileSearch');
+if (fileSearch) {
+    fileSearch.addEventListener('input', function(e) {
+        const searchText = e.target.value.toLowerCase();
+        const fileRows = document.querySelectorAll('tbody tr');
+        let visibleCount = 0;
+        
+        fileRows.forEach(row => {
+            const fileName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            if (fileName.includes(searchText)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Обновляем отображние "Нет файлов" если ничего не найдено
+        const noFilesMessage = document.querySelector('.table-responsive + p');
+        if (noFilesMessage) {
+            if (visibleCount === 0) {
+                noFilesMessage.textContent = 'Файлы не найдены';
+                noFilesMessage.style.display = '';
+            } else {
+                noFilesMessage.style.display = 'none';
+            }
+        }
+        
+        // Обновляем состояние кнопки "Выбрать все"
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectedFiles.clear();
+            updateBulkButtons();
+        }
+    });
+}
+
+// Обработчик выбора всех файлов
+const selectAllCheckbox = document.getElementById('selectAll');
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function(e) {
+        document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+            if (e.target.checked) {
+                selectedFiles.add(checkbox.value);
+            } else {
+                selectedFiles.clear();
+            }
+        });
+        updateBulkButtons();
+    });
+}
+
+// Обработчики для отдельных чекбоксов
+document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+    if (checkbox) {
+        checkbox.addEventListener('change', function(e) {
+            if (e.target.checked) {
+                selectedFiles.add(e.target.value);
+            } else {
+                selectedFiles.delete(e.target.value);
+            }
+            updateBulkButtons();
+        });
+    }
+});
+
+// Анимация прогресс-бара при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    const bars = document.querySelectorAll('.progress-bar');
+    bars.forEach(bar => {
+        const value = bar.getAttribute('data-value');
+        setTimeout(() => {
+            bar.style.width = value + '%';
+        }, 100);
+    });
+});
+
+// Обновление прогресс-бара после загрузки файла
+function updateStorageProgress() {
+    fetch('/storage/stats/')
+        .then(response => response.json())
+        .then(data => {
+            const progressBar = document.querySelector('.progress-bar');
+            const percentSpan = document.querySelector('.storage-percent');
+            const storageInfo = document.querySelector('.storage-info small');
+            
+            // Плавно обновляем ширину
+            progressBar.style.width = data.percent + '%';
+            percentSpan.textContent = data.percent;
+            
+            // Обновляем текст
+            storageInfo.innerHTML = `
+                ${data.used_formatted} из 
+                ${data.quota_formatted}
+                (<span class="storage-percent">${data.percent}</span>%)
+            `;
+            
+            // Обновляем цвет в зависимости от процента
+            progressBar.className = 'progress-bar ' + 
+                (data.percent > 90 ? 'bg-danger' : 
+                 data.percent > 70 ? 'bg-warning' : 'bg-success');
+        });
+}
+
+// В конце файла обновим скрипт
+document.addEventListener('DOMContentLoaded', function() {
+    // Первое обновление через 100мс после загрузки
+    setTimeout(() => {
+        // Обновляем прогресс-бары
+        const bars = document.querySelectorAll('.progress-bar');
+        bars.forEach(bar => {
+            const value = bar.getAttribute('data-value');
+            bar.style.width = value + '%';
+        });
+        
+        // Обновляем статистику хранилища
+        updateStorageProgress();
+    }, 100);
+});
+</script>
+{% endblock %} 

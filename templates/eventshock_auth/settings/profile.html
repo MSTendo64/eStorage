@@ -1,0 +1,38 @@
+{% extends 'eventshock_auth/settings/base.html' %}
+
+{% block settings_content %}
+<h3>Профиль</h3>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label">Аватар</label>
+        <div class="d-flex align-items-center">
+            {% if user.userprofile.avatar %}
+                <img src="{{ user.userprofile.avatar.url }}" alt="Avatar" class="rounded-circle me-3" style="width: 64px; height: 64px;">
+            {% else %}
+                <div class="rounded-circle bg-light me-3 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                    <i class="fas fa-user fa-2x text-muted"></i>
+                </div>
+            {% endif %}
+            <input type="file" name="avatar" class="form-control" accept="image/*">
+        </div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Имя пользователя</label>
+        <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Имя</label>
+        <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Фамилия</label>
+        <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+{% endblock %} 

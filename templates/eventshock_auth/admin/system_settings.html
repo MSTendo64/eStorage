@@ -1,0 +1,115 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+
+{% block admin_content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-server me-2"></i>Системные ресурсы</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">CPU</dt>
+                    <dd class="col-sm-8">
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-primary" role="progressbar" id="cpuProgress"
+                                 style="width: 0%"
+                                 data-value="{{ cpu_percent }}">
+                            </div>
+                        </div>
+                        <small class="text-muted">Использование: <span id="cpuValue">{{ cpu_percent }}</span>%</small>
+                    </dd>
+                    
+                    <dt class="col-sm-4">RAM</dt>
+                    <dd class="col-sm-8">
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-success" role="progressbar" id="ramProgress"
+                                 style="width: 0%"
+                                 data-value="{{ ram_percent }}">
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            Использовано {{ ram_used|filesizeformat }} из {{ ram_total|filesizeformat }}
+                            (<span id="ramValue">{{ ram_percent }}</span>%)
+                        </small>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Диск</dt>
+                    <dd class="col-sm-8">
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-warning" role="progressbar" id="diskProgress"
+                                 style="width: 0%"
+                                 data-value="{{ disk_percent }}">
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            Свободно {{ disk_free|filesizeformat }} из {{ disk_total|filesizeformat }}
+                            (<span id="diskValue">{{ disk_percent }}</span>%)
+                        </small>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Настройки системы</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Квота по умолчанию (в ГБ)</label>
+                        <input type="number" class="form-control" name="default_quota" 
+                               value="{{ default_quota }}" min="1" step="1">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Анимация прогресс-баров при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Первое обновление через 100мс после загрузки
+    setTimeout(() => {
+        const bars = document.querySelectorAll('.progress-bar');
+        bars.forEach(bar => {
+            const value = bar.getAttribute('data-value');
+            bar.style.width = value + '%';
+        });
+    }, 100);
+});
+
+// Обновление статистики каждые 30 секунд
+setInterval(() => {
+    fetch('{% url "esadmin:system_stats_ajax" %}')
+        .then(response => response.json())
+        .then(data => {
+            // Обновляем прогресс-бары и значения
+            const bars = {
+                'cpuProgress': data.cpu_percent,
+                'ramProgress': data.ram_percent,
+                'diskProgress': data.disk_percent
+            };
+            
+            Object.entries(bars).forEach(([id, value]) => {
+                const bar = document.getElementById(id);
+                const valueSpan = document.getElementById(id.replace('Progress', 'Value'));
+                bar.style.width = value + '%';
+                valueSpan.textContent = value;
+            });
+        });
+}, 30000);
+</script>
+
+<style>
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+</style>
+{% endblock %} 

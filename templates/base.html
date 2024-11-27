@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="{{ user.userprofile.theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Eventshock Storage{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Базовые стили */
+        :root {
+            --bs-body-bg: #f8f9fa;
+            --bs-body-color: #212529;
+            --bs-primary: #0d6efd;
+            --bs-link-color: #0d6efd;
+            --bs-link-hover-color: #0d6efd;
+            --bs-navbar-color: #212529;
+            --bs-container-color: #f8f9fa;
+        }
+    </style>
+
+    <!-- Добавим data-атрибуты для хранения данных -->
+    <div id="django-data" 
+         data-background-image="{% if user.userprofile.background_image %}{{ user.userprofile.background_image.url }}{% endif %}"
+         data-navbar-opacity="{{ user.userprofile.navbar_opacity }}"
+         data-container-opacity="{{ user.userprofile.container_opacity }}"
+         style="display: none;">
+    </div>
+
+    <!-- Пустой стиль для динамического контента -->
+    <style id="dynamic-styles"></style>
+
+    <!-- Основные стили -->
+    <style>
+        /* Остальные статические стили... */
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #212529;
+            --bs-body-color: #f8f9fa;
+            --bs-border-color: #495057;
+        }
+
+        .navbar {
+            background: rgba(var(--bs-body-bg-rgb), 0.5) !important;
+            backdrop-filter: blur(10px);
+            z-index: 8500 !important;
+        }
+
+        /* ... остальные стили ... */
+    </style>
+
+    <script>
+        // Функция для получения данных из data-атрибутов
+        function getDjangoData(key) {
+            const dataElement = document.getElementById('django-data');
+            return dataElement.dataset[key] || '';
+        }
+
+        // Функция для обновления динамических стилей
+        function updateDynamicStyles() {
+            const dynamicStyles = document.getElementById('dynamic-styles');
+            let styles = '';
+
+            // Добавляем стили для фона, если есть изображение
+            const backgroundImage = getDjangoData('backgroundImage');
+            if (backgroundImage) {
+                styles += `
+                    body {
+                        background-image: url('${backgroundImage}');
+                        background-size: cover;
+                        background-attachment: fixed;
+                        background-position: center;
+                    }
+                `;
+            }
+
+            // Добавляем стили для навбара и контейнера
+            const navbarOpacity = getDjangoData('navbarOpacity');
+            const containerOpacity = getDjangoData('containerOpacity');
+            
+            styles += `
+                .navbar {
+                    background-color: rgba(var(--bs-navbar-color-rgb), ${navbarOpacity}) !important;
+                }
+                .content-container {
+                    background-color: rgba(var(--bs-container-color-rgb), ${containerOpacity}) !important;
+                }
+            `;
+
+            dynamicStyles.textContent = styles;
+        }
+
+        // Запускаем обновление стилей после загрузки DOM
+        document.addEventListener('DOMContentLoaded', updateDynamicStyles);
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">Eventshock Storage</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'dashboard' %}">Мои файлы</a>
+                        </li>
+                        {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'esadmin:dashboard' %}">
+                                <i class="fas fa-cog"></i> Панель управления
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'manage_accounts' %}">Связанные аккаунты</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'settings_profile' %}">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'youtube_download' %}">
+                                <i class="fab fa-youtube"></i> Скачать с YouTube
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout' %}">Выход</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">Вход</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">Реистрация</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} content-container">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <div class="content-container">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+    // Добавим функцию для автоматического переключения темы
+    function updateTheme() {
+        const theme = document.documentElement.getAttribute('data-bs-theme');
+        if (theme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
+        }
+    }
+
+    // Слушаем изменения системной темы
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+
+    // Вызываем при загрузке
+    updateTheme();
+
+    // Добавим функцию для сохранения настроек прозрачности
+    function saveOpacitySettings(type, value) {
+        fetch('/auth/settings/appearance/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: new URLSearchParams({
+                [type === 'navbar' ? 'navbar_opacity' : 'container_opacity']: value,
+                'theme': document.documentElement.getAttribute('data-bs-theme'),
+                'language': '{{ user.userprofile.language }}'
+            })
+        });
+    }
+
+    // Обновим функцию updateOpacity
+    function updateOpacity(type, value) {
+        document.getElementById(`${type}_opacity_value`).textContent = parseFloat(value).toFixed(1);
+        
+        if (type === 'navbar') {
+            const navbar = document.querySelector('.navbar');
+            const navbarCollapse = document.querySelector('.navbar-collapse');
+            const theme = document.documentElement.getAttribute('data-bs-theme');
+            const bgColor = theme === 'dark' ? '33, 37, 41' : '248, 249, 250';
+            
+            navbar.style.background = `rgba(${bgColor}, ${value}) !important`;
+            navbarCollapse.style.backgroundColor = `rgba(${bgColor}, ${value})`;
+        } else if (type === 'container') {
+            document.querySelectorAll('.content-container').forEach(container => {
+                container.style.backgroundColor = `rgba(var(--bs-body-bg-rgb), ${value})`;
+            });
+        }
+        
+        // Сохраняем настройки
+        saveOpacitySettings(type, value);
+    }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
+
+    <script>
+    // Обработка открытия/закрытия модальных окон без backdrop
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                document.body.style.overflow = 'hidden';
+            });
+            
+            modal.addEventListener('hidden.bs.modal', function() {
+                document.body.style.overflow = '';
+            });
+        });
+    });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Инициализация всех модальных окон
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modalEl => {
+            const modal = new bootstrap.Modal(modalEl, {
+                backdrop: false,  // Отключаем стандартный backdrop
+                keyboard: true
+            });
+            
+            // Добавляем обработчики для анимации фона
+            modalEl.addEventListener('show.bs.modal', function() {
+                modalEl.style.display = 'block';
+                setTimeout(() => modalEl.classList.add('show'), 10);
+            });
+            
+            modalEl.addEventListener('hide.bs.modal', function() {
+                modalEl.classList.remove('show');
+                setTimeout(() => modalEl.style.display = 'none', 300);
+            });
+        });
+    });
+    </script>
+</body>
+</html> 

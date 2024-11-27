@@ -1,0 +1,25 @@
+<div class="modal fade" id="newAPIKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать новый API ключ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'create_api_key' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="api_key_name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="api_key_name" name="name" 
+                               required placeholder="Например: Мое приложение">
+                        <small class="text-muted">Используйте понятное название для идентификации ключа</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 

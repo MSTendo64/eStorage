@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ file.filename }} | Eventshock Storage{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h3>{{ file.filename }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="preview-container">
+                {% if file.is_image %}
+                    <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.filename }}">
+                {% elif file.is_video %}
+                    <video class="plyr-video" playsinline controls>
+                        <source src="{{ file.file.url }}" type="video/mp4">
+                    </video>
+                {% elif file.is_audio %}
+                    <audio class="plyr-audio" controls>
+                        <source src="{{ file.file.url }}" type="audio/mpeg">
+                    </audio>
+                {% endif %}
+            </div>
+            
+            <div class="mt-3">
+                <a href="{{ file.file.url }}" class="btn btn-primary" download>
+                    <i class="fas fa-download me-2"></i>Скачать файл
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.plyr-video')) {
+        new Plyr('.plyr-video', {
+            controls: [
+                'play-large', 'play', 'progress', 'current-time', 'duration',
+                'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+            ]
+        });
+    }
+    if (document.querySelector('.plyr-audio')) {
+        new Plyr('.plyr-audio');
+    }
+});
+</script>
+{% endblock %} 
