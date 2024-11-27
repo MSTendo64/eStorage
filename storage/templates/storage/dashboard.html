@@ -1,0 +1,17 @@
+<!-- Добавим кнопку после заголовка -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Мои файлы</h2>
+    <div class="btn-group">
+        <!-- Кнопка загрузки файла -->
+        <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="fas fa-upload"></i> Загрузить файл
+        </button>
+        
+        <!-- Кнопка YouTube теперь ведет на страницу загрузки -->
+        <a href="{% url 'youtube_download' %}" class="btn btn-danger">
+            <i class="fab fa-youtube"></i> Скачать с YouTube
+        </a>
+    </div>
+</div>
+
+<!-- Остальной код dashboard.html остается без изменений --> 
