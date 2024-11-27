@@ -26,7 +26,7 @@ SECRET_KEY = 'df7sdfui23j2hc093dfwzxc1231n23jhv1g24f1c41zx802334b'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["storage.eventshock.ru", "api.eventshock.ru", "127.0.0.1"]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -145,7 +145,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # Настройки сессии
 SESSION_COOKIE_AGE = 86400  # 24 часа
-SESSION_COOKIE_SECURE = False  # Установите True в продакшене
+SESSION_COOKIE_SECURE = True  # Установите True в продакшене
 
 # Crispy Forms настройки
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -164,14 +164,14 @@ OAUTH2_PROVIDER = {
 }
 
 # Настройки CORS
-CORS_ALLOW_ALL_ORIGINS = True  # Только для разработки! В продакшене настройте конкретные домены
+CORS_ALLOW_ALL_ORIGINS = False  # Только для разработки! В продакшене настройте конкретные домены
 
 # Настройки безопасности
-CSRF_COOKIE_SECURE = False  # В продакшене установить True
-SESSION_COOKIE_SECURE = False  # В продакшене установить True
+CSRF_COOKIE_SECURE = True  # В продакшене установить True
+SESSION_COOKIE_SECURE = True  # В продакшене установить True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'https://storage.eventshock.ru']
+CSRF_TRUSTED_ORIGINS = [] # <<-- Поставть домен который будет использовать приложение
 
 # Настройки сессии
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
@@ -193,17 +193,14 @@ MIDDLEWARE = [
 # Настройки CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'https://storage.eventshock.ru',
-]
+]# <<-- Поставть домен который будет использовать приложение
 
 # Настройки безопасности
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = False  # В продакшене установить True
+SECURE_SSL_REDIRECT = True  # В продакшене установить True
 SECURE_HSTS_SECONDS = 0  # В продакшене установить 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False  # В продакшене установить True
-SECURE_HSTS_PRELOAD = False  # В продакшене установить True
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # В продакшене установить True
+SECURE_HSTS_PRELOAD = True  # В продакшене установить True
 
 # Настройки аутентификации
 LOGIN_URL = 'login'
