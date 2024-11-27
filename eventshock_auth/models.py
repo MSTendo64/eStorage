@@ -1,0 +1,116 @@
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+
+class EventshockToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    access_token = models.CharField(max_length=255)
+    refresh_token = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        from django.utils import timezone
+        return self.expires_at <= timezone.now()
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    is_oauth_user = models.BooleanField(default=False)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    theme = models.CharField(max_length=20, choices=[
+        ('light', 'Светлая'),
+        ('dark', 'Темная'),
+        ('auto', 'Системная')
+    ], default='light')
+    language = models.CharField(max_length=10, choices=[
+        ('ru', 'Русский'),
+        ('en', 'English')
+    ], default='ru')
+    developer_mode = models.BooleanField(default=False)
+    storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в айтах
+    background_image = models.ImageField(upload_to='backgrounds/', null=True, blank=True)
+    accent_color = models.CharField(max_length=7, default='#0d6efd',  # Bootstrap primary color
+                                  help_text='HEX color code')
+    navbar_opacity = models.FloatField(default=1.0)  # Прозрачность навбара
+    container_opacity = models.FloatField(default=1.0)  # Прозрачность контейнера
+    navbar_color = models.CharField(max_length=7, default='#212529')  # Цвет навбара
+    container_color = models.CharField(max_length=7, default='#f8f9fa')  # Цвет контейнеров
+    custom_text_color = models.BooleanField(default=False)
+    text_color = models.CharField(max_length=7, default='#000000',
+                                help_text='HEX color code')
+    
+    def __str__(self):
+        return self.user.username
+    
+    def get_used_storage(self):
+        from django.db.models import Sum
+        from storage.models import UserFile
+        
+        total = UserFile.objects.filter(user=self.user).aggregate(
+            total=Sum('file_size'))['total'] or 0
+        return total
+        
+    def get_storage_percent(self):
+        used = self.get_used_storage()
+        return min(round((used / self.storage_quota) * 100, 1), 100)
+        
+    def format_size(self, size):
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+
+    def get_used_storage_formatted(self):
+        """Возвращает отформатированный размер используемого хранилища"""
+        return self.format_size(self.get_used_storage())
+    
+    def get_quota_formatted(self):
+        """Возвращает отформатированный размер квоты"""
+        return self.format_size(self.storage_quota)
+
+class LinkedAccount(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='linked_accounts')
+    provider = models.CharField(max_length=50)  # 'google', 'github', etc.
+    provider_user_id = models.CharField(max_length=255)
+    provider_username = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('provider', 'provider_user_id')
+
+class OAuthApplication(models.Model):
+    name = models.CharField(max_length=255)
+    client_id = models.CharField(max_length=100, unique=True)
+    client_secret = models.CharField(max_length=255)
+    redirect_uris = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
+
+class APIKey(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_keys')
+    name = models.CharField(max_length=100)
+    key = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = uuid.uuid4().hex
+        super().save(*args, **kwargs)
+
+class ESIDToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='esid_tokens')
+    name = models.CharField(max_length=100)
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    allowed_origins = models.TextField(blank=True)  # Список разрешенных доменов через запятую
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = f"esid_{uuid.uuid4().hex}"
+        super().save(*args, **kwargs)

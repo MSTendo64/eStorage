@@ -1,0 +1,1 @@
+default_app_config = 'eventshock_auth.apps.EventshockAuthConfig' 

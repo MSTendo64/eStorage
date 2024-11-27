@@ -1,0 +1,30 @@
+.admin-header {
+    background: var(--bs-primary);
+    color: white;
+    padding: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.2s;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+}
+
+.list-group-item.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.admin-stats {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.admin-chart {
+    height: 300px;
+} 
