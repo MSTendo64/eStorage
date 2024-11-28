@@ -96,6 +96,22 @@
         // Запускаем обновление стилей после загрузки DOM
         document.addEventListener('DOMContentLoaded', updateDynamicStyles);
     </script>
+
+    {% if user.is_authenticated and user.userprofile.custom_font %}
+    <style>
+        @font-face {
+            font-family: '{{ user.userprofile.font_family_name }}';
+            src: url('{{ user.userprofile.custom_font.url }}') format('{{ user.userprofile.font_format }}');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        body {
+            font-family: '{{ user.userprofile.font_family_name }}', system-ui, -apple-system, sans-serif !important;
+        }
+    </style>
+    {% endif %}
 </head>
 <body>
     <!-- Добавляем переводы в глобальную область видимости -->
@@ -126,7 +142,15 @@
 
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">{{ t.common.site_name }}</a>
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                {% if system_settings.site_logo %}
+                    <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
+                         class="me-2" style="height: 32px;">
+                {% endif %}
+                <span style="color: {{ system_settings.site_name_color }}">
+                    {{ system_settings.site_name }}
+                </span>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -389,7 +413,7 @@
         color: var(--bs-primary) !important;
     }
 
-    /* Фокус элементов */
+    /* Фоку элементов */
     .form-control:focus,
     .form-select:focus {
         border-color: var(--bs-primary) !important;
@@ -615,7 +639,7 @@
         transition: color 0.3s ease;
     }
 
-    /* Улучшенная читаемость для светлого текста на темном фоне */
+    /* Улучшенная читаемсть для светлого текста на темном фоне */
     [data-adaptive-light="true"] {
         text-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
@@ -932,5 +956,62 @@
         updateStorageUsage();
     }
     </script>
+
+    <style>
+    /* Стили для темной темы */
+    [data-bs-theme="dark"] .input-group .form-control,
+    [data-bs-theme="dark"] .input-group .input-group-text,
+    [data-bs-theme="dark"] .form-control:disabled,
+    [data-bs-theme="dark"] .form-control[readonly],
+    [data-bs-theme="dark"] .form-control,
+    [data-bs-theme="dark"] input[readonly],
+    [data-bs-theme="dark"] textarea[readonly],
+    [data-bs-theme="dark"] .form-select {
+        background-color: var(--bs-dark) !important;
+        color: var(--bs-light) !important;
+        border-color: var(--bs-gray-700) !important;
+    }
+
+    [data-bs-theme="dark"] .input-group .form-control:focus {
+        background-color: var(--bs-gray-800) !important;
+        color: var(--bs-light) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    [data-bs-theme="dark"] .input-group .form-control:focus + .input-group-text {
+        border-color: var(--bs-primary) !important;
+    }
+
+    /* Стили для кодовых полей в темной теме */
+    [data-bs-theme="dark"] code,
+    [data-bs-theme="dark"] pre,
+    [data-bs-theme="dark"] .form-control-plaintext {
+        background-color: var(--bs-dark) !important;
+        color: var(--bs-light) !important;
+        border-color: var(--bs-gray-700) !important;
+    }
+
+    /* Стили для таблиц в темной теме */
+    [data-bs-theme="dark"] .table {
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .table td,
+    [data-bs-theme="dark"] .table th {
+        background-color: var(--bs-dark) !important;
+        border-color: var(--bs-gray-700) !important;
+    }
+
+    /* Стили для модальных окон в темной теме */
+    [data-bs-theme="dark"] .modal-content {
+        background-color: var(--bs-dark) !important;
+        color: var(--bs-light) !important;
+    }
+
+    [data-bs-theme="dark"] .modal-header,
+    [data-bs-theme="dark"] .modal-footer {
+        border-color: var(--bs-gray-700) !important;
+    }
+    </style>
 </body>
 </html> 

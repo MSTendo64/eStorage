@@ -38,6 +38,24 @@ class UserProfile(models.Model):
     custom_text_color = models.BooleanField(default=False)
     text_color = models.CharField(max_length=7, default='#000000',
                                 help_text='HEX color code')
+    custom_font = models.FileField(
+        upload_to='fonts/', 
+        null=True, 
+        blank=True,
+        help_text='Поддерживаемые форматы: .ttf, .otf, .woff, .woff2'
+    )
+    font_family_name = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True,
+        help_text='Название шрифта для CSS'
+    )
+    font_format = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text='Формат шрифта для CSS (truetype, opentype, woff, woff2)'
+    )
     
     def __str__(self):
         return self.user.username
@@ -128,3 +146,20 @@ class ESIDToken(models.Model):
         if not self.token:
             self.token = f"esid_{uuid.uuid4().hex}"
         super().save(*args, **kwargs)
+
+class SystemSettings(models.Model):
+    site_name = models.CharField(max_length=100, default='eStorage')
+    site_logo = models.ImageField(upload_to='system/logo/', null=True, blank=True)
+    site_name_color = models.CharField(max_length=7, default='#ffffff', help_text='HEX color code')
+
+    class Meta:
+        verbose_name = 'System Settings'
+        verbose_name_plural = 'System Settings'
+
+    def __str__(self):
+        return 'System Settings'
+
+    @classmethod
+    def get_settings(cls):
+        settings, _ = cls.objects.get_or_create(pk=1)
+        return settings

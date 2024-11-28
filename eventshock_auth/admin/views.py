@@ -1,12 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib import messages
 from storage.models import UserFile
-from ..models import UserProfile
+from ..models import UserProfile, SystemSettings
 import psutil
 from django.http import JsonResponse
 
@@ -158,32 +159,29 @@ def system_logs(request):
         'active_tab': 'logs'
     })
 
-@user_passes_test(is_superuser)
+@staff_member_required
 def system_settings(request):
+    settings = SystemSettings.get_settings()
+    
     if request.method == 'POST':
-        # Обработка формы настроек
-        default_quota = int(request.POST.get('default_quota', 10))
-        # Сохраняем настройки...
-        messages.success(request, 'Настройки успешно сохранены')
+        settings.site_name = request.POST.get('site_name', 'eStorage')
+        settings.site_name_color = request.POST.get('site_name_color', '#ffffff')
+        
+        if 'remove_logo' in request.POST and settings.site_logo:
+            settings.site_logo.delete()
+            settings.site_logo = None
+        elif request.FILES.get('site_logo'):
+            if settings.site_logo:
+                settings.site_logo.delete()
+            settings.site_logo = request.FILES['site_logo']
+            
+        settings.save()
+        messages.success(request, 'Настройки системы обновлены')
         return redirect('esadmin:system_settings')
-    
-    # Получаем системные ресурсы
-    cpu_percent = psutil.cpu_percent()
-    ram = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
-    
-    context = {
-        'active_tab': 'settings',
-        'cpu_percent': cpu_percent,
-        'ram_percent': ram.percent,
-        'ram_used': ram.used,
-        'ram_total': ram.total,
-        'disk_percent': disk.percent,
-        'disk_free': disk.free,
-        'disk_total': disk.total,
-        'default_quota': 10  # Получаем из настроек
-    }
-    return render(request, 'eventshock_auth/admin/system_settings.html', context)
+        
+    return render(request, 'eventshock_auth/admin/system_settings.html', {
+        'settings': settings
+    })
 
 @user_passes_test(is_superuser)
 def system_stats_ajax(request):

@@ -10,6 +10,7 @@ from .models import UserProfile, LinkedAccount, OAuthApplication, APIKey, ESIDTo
 from django.utils import timezone
 from datetime import timedelta
 import uuid
+import os
 
 def generate_client_id():
     return f"client_{uuid.uuid4().hex[:16]}"
@@ -185,18 +186,38 @@ def settings_profile(request):
 
 @login_required
 def settings_appearance(request):
-    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    profile = request.user.userprofile
     
     if request.method == 'POST':
-        profile.theme = request.POST.get('theme', 'light')
-        profile.language = request.POST.get('language', 'ru')
-        profile.accent_color = request.POST.get('accent_color', '#0d6efd')
+        # Если меняется только язык
+        if 'language' in request.POST and len(request.POST) == 2:  # 2 потому что есть еще csrf token
+            profile.language = request.POST.get('language')
+            profile.save()
+            
+            # Устанавливаем язык в сессии
+            request.session['django_language'] = profile.language
+            
+            # Если это AJAX запрос, возвращаем JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'success'})
+            
+            # Для обычного запроса - редирект с cookie
+            response = redirect('settings_appearance')
+            response.set_cookie('django_language', profile.language, max_age=365*24*60*60)
+            return response
+            
+        # Если меняются другие настройки внешнего вида
+        if 'theme' in request.POST:
+            profile.theme = request.POST.get('theme', 'light')
+        if 'accent_color' in request.POST:
+            profile.accent_color = request.POST.get('accent_color', '#0d6efd')
         
         # Обработка цвета текста
         text_color_mode = request.POST.get('text_color_mode')
-        profile.custom_text_color = (text_color_mode == 'custom')
-        if profile.custom_text_color:
-            profile.text_color = request.POST.get('text_color', '#000000')
+        if text_color_mode:
+            profile.custom_text_color = (text_color_mode == 'custom')
+            if profile.custom_text_color:
+                profile.text_color = request.POST.get('text_color', '#000000')
         
         # Обработка фонового изображения
         if 'remove_background' in request.POST:
@@ -208,25 +229,79 @@ def settings_appearance(request):
                 profile.background_image.delete()
             profile.background_image = request.FILES['background_image']
             
+        # Обработка шрифта
+        if 'remove_font' in request.POST:
+            if profile.custom_font:
+                # Удаляем файл шрифта
+                profile.custom_font.delete(save=False)  # save=False чтобы не сохранять дважды
+                profile.custom_font = None
+                profile.font_family_name = None
+                profile.font_format = None
+        elif request.FILES.get('custom_font'):
+            # Проверяем расширение файла
+            allowed_extensions = {
+                '.ttf': 'truetype',
+                '.otf': 'opentype',
+                '.woff': 'woff',
+                '.woff2': 'woff2'
+            }
+            font_file = request.FILES['custom_font']
+            ext = os.path.splitext(font_file.name)[1].lower()
+            
+            if ext not in allowed_extensions:
+                messages.error(request, 'Неподдерживаемый формат шрифта')
+                return redirect('settings_appearance')
+                
+            if font_file.size > 2 * 1024 * 1024:  # 2MB
+                messages.error(request, 'Размер файла шрифта не должен превышать 2MB')
+                return redirect('settings_appearance')
+                
+            # Удаляем старый файл шрифта, если он есть
+            if profile.custom_font:
+                old_font = profile.custom_font
+                # Сохраняем путь к старому файлу
+                old_font_path = old_font.path if old_font else None
+                
+                # Удаляем старый файл физически, если он существует
+                if old_font_path and os.path.exists(old_font_path):
+                    os.remove(old_font_path)
+                
+                # Очищаем поле в модели
+                profile.custom_font = None
+                profile.font_family_name = None
+                profile.font_format = None
+                profile.save()  # Сохраняем, чтобы очистить ссылки на старый файл
+            
+            # Сохраняем новый шрифт
+            profile.custom_font = font_file
+            profile.font_family_name = os.path.splitext(font_file.name)[0]  # Используем имя файла без расширения
+            profile.font_format = allowed_extensions[ext]
+            
         profile.save()
         
-        # Обработка смены языка
-        language = request.POST.get('language')
-        if language:
-            request.user.userprofile.language = language
-            request.user.userprofile.save()
+        # Если это AJAX запрос, возвращаем JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'theme': profile.theme,
+                'accent_color': profile.accent_color,
+                'text_color': profile.text_color,
+                'custom_text_color': profile.custom_text_color,
+                'font_family_name': profile.font_family_name
+            })
             
-            # Устанавливаем язык в сессии
-            request.session['django_language'] = language
+        messages.success(request, 'Настройки внешнего вида обновлены')
+        return redirect('settings_appearance')
             
-            # Устанавливаем cookie для языка
-            response = redirect('settings_appearance')
-            response.set_cookie('django_language', language, max_age=365*24*60*60)
-            
-            messages.success(request, 'Настройки внешнего вида обновлены')
-            return response
-            
-    return render(request, 'eventshock_auth/settings/appearance.html', {'active_tab': 'appearance'})
+    return render(request, 'eventshock_auth/settings/appearance.html', {
+        'active_tab': 'appearance',
+        'profile': profile,
+        'available_languages': [
+            ('ru', 'Русский'),
+            ('en', 'English'),
+            ('ja', '日本語')
+        ]
+    })
 
 @login_required
 def settings_general(request):

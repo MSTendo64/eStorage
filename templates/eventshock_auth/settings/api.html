@@ -1,11 +1,11 @@
 {% extends 'eventshock_auth/settings/base.html' %}
 
 {% block settings_content %}
-<div class="mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <h3>API и Интеграции</h3>
-    <p class="text-muted">
-        Управляйте API ключами для прямого доступа к хранилищу и ESUID токенами для интеграции входа через Eventshock UID в ваши приложения
-    </p>
+    <a href="{% url 'api_docs' %}" class="btn btn-outline-primary">
+        <i class="fas fa-book me-2"></i>Документация API
+    </a>
 </div>
 
 <!-- API Keys -->
@@ -13,7 +13,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
             <h5 class="mb-0"><i class="fas fa-key me-2"></i>API Ключи</h5>
-            <small class="text-muted">Для прямого доступа к API хранилища</small>
+            <small class="text-muted">Для доступа к API из ваших приложений</small>
         </div>
         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newAPIKeyModal">
             <i class="fas fa-plus"></i>
@@ -22,51 +22,42 @@
     <div class="card-body">
         {% if api_keys %}
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Название</th>
                             <th>Ключ</th>
                             <th>Создан</th>
-                            <th>Последнее использование</th>
-                            <th>Статус</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for key in api_keys %}
                             <tr>
+                                <td>{{ key.name }}</td>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-key text-primary me-2"></i>
-                                        {{ key.name }}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" 
-                                               value="{{ key.key }}" readonly id="key_{{ key.id }}">
-                                        <button class="btn btn-outline-secondary btn-sm" 
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="key_{{ key.id }}" 
+                                               value="{{ key.key }}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button"
                                                 onclick="copyToClipboard('key_{{ key.id }}')">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
                                 </td>
-                                <td>{{ key.created_at|date:"d.m.Y H:i" }}</td>
-                                <td>{{ key.last_used|default_if_none:"Никогда"|date:"d.m.Y H:i" }}</td>
+                                <td>{{ key.created_at }}</td>
                                 <td>
-                                    <span class="badge {% if key.is_active %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ key.is_active|yesno:"Активен,Отключен" }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <form method="post" action="{% url 'revoke_api_key' key.id %}" 
-                                          class="d-inline-block" onsubmit="return confirm('Вы уверены?');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                    {% if key.is_active %}
+                                        <form method="post" action="{% url 'revoke_api_key' key.id %}" 
+                                              class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-ban"></i> Отозвать
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="badge bg-danger">Отозван</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}
@@ -74,93 +65,72 @@
                 </table>
             </div>
         {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-key fa-3x text-muted mb-3"></i>
-                <p class="text-muted">У вас пока нет API ключей</p>
-            </div>
+            <p class="text-muted mb-0">У вас пока нет API ключей</p>
         {% endif %}
     </div>
 </div>
 
-<!-- Примеры использования API -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-code me-2"></i>Примеры использования API</h5>
-    </div>
-    <div class="card-body">
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            Примеры использования API для работы с хранилищем через API ключи
-        </div>
-
-        <h6 class="mt-4">Авторизация через API</h6>
-        <pre class="bg-light p-3 rounded"><code>// JavaScript
-const apiKey = 'YOUR_API_KEY';
-
-// Авторизация существующего пользователя
-fetch('/api/auth/', {
-    method: 'POST',
-    headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        username: 'user',
-        password: 'password'
-    })
-})
-.then(response => response.json())
-.then(data => {
-    const token = data.token;
-    // Используйте token для последующих запросов
-});</code></pre>
-
-        <h6 class="mt-4">Работа с файлами</h6>
-        <pre class="bg-light p-3 rounded"><code>// Загрузка файла
-const formData = new FormData();
-formData.append('file', fileInput.files[0]);
-
-fetch('/api/storage/upload/', {
-    method: 'POST',
-    headers: {
-        'Authorization': `Bearer ${apiKey}`
-    },
-    body: formData
-})
-.then(response => response.json())
-.then(data => console.log(data));
-
-// Получение списка файлов
-fetch('/api/storage/files/', {
-    headers: {
-        'Authorization': `Bearer ${apiKey}`
-    }
-})
-.then(response => response.json())
-.then(data => console.log(data));</code></pre>
-    </div>
-</div>
-
-<!-- ESUID Tokens -->
+<!-- ESID Tokens -->
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>ESUID Токены</h5>
-            <small class="text-muted">Для интеграции входа через Eventshock UID в ваши приложения</small>
+            <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>ESID Токены</h5>
+            <small class="text-muted">Для интеграции входа через Eventshock ID в ваши приложения</small>
         </div>
-        <button class="btn btn-sm btn-dark" disabled title="В разработке">
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newESIDTokenModal">
             <i class="fas fa-plus"></i>
         </button>
     </div>
     <div class="card-body">
-        <div class="alert alert-warning">
-            <i class="fas fa-tools me-2"></i>
-            <strong>В разработке!</strong>
-            <p class="mb-0">
-                ESUID API находится в стадии разработки. В ближайшее время здесь появится возможность интегрировать 
-                вход через Eventshock UID в ваши приложения. На данный момент для авторизации используйте API ключи.
-            </p>
-        </div>
+        {% if esid_tokens %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Токен</th>
+                            <th>Домены</th>
+                            <th>Истекает</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for token in esid_tokens %}
+                            <tr>
+                                <td>{{ token.name }}</td>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="token_{{ token.id }}" 
+                                               value="{{ token.token }}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button"
+                                                onclick="copyToClipboard('token_{{ token.id }}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>{{ token.allowed_origins }}</td>
+                                <td>{{ token.expires_at }}</td>
+                                <td>
+                                    {% if token.is_active %}
+                                        <form method="post" action="{% url 'revoke_esid_token' token.id %}" 
+                                              class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-ban"></i> Отозвать
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="badge bg-danger">Отозван</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">У вас пока нет ESID токенов</p>
+        {% endif %}
     </div>
 </div>
 
@@ -194,26 +164,8 @@ function copyToClipboard(elementId) {
 </script>
 
 <style>
-.nav-tabs .nav-link {
-    color: var(--bs-body-color);
-}
-
-.nav-tabs .nav-link.active {
-    color: var(--bs-primary);
-    border-color: var(--bs-primary);
-}
-
-pre {
-    background-color: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-}
-
 .toast {
     z-index: 1056;
-}
-
-.alert-info {
-    border-left: 4px solid var(--bs-primary);
 }
 </style>
 {% endblock %} 

@@ -14,18 +14,16 @@
                     <div class="mb-3">
                         <label class="form-label">Тема</label>
                         <select name="theme" class="form-select">
-                            <option value="light" {% if user.userprofile.theme == 'light' %}selected{% endif %}>Светлая</option>
-                            <option value="dark" {% if user.userprofile.theme == 'dark' %}selected{% endif %}>Темная</option>
-                            <option value="auto" {% if user.userprofile.theme == 'auto' %}selected{% endif %}>Системная</option>
+                            <option value="light" {% if profile.theme == 'light' %}selected{% endif %}>{{ t.settings.theme.light }}</option>
+                            <option value="dark" {% if profile.theme == 'dark' %}selected{% endif %}>{{ t.settings.theme.dark }}</option>
+                            <option value="auto" {% if profile.theme == 'auto' %}selected{% endif %}>{{ t.settings.theme.system }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">{{ t.settings.language }}</label>
                         <select name="language" class="form-select" onchange="changeLanguage(this)">
-                            {% for lang in available_languages %}
-                                <option value="{{ lang.id }}" {% if lang.id == current_language %}selected{% endif %}>
-                                    {{ lang.name }}
-                                </option>
+                            {% for code, name in available_languages %}
+                                <option value="{{ code }}" {% if profile.language == code %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -41,9 +39,9 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">Фоновое изображение</label>
-                        {% if user.userprofile.background_image %}
+                        {% if profile.background_image %}
                             <div class="mb-2">
-                                <img src="{{ user.userprofile.background_image.url }}" 
+                                <img src="{{ profile.background_image.url }}" 
                                      alt="Current background" 
                                      class="img-thumbnail" 
                                      style="max-height: 100px;">
@@ -64,11 +62,9 @@
                     <div class="mb-3">
                         <label class="form-label">Акцентный цвет</label>
                         <div class="input-group">
-                            <input type="color" class="form-control form-control-color" 
-                                   name="accent_color" value="{{ user.userprofile.accent_color }}"
-                                   title="Выберите акцентный цвет">
+                            <input type="color" name="accent_color" value="{{ profile.accent_color }}" class="form-control form-control-color">
                             <input type="text" class="form-control" id="accentColorText" 
-                                   value="{{ user.userprofile.accent_color }}" 
+                                   value="{{ profile.accent_color }}" 
                                    pattern="#[0-9A-Fa-f]{6}" 
                                    placeholder="#000000">
                         </div>
@@ -89,6 +85,50 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">Шрифт</h5>
+        </div>
+        <div class="card-body">
+            {% if profile.custom_font %}
+                <div class="mb-2">
+                    <p class="mb-2">Текущий шрифт: 
+                        <strong style="font-family: '{{ profile.font_family_name }}'">
+                            {{ profile.custom_font.name }}
+                        </strong>
+                    </p>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" 
+                               name="remove_font" id="removeFont">
+                        <label class="form-check-label" for="removeFont">
+                            Удалить шрифт
+                        </label>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-muted mb-2">Текущий шрифт: Системный</p>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">Загрузить новый шрифт</label>
+                <input type="file" name="custom_font" class="form-control" 
+                       accept=".ttf,.otf,.woff,.woff2">
+                <small class="text-muted">
+                    Поддерживаемые форматы: TTF, OTF, WOFF, WOFF2. 
+                    Максимальный размер: 2MB
+                </small>
+            </div>
+            <!-- Предпросмотр шрифта -->
+            <div class="mt-3">
+                <label class="form-label">Предпросмотр:</label>
+                <p class="preview-text" style="font-family: '{{ profile.font_family_name }}'">
+                    The quick brown fox jumps over the lazy dog<br>
+                    Съешь же ещё этих мягких французских булок, да выпей чаю<br>
+                    1234567890!@#$%^&*()
+                </p>
             </div>
         </div>
     </div>
@@ -244,7 +284,7 @@ function adjustColor(color, percent) {
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', function() {
-    updateAccentColor('{{ user.userprofile.accent_color }}');
+    updateAccentColor('{{ profile.accent_color }}');
 });
 
 // Обновим обработчик формы
@@ -285,7 +325,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
             }
             toastContainer.appendChild(toast);
             
-            // Удаляем уведомление через 3 секунды
+            // Удаляем уведомление через 3 екунды
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => {
@@ -306,7 +346,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
 function changeLanguage(select) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{% url "settings_appearance" %}';
+    form.action = window.location.href;
     
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
@@ -321,7 +361,46 @@ function changeLanguage(select) {
     form.appendChild(csrf);
     form.appendChild(lang);
     document.body.appendChild(form);
+    
+    // Отправляем форму напрямую вместо fetch
     form.submit();
 }
+
+// Обновляем остальные функции для работы с формой
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        // Показываем индикатор загрузки
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
+        submitBtn.disabled = true;
+        
+        // Отправляем форму
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'  // Добавляем заголовок для AJAX
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            window.location.reload();  // Перезагружаем страницу после успешного сохранения
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при сохранении настроек');
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+});
 </script>
 {% endblock %} 

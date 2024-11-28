@@ -1,3 +1,4 @@
+from django.views.decorators.csrf import csrf_exempt
 import os
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -82,33 +83,24 @@ def download_file(request, token):
             
         file = download_token.file
         
-        # Создаем папку downloads если её нет
-        downloads_dir = os.path.join(settings.MEDIA_ROOT, 'downloads')
-        if not os.path.exists(downloads_dir):
-            os.makedirs(downloads_dir)
-            
-        # Создаем безопасное имя файла для кеша
-        safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', file.filename)
-        download_filename = f"{uuid.uuid4().hex}_{safe_filename}"
-        download_path = os.path.join(downloads_dir, download_filename)
+        # Получаем путь к оригинальному файлу
+        file_path = file.file.path
         
-        # Копируем файл
-        shutil.copy2(file.file.path, download_path)
+        # Формируем безопасное имя файла для заголовка Content-Disposition
+        filename = file.filename
+        encoded_filename = quote(filename)  # Кодируем имя файла для URL
         
-        # Создаем URL для скачивания
-        download_url = f"{settings.MEDIA_URL}downloads/{download_filename}"
+        # Открываем файл и создаем response
+        response = FileResponse(open(file_path, 'rb'))
+        
+        # Устанавливаем правильные заголовки для скачивания
+        response['Content-Type'] = 'application/octet-stream'
+        response['Content-Disposition'] = f'attachment; filename="{encoded_filename}"; filename*=UTF-8\'\'{encoded_filename}'
         
         # Помечаем токен как использованный
         download_token.is_used = True
         download_token.save()
         
-        # Запускаем отложенное удаление файла
-        cache_key = f"delete_file_{download_filename}"
-        cache.set(cache_key, True, 300)  # 5 минут на скачивание
-        
-        # Возращаем прямую ссылку на файл
-        response = HttpResponse(open(download_path, 'rb'), content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{file.filename}"'
         return response
             
     except DownloadToken.DoesNotExist:

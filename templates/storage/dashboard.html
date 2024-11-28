@@ -91,6 +91,31 @@
 .progress-bar {
     transition: width 1s ease-in-out;
 }
+
+/* Стили для мобильной версии */
+@media (max-width: 767.98px) {
+    .btn-group-vertical .btn {
+        text-align: left;
+    }
+    
+    .card-title {
+        font-size: 1rem;
+        word-break: break-all;
+    }
+    
+    .btn-sm {
+        padding: .5rem 1rem;
+    }
+    
+    .storage-info {
+        width: 100%;
+        margin-bottom: 1rem !important;
+    }
+    
+    .progress {
+        width: 100% !important;
+    }
+}
 </style>
 
 <div class="loading-overlay" id="loadingOverlay">
@@ -193,6 +218,7 @@
         </div>
 
         {% if files %}
+            <!-- Десктопная версия (таблица) -->
             <div class="d-none d-md-block">
                 <div class="files-container">
                     <div class="table-responsive">
@@ -263,6 +289,64 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Мобильная версия (карточки) -->
+            <div class="d-md-none">
+                {% for file in files %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-2">
+                                <input type="checkbox" class="form-check-input file-checkbox me-2" 
+                                       value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                <h5 class="card-title mb-0">{{ file.filename }}</h5>
+                            </div>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    {{ file.get_file_type_display }} • {{ file.uploaded_at }}
+                                </small>
+                            </p>
+                            <div class="btn-group-vertical w-100">
+                                {% if file.is_image %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                        <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_video %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                        <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                    </button>
+                                {% elif file.is_audio %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                        <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                    </button>
+                                {% elif file.is_archive %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                        <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                    </button>
+                                    <button class="btn btn-sm btn-warning mb-1" onclick="extractArchive('{{ file.id }}')">
+                                        <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')">
+                                    <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                </button>
+                                <button class="btn btn-sm btn-danger mb-1" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                    <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+                                </button>
+                                <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
+                                        onclick="togglePublicity('{{ file.id }}', this)"
+                                        data-public="{{ file.is_public|yesno:'true,false' }}">
+                                    <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                    {% if file.is_public %}
+                                        {{ t.storage.file_list.actions.public }}
+                                    {% else %}
+                                        {{ t.storage.file_list.actions.private }}
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         {% else %}
             <p>{{ t.storage.file_list.no_files }}</p>
         {% endif %}
@@ -271,33 +355,20 @@
 
 <!-- Модальное окно для предпросмотра -->
 <div class="modal fade" id="previewModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Просмотр файл</h5>
+                <h5 class="modal-title">Просмотр файла</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="preview-container">
-                    <!-- Контейнер для изображения -->
-                    <img id="imagePreview" class="img-fluid d-none" alt="Preview">
-                    
-                    <!-- Контейнер для видео -->
-                    <video id="videoPreview" class="d-none">
-                        <source type="video/mp4" src="">
-                    </video>
-                    
-                    <!-- Контейнер для аудио -->
-                    <audio id="audioPreview" class="d-none">
-                        <source type="audio/mpeg" src="">
-                    </audio>
-                </div>
+            <div class="modal-body text-center p-0">
+                <div id="previewContent"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Обновленное модальное окно для просмотра содержимого архива -->
+<!-- Обновленное одальное окно для просмотра содержимого архива -->
 <div class="modal fade" id="archiveContentsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -426,6 +497,59 @@
         word-break: break-all;
     }
 }
+
+/* Стили для модального окна просмотра */
+#previewModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 60px);
+    margin: 30px auto;
+}
+
+#previewModal .modal-content {
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+#previewModal .modal-body {
+    overflow: auto;
+    max-height: calc(90vh - 120px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#previewContent {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#previewContent img {
+    max-width: 100%;
+    max-height: calc(90vh - 120px);
+    object-fit: contain;
+}
+
+#previewContent video,
+#previewContent audio {
+    max-width: 100%;
+}
+
+/* Стили для плеера */
+.plyr {
+    width: 100%;
+    max-height: calc(90vh - 120px);
+}
+
+/* Анимация появления */
+.modal.fade .modal-dialog {
+    transform: translate(0, -50px);
+    transition: transform 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
 </style>
 
 <script>
@@ -433,108 +557,46 @@ let player = null;
 let zoom = null;
 
 function showPreview(url, type) {
+    const previewContent = document.getElementById('previewContent');
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    const imagePreview = document.getElementById('imagePreview');
-    const videoPreview = document.getElementById('videoPreview');
-    const audioPreview = document.getElementById('audioPreview');
     
-    // Скрываем все превью
-    imagePreview.classList.add('d-none');
-    videoPreview.classList.add('d-none');
-    audioPreview.classList.add('d-none');
+    previewContent.innerHTML = '';
     
-    // Уничтожаем предыдущий плеер если он существует
-    if (player) {
-        player.destroy();
-        player = null;
-    }
-    
-    if (type === 'image') {
-        imagePreview.src = url;
-        imagePreview.classList.remove('d-none');
-        
-        // Инициализируем зум для изображения
-        if (zoom) {
-            zoom.detach();
-        }
-        zoom = mediumZoom(imagePreview, {
-            margin: 24,
-            background: '#000000e6',
-            scrollOffset: 0,
-        });
-    } 
-    else if (type === 'video') {
-        videoPreview.classList.remove('d-none');
-        videoPreview.querySelector('source').src = url;
-        
-        // Инициализируем видео плеер
-        player = new Plyr(videoPreview, {
-            controls: [
-                'play-large', 'play', 'progress', 'current-time', 
-                'duration', 'mute', 'volume', 'settings', 'fullscreen'
-            ],
-            settings: ['quality', 'speed'],
-            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            keyboard: { focused: true, global: true },
-            tooltips: { controls: true, seek: true },
-            seekTime: 5
-        });
-    }
-    else if (type === 'audio') {
-        audioPreview.classList.remove('d-none');
-        audioPreview.querySelector('source').src = url;
-        
-        // Инициализируем аудио плеер
-        player = new Plyr(audioPreview, {
-            controls: [
-                'play', 'progress', 'current-time', 'duration',
-                'mute', 'volume', 'settings'
-            ],
-            settings: ['speed'],
-            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            keyboard: { focused: true, global: true },
-            tooltips: { controls: true, seek: true },
-            seekTime: 5,
-            invertTime: false
-        });
-        
-        // Исправляем проблему с перемоткой
-        let isUserSeeking = false;
-        
-        player.on('seeking', () => {
-            if (!isUserSeeking) {
-                isUserSeeking = true;
-            }
-        });
-        
-        player.on('seeked', () => {
-            if (isUserSeeking) {
-                isUserSeeking = false;
-            }
-        });
-        
-        // Предотвращаем автоматическое воспроизведение при перемотке
-        player.on('play', () => {
-            if (isUserSeeking) {
-                player.pause();
-            }
-        });
+    switch(type) {
+        case 'image':
+            const img = new Image();
+            img.src = url;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            previewContent.appendChild(img);
+            break;
+            
+        case 'video':
+            previewContent.innerHTML = `
+                <video id="player" playsinline controls>
+                    <source src="${url}" type="video/mp4">
+                </video>
+            `;
+            const player = new Plyr('#player');
+            break;
+            
+        case 'audio':
+            previewContent.innerHTML = `
+                <audio id="player" controls>
+                    <source src="${url}" type="audio/mpeg">
+                </audio>
+            `;
+            const audioPlayer = new Plyr('#player');
+            break;
     }
     
     modal.show();
+    
+    // Очищаем плеер при закрытии модального окна
+    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        previewContent.innerHTML = '';
+    });
 }
-
-// Очистка при закрытии модального окна
-document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
-    if (player) {
-        player.destroy();
-        player = null;
-    }
-    if (zoom) {
-        zoom.detach();
-        zoom = null;
-    }
-});
 
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
@@ -608,7 +670,7 @@ function showArchiveContents(fileId, fileName) {
                     <div class="archive-item">
                         <div class="text-muted">
                             <i class="fas fa-info-circle me-2"></i>
-                            Архив пуст или не удалось прочитать содержимое
+                            Архив пуст или не удалось прочитать содержиое
                         </div>
                     </div>
                 `;
@@ -1318,5 +1380,17 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStorageProgress();
     }, 100);
 });
+
+// Добавьте эту функцию в секцию <script>
+function handleFiles(files) {
+    if (files.length > 0) {
+        Array.from(files).forEach(file => {
+            uploadFile(file);
+        });
+        
+        // Очищаем input после загрузки
+        document.getElementById('fileInput').value = '';
+    }
+}
 </script>
 {% endblock %} 
