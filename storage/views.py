@@ -499,7 +499,6 @@ def download_youtube_video(request):
             data = json.loads(request.body)
             url = data.get('url')
             quality = data.get('quality', '1080p')
-            format_type = data.get('format', 'video')  # video или audio
             
             if not url:
                 return JsonResponse({
@@ -514,71 +513,77 @@ def download_youtube_video(request):
 
             # Настройки для yt-dlp
             ydl_opts = {
-                'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]' if format_type == 'video' else 'bestaudio/best',
+                'format': f'bestvideo[height<={quality[:-1]}]+bestaudio/best[height<={quality[:-1]}]',
                 'outtmpl': os.path.join(user_folder, '%(title)s.%(ext)s'),
+                'merge_output_format': 'mp4',
+                'postprocessors': [{
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                }],
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': False,
-                'progress_hooks': [],
+                'writethumbnail': True
             }
-
-            if format_type == 'video':
-                ydl_opts.update({
-                    'postprocessors': [{
-                        'key': 'FFmpegVideoConvertor',
-                        'preferedformat': 'mp4',
-                    }],
-                })
-            else:
-                ydl_opts.update({
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                    }],
-                })
 
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
+                    # Получаем информацию о видео
+                    info = ydl.extract_info(url, download=False)
                     filename = ydl.prepare_filename(info)
+                    filename = os.path.basename(filename)
                     
-                    # Если это аудио, меняем расширение на mp3
-                    if format_type == 'audio':
-                        filename = os.path.splitext(filename)[0] + '.mp3'
-
+                    # Проверяем размер файла и квоту пользователя
+                    filesize = info.get('filesize', 0)
+                    if filesize == 0:
+                        filesize = info.get('filesize_approx', 0)
+                    
+                    profile = request.user.userprofile
+                    if profile.get_used_storage() + filesize > profile.storage_quota:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Недостаточно места в хранилище'
+                        }, status=400)
+                    
+                    # Скачиваем видео
+                    ydl.download([url])
+                    
                     # Создаем запись в базе данных
                     UserFile.objects.create(
                         user=request.user,
-                        file=f'{request.user.id}/{os.path.basename(filename)}',
-                        filename=os.path.basename(filename),
-                        file_type='video' if format_type == 'video' else 'audio'
+                        file=f'{request.user.id}/{filename}',
+                        filename=filename,
+                        file_type='video'
                     )
-
+                    
                     return JsonResponse({
                         'success': True,
                         'message': 'Видео успешно загружено',
                         'redirect_url': reverse('dashboard')
                     })
-
+                    
             except Exception as e:
                 return JsonResponse({
                     'success': False,
                     'error': str(e)
                 }, status=500)
-
+                
         except json.JSONDecodeError:
             return JsonResponse({
                 'success': False,
                 'error': 'Неверный формат данных'
             }, status=400)
+            
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'error': str(e)
             }, status=500)
-
-    return render(request, 'storage/youtube_download.html')
+            
+    return JsonResponse({
+        'success': False,
+        'error': 'Метод не поддерживается'
+    }, status=405)
 
 def video_list(request):
     videos = YouTubeVideo.objects.all().order_by('-downloaded_at')

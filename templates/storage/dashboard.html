@@ -231,7 +231,7 @@
         </div>
 
         {% if files %}
-            <!-- Десктопная в��сия (таблица) -->
+            <!-- Десктопная всия (таблица) -->
             <div class="d-none d-md-block">
                 <div class="files-container">
                     <div class="table-responsive">
@@ -1440,7 +1440,7 @@ function uploadFile(file) {
 
     showLoading('Загрузка файла: ' + file.name, true);
 
-    // Добавляем обработку прогресса загрузки
+    // Добавляем обработку прогресса за��рузки
     const xhr = new XMLHttpRequest();
     xhr.open('POST', window.location.href, true);
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
@@ -1502,6 +1502,46 @@ function handleFiles(files) {
             updateProgress((uploadedCount / totalFiles) * 100);
         });
     }
+}
+
+// Добавьте эту функцию в секцию <script>
+function downloadYouTubeVideo(url, quality = '1080p') {
+    showLoading('Загрузка видео...', true);
+    
+    fetch('/storage/youtube/download/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            url: url,
+            quality: quality
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Ошибка при загрузке видео');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            hideLoading();
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            }
+        } else {
+            throw new Error(data.error || 'Неизвестная ошибка');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        alert(error.message || 'Ошибка при загрузке видео');
+    });
 }
 </script>
 {% endblock %} 
