@@ -387,7 +387,7 @@ def get_video_info(request):
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'youtube_include_dash_manifest': True,  # Включаем DASH форматы
+            'youtube_include_dash_manifest': True,  # ��ключаем DASH форматы
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -495,23 +495,16 @@ def download_progress(request):
 def download_youtube_video(request):
     if request.method == 'POST':
         try:
-            url = request.POST.get('url', '').strip()  # Получаем и очищаем URL
+            url = request.POST.get('url')
             if not url:
                 return JsonResponse({
                     'success': False,
-                    'error': 'URL не может быть пустым'
+                    'error': 'URL не указан'
                 })
 
             format_id = request.POST.get('format', 'best')
             
-            # Проверяем валидность URL
-            if not url.startswith(('http://', 'https://')):
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Неверный формат URL'
-                })
-
-            # Настройки yt-dlp
+            # Обновленные настройки yt-dlp
             ydl_opts = {
                 'format': format_id,
                 'outtmpl': '%(title)s.%(ext)s',
@@ -547,10 +540,16 @@ def download_youtube_video(request):
 
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    # Получаем информацию о видео
-                    info = ydl.extract_info(url, download=False)
-                    if not info:
-                        raise Exception('Не удалось получить информацию о видео')
+                    # Сначала проверяем информацию о видео
+                    try:
+                        info = ydl.extract_info(url, download=False)
+                        if not info:
+                            raise Exception('Не удалось получить информацию о видео')
+                    except Exception as e:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ошибка при получении информации о видео: {str(e)}'
+                        })
 
                     filename = ydl.prepare_filename(info)
                     
@@ -563,7 +562,13 @@ def download_youtube_video(request):
                     ydl_opts['outtmpl'] = os.path.join(user_folder, '%(title)s.%(ext)s')
                     
                     # Скачиваем видео
-                    ydl.download([url])
+                    try:
+                        ydl.download([url])
+                    except Exception as e:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Ошибка при скачивании видео: {str(e)}'
+                        })
                     
                     # Получаем финальное имя файла
                     filename = os.path.basename(filename)
@@ -587,9 +592,8 @@ def download_youtube_video(request):
                             'download_url': download_url,
                             'filename': filename
                         })
-
+                        
             except Exception as e:
-                print(f"YouTube download error: {str(e)}")
                 error_msg = str(e)
                 if 'Video unavailable' in error_msg:
                     error_msg = 'Видео недоступно. Возможно, оно приватное или было удалено.'
@@ -601,10 +605,9 @@ def download_youtube_video(request):
                 })
                     
         except Exception as e:
-            print(f"General error: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'error': f'Ошибка при загрузке видео: {str(e)}'
+                'error': f'Неожиданная ошибка: {str(e)}'
             })
             
     return render(request, 'storage/youtube_download.html')
