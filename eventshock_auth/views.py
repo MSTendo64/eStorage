@@ -35,17 +35,15 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         
         if user is not None:
-            # Создаем или обновляем ESUID токен
-            esid_token, created = ESIDToken.objects.get_or_create(
+            # Деактивируем все старые токены пользователя
+            ESIDToken.objects.filter(user=user).update(is_active=False)
+            
+            # Создаем новый токен
+            esid_token = ESIDToken.objects.create(
                 user=user,
-                defaults={
-                    'name': 'Основной токен',
-                    'expires_at': timezone.now() + timedelta(days=30)
-                }
+                name='Основной токен',
+                expires_at=timezone.now() + timedelta(days=30)
             )
-            if not created:
-                esid_token.expires_at = timezone.now() + timedelta(days=30)
-                esid_token.save()
             
             login(request, user)
             return redirect('dashboard')
