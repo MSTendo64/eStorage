@@ -494,109 +494,175 @@ def download_progress(request):
 
 def download_youtube_video(request):
     if request.method == 'POST':
+        youtube_url = request.POST.get('youtube_url')
+        format_id = request.POST.get('format_id')
+        
         try:
-            url = request.POST.get('url')
-            format_id = request.POST.get('format', 'best')
-            
-            # Обновленные настройки для yt-dlp
-            ydl_opts = {
-                'format': format_id,
-                'outtmpl': '%(title)s.%(ext)s',
+            # Сначала получаем информацию о видео для проверки длительности
+            with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+                info = ydl.extract_info(youtube_url, download=False)
+                duration = info.get('duration', 0)
+                
+                # Проверяем длительность только для неавторизованных пользователей
+                if not request.user.is_authenticated and duration > 1200:  # 20 минут = 1200 секунд
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Для скачивания видео длиннее 20 минут необходимо авторизоваться.'
+                    })
+
+            # Определяем папку для сохранения
+            if request.user.is_authenticated:
+                user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
+                os.makedirs(user_folder, exist_ok=True)
+            else:
+                # Для неавторизованных пользователей используем временную папку
+                temp_folder = os.path.join(settings.MEDIA_ROOT, 'temp_downloads')
+                os.makedirs(temp_folder, exist_ok=True)
+                user_folder = temp_folder
+
+            def progress_hook(d):
+                if d['status'] == 'downloading':
+                    total_bytes = d.get('total_bytes')
+                    downloaded_bytes = d.get('downloaded_bytes', 0)
+                    if total_bytes:
+                        percentage = (downloaded_bytes / total_bytes) * 100
+                        speed = d.get('speed', 0)
+                        if speed:
+                            speed_mb = speed / 1024 / 1024
+                        else:
+                            speed_mb = 0
+                        progress_queue.put(f"{percentage:.1f}:{speed_mb:.2f}")
+
+            # Сначала скачиваем видео в низком качестве для аудио
+            audio_opts = {
+                'format': 'best[height<=360][ext=mp4]/best[height<=144][ext=mp4]',
                 'quiet': True,
                 'no_warnings': True,
-                'extract_flat': False,
+                'outtmpl': os.path.join(user_folder, 'temp_audio.mp4'),
+            }
+
+            with yt_dlp.YoutubeDL(audio_opts) as ydl:
+                ydl.download([youtube_url])
+                temp_audio_path = os.path.join(user_folder, 'temp_audio.mp4')
+
+            # Теперь скачиваем выбранное качество
+            ydl_opts = {
+                'format': format_id if format_id else 'bestvideo[height<=360]+bestaudio/best[height<=360]',
+                'merge_output_format': 'mp4',
+                'quiet': False,
+                'no_warnings': False,
+                'progress_hooks': [progress_hook],
                 'nocheckcertificate': True,
                 'ignoreerrors': False,
-                'logtostderr': False,
-                'default_search': 'auto',
-                'source_address': '0.0.0.0',
-                'postprocessors': [{
-                    'key': 'FFmpegVideoConvertor',
-                    'preferedformat': 'mp4',
-                }],
-                # Добавляем новые параметры для обхода ограничений
-                'http_chunk_size': 10485760,  # 10MB
-                'retries': 10,
-                'fragment_retries': 10,
-                'skip_unavailable_fragments': False,
-                'keepvideo': True,
-                'overwrites': True,
-                'hls_prefer_native': True,
-                'hls_use_mpegts': True,
-                'external_downloader': 'aria2c',
-                'external_downloader_args': [
-                    '--min-split-size=1M', 
-                    '--max-connection-per-server=16', 
-                    '--max-concurrent-downloads=16',
-                    '--split=16'
-                ]
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Получаем информацию о видео
-                info = ydl.extract_info(url, download=False)
-                
-                # Создаем папку для временных файлов
-                temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_downloads')
-                if not os.path.exists(temp_dir):
-                    os.makedirs(temp_dir)
-                
-                # Устанавливаем путь для сохранения
-                filename = f"{info['title']}.mp4"
-                safe_filename = re.sub(r'[^\w\-_\. ]', '_', filename)
-                output_path = os.path.join(temp_dir, safe_filename)
-                
-                # Обновляем настройки с путем сохранения
-                ydl_opts.update({
-                    'outtmpl': output_path,
-                    'progress_hooks': [lambda d: None],  # Отключаем стандартный прогресс-бар
-                })
-                
-                # Скачиваем видео
-                ydl.download([url])
-                
-                # Проверяем, что файл существует
-                if not os.path.exists(output_path):
-                    raise Exception("Файл не был загружен")
-                
-                # Создаем запись в базе данных
-                if request.user.is_authenticated:
-                    user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
-                    if not os.path.exists(user_folder):
-                        os.makedirs(user_folder)
-                        
-                    final_path = os.path.join(user_folder, safe_filename)
-                    shutil.move(output_path, final_path)
+                try:
+                    video_title = info.get('title', 'video')
+                    if not isinstance(video_title, str):
+                        video_title = str(video_title)
                     
-                    UserFile.objects.create(
-                        user=request.user,
-                        file=f'{request.user.id}/{safe_filename}',
-                        filename=safe_filename,
-                        file_type='video'
-                    )
+                    # Получаем информацию о выбранном формате
+                    selected_format = None
+                    for f in info['formats']:
+                        if f.get('format_id') == format_id:
+                            selected_format = f
+                            break
                     
-                    return JsonResponse({
-                        'success': True,
-                        'message': 'Видео успешно загружено',
-                        'redirect_url': reverse('dashboard')
-                    })
-                else:
-                    # Для неавторизованных пользователей
-                    download_url = f'/media/temp_downloads/{safe_filename}'
-                    return JsonResponse({
-                        'success': True,
-                        'download_url': download_url,
-                        'filename': safe_filename
+                    # Получаем качество видео
+                    quality = ''
+                    if selected_format:
+                        height = selected_format.get('height', '')
+                        if height:
+                            quality = f" ({height}p)"
+                    
+                    safe_title = "".join(c for c in video_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                    filename = f"yt_{int(time.time())}_{safe_title}{quality}.mp4"
+                    temp_video_path = os.path.join(user_folder, 'temp_video.mp4')
+                    final_path = os.path.join(user_folder, filename)
+                    
+                    # Скачиваем видео выбранного качества
+                    ydl_opts.update({
+                        'outtmpl': temp_video_path,
                     })
                     
+                    with yt_dlp.YoutubeDL(ydl_opts) as downloader:
+                        downloader.download([youtube_url])
+
+                    # Извлекаем аудио из низкого качества
+                    import subprocess
+                    subprocess.run([
+                        'ffmpeg', '-i', temp_audio_path,
+                        '-vn', '-acodec', 'copy',
+                        os.path.join(user_folder, 'temp_audio_only.aac')
+                    ])
+
+                    # Комбинируем видео с аудио
+                    subprocess.run([
+                        'ffmpeg', '-i', temp_video_path,
+                        '-i', os.path.join(user_folder, 'temp_audio_only.aac'),
+                        '-c:v', 'copy', '-c:a', 'aac',
+                        final_path
+                    ])
+
+                    # Удаляем временные файлы
+                    temp_files = [
+                        temp_video_path,
+                        temp_audio_path,
+                        os.path.join(user_folder, 'temp_audio_only.aac')
+                    ]
+                    for temp_file in temp_files:
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+
+                    if request.user.is_authenticated:
+                        # Создаем запись в базе данных только для авторизованных пользователей
+                        UserFile.objects.create(
+                            user=request.user,
+                            file=f'{request.user.id}/{filename}',
+                            filename=filename,
+                            file_type='video'
+                        )
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Видео успешно загружено в ваше хранилище',
+                            'redirect_url': reverse('dashboard')
+                        })
+                    else:
+                        # Для неавторизованных пользователей возвращаем прямую ссылку на скачивание
+                        download_url = f'/media/temp_downloads/{filename}'
+                        return JsonResponse({
+                            'success': True,
+                            'download_url': download_url,
+                            'filename': filename
+                        })
+                    
+                except Exception as e:
+                    print(f"Download error details: {str(e)}")
+                    # Очищаем временные файлы в случае ошибки
+                    for temp_file in [temp_video_path, temp_audio_path, 
+                                    os.path.join(user_folder, 'temp_audio_only.aac')]:
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+                    raise Exception(f"Ошибка при скачивании: {str(e)}")
+
         except Exception as e:
-            print(f"Error details: {str(e)}")
+            print(f"YouTube error details: {str(e)}")
+            error_msg = str(e)
+            if 'Video unavailable' in error_msg:
+                error_msg = 'Видео недоступно. Возможно, оно приватное или было удалено.'
+            elif 'Sign in' in error_msg:
+                error_msg = 'Видео требует авторизации на YouTube.'
             return JsonResponse({
                 'success': False,
-                'error': f'Ошибка при загрузке видео: {str(e)}'
+                'error': f'Ошибка при загрузке видео: {error_msg}'
             })
             
-    return render(request, 'storage/youtube_download.html')
+    return render(request, 'storage/youtube_download.html', {
+        'max_duration': 20,  # Передаем максимальную длительность в шаблон
+        'is_authenticated': request.user.is_authenticated,
+        'show_duration_warning': not request.user.is_authenticated  # Добавляем флаг для отображения предупреждения
+    })
 
 def video_list(request):
     videos = YouTubeVideo.objects.all().order_by('-downloaded_at')
