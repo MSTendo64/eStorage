@@ -21,22 +21,13 @@ class UserProfile(models.Model):
         ('dark', 'Темная'),
         ('auto', 'Системная')
     ], default='light')
-<<<<<<< HEAD
-    language = models.CharField(max_length=10, choices=[
-        ('ru', 'Русский'),
-        ('en', 'English')
-    ], default='ru')
-    developer_mode = models.BooleanField(default=False)
-    storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в айтах
-=======
     language = models.CharField(max_length=2, default='ru', choices=[
         ('ru', 'Русский'),
         ('en', 'English'),
         ('ja', '日本語')
     ])
     developer_mode = models.BooleanField(default=False)
-    storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в йтах
->>>>>>> a2370a2 (Initial commit)
+    storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в айтах
     background_image = models.ImageField(upload_to='backgrounds/', null=True, blank=True)
     accent_color = models.CharField(max_length=7, default='#0d6efd',  # Bootstrap primary color
                                   help_text='HEX color code')
@@ -77,8 +68,6 @@ class UserProfile(models.Model):
         """Возвращает отформатированный размер квоты"""
         return self.format_size(self.storage_quota)
 
-<<<<<<< HEAD
-=======
     def accent_color_rgb(self):
         """Конвертирует HEX в RGB"""
         color = self.accent_color.lstrip('#')
@@ -92,7 +81,6 @@ class UserProfile(models.Model):
         b = max(int(color[4:], 16) - 30, 0)
         return f"#{r:02x}{g:02x}{b:02x}"
 
->>>>>>> a2370a2 (Initial commit)
 class LinkedAccount(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='linked_accounts')
     provider = models.CharField(max_length=50)  # 'google', 'github', etc.

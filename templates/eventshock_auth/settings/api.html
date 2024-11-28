@@ -82,36 +82,6 @@
     </div>
 </div>
 
-<<<<<<< HEAD
-<!-- ESUID Tokens -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>ESUID Токены</h5>
-            <small class="text-muted">Для интеграции входа через Eventshock UID в ваши приложения</small>
-        </div>
-        <button class="btn btn-sm btn-dark" disabled title="В разработке">
-            <i class="fas fa-plus"></i>
-        </button>
-    </div>
-    <div class="card-body">
-        <div class="alert alert-warning">
-            <i class="fas fa-tools me-2"></i>
-            <strong>В разработке!</strong>
-            <p class="mb-0">
-                ESUID API находится в стадии разработки. В ближайшее время здесь появится возможность интегрировать 
-                вход через Eventshock UID в ваши приложения. На данный момент для авторизации используйте API ключи.
-            </p>
-        </div>
-        
-        <!-- Добавим пример использования API ключей -->
-        <div class="mt-4">
-            <h5>Пример использования API для авторизации:</h5>
-            <pre class="bg-light p-3 rounded"><code>// JavaScript
-const apiKey = 'YOUR_API_KEY';
-
-// Авторизация
-=======
 <!-- Примеры использования API -->
 <div class="card mb-4">
     <div class="card-header">
@@ -128,7 +98,6 @@ const apiKey = 'YOUR_API_KEY';
 const apiKey = 'YOUR_API_KEY';
 
 // Авторизация существующего пользователя
->>>>>>> a2370a2 (Initial commit)
 fetch('/api/auth/', {
     method: 'POST',
     headers: {
@@ -146,14 +115,8 @@ fetch('/api/auth/', {
     // Используйте token для последующих запросов
 });</code></pre>
 
-<<<<<<< HEAD
-            <h5 class="mt-4">Пример использования API для работы с файлами:</h5>
-            <pre class="bg-light p-3 rounded"><code>// JavaScript
-// Загрузка файла
-=======
         <h6 class="mt-4">Работа с файлами</h6>
         <pre class="bg-light p-3 rounded"><code>// Загрузка файла
->>>>>>> a2370a2 (Initial commit)
 const formData = new FormData();
 formData.append('file', fileInput.files[0]);
 
@@ -175,130 +138,6 @@ fetch('/api/storage/files/', {
 })
 .then(response => response.json())
 .then(data => console.log(data));</code></pre>
-<<<<<<< HEAD
-        </div>
-    </div>
-</div>
-
-<!-- Code Examples -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-code me-2"></i>Примеры интеграции API</h5>
-    </div>
-    <div class="card-body">
-        <nav>
-            <div class="nav nav-tabs" role="tablist">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#js">JavaScript</button>
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#python">Python</button>
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#php">PHP</button>
-            </div>
-        </nav>
-        <div class="tab-content mt-3">
-            <div class="tab-pane fade show active" id="js">
-                <pre class="bg-light p-3 rounded"><code>// Класс для работы с API
-class EventshockAPI {
-    constructor(apiKey) {
-        this.apiKey = apiKey;
-        this.baseUrl = window.location.origin;
-    }
-
-    async auth(username, password) {
-        const response = await fetch(`${this.baseUrl}/api/auth/`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
-        });
-        return response.json();
-    }
-
-    async uploadFile(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch(`${this.baseUrl}/api/storage/upload/`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`
-            },
-            body: formData
-        });
-        return response.json();
-    }
-
-    async getFiles() {
-        const response = await fetch(`${this.baseUrl}/api/storage/files/`, {
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`
-            }
-        });
-        return response.json();
-    }
-}</code></pre>
-            </div>
-            <div class="tab-pane fade" id="python">
-                <pre class="bg-light p-3 rounded"><code>import requests
-
-class EventshockAPI:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = 'https://your-domain.com'
-        
-    def auth(self, username, password):
-        response = requests.post(
-            f'{self.base_url}/api/auth/',
-            headers={'Authorization': f'Bearer {self.api_key}'},
-            json={'username': username, 'password': password}
-        )
-        return response.json()
-        
-    def upload_file(self, file_path):
-        with open(file_path, 'rb') as f:
-            response = requests.post(
-                f'{self.base_url}/api/storage/upload/',
-                headers={'Authorization': f'Bearer {self.api_key}'},
-                files={'file': f}
-            )
-        return response.json()
-        
-    def get_files(self):
-        response = requests.get(
-            f'{self.base_url}/api/storage/files/',
-            headers={'Authorization': f'Bearer {self.api_key}'}
-        )
-        return response.json()</code></pre>
-            </div>
-            <div class="tab-pane fade" id="php">
-                <pre class="bg-light p-3 rounded"><code>class EventshockAPI {
-    private $apiKey;
-    private $baseUrl;
-    
-    public function __construct($apiKey) {
-        $this->apiKey = $apiKey;
-        $this->baseUrl = 'https://your-domain.com';
-    }
-    
-    public function auth($username, $password) {
-        $ch = curl_init("{$this->baseUrl}/api/auth/");
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-            'username' => $username,
-            'password' => $password
-        ]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer {$this->apiKey}",
-            'Content-Type: application/json'
-        ]);
-        $result = curl_exec($ch);
-        curl_close($ch);
-        return json_decode($result, true);
-    }
-    
-    // ... другие методы для работы с файлами</code></pre>
-            </div>
-=======
     </div>
 </div>
 
@@ -321,7 +160,6 @@ class EventshockAPI:
                 ESUID API находится в стадии разработки. В ближайшее время здесь появится возможность интегрировать 
                 вход через Eventshock UID в ваши приложения. На данный момент для авторизации используйте API ключи.
             </p>
->>>>>>> a2370a2 (Initial commit)
         </div>
     </div>
 </div>
@@ -356,69 +194,11 @@ function copyToClipboard(elementId) {
 </script>
 
 <style>
-<<<<<<< HEAD
-=======
-/* Стили для блоков кода */
-pre {
-    background-color: var(--bs-body-bg) !important;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.5rem;
-}
-
-[data-bs-theme="dark"] pre {
-    background-color: #2d2d2d !important;
-    border-color: #444;
-}
-
-[data-bs-theme="dark"] pre code {
-    color: #e6e6e6;
-}
-
-/* Стили для подсветки синтаксиса в темной теме */
-[data-bs-theme="dark"] .hljs-keyword,
-[data-bs-theme="dark"] .hljs-selector-tag,
-[data-bs-theme="dark"] .hljs-built_in,
-[data-bs-theme="dark"] .hljs-name,
-[data-bs-theme="dark"] .hljs-tag {
-    color: #569cd6;
-}
-
-[data-bs-theme="dark"] .hljs-string,
-[data-bs-theme="dark"] .hljs-title,
-[data-bs-theme="dark"] .hljs-section,
-[data-bs-theme="dark"] .hljs-attribute,
-[data-bs-theme="dark"] .hljs-literal,
-[data-bs-theme="dark"] .hljs-template-tag,
-[data-bs-theme="dark"] .hljs-template-variable,
-[data-bs-theme="dark"] .hljs-type,
-[data-bs-theme="dark"] .hljs-addition {
-    color: #ce9178;
-}
-
-[data-bs-theme="dark"] .hljs-comment,
-[data-bs-theme="dark"] .hljs-quote,
-[data-bs-theme="dark"] .hljs-deletion,
-[data-bs-theme="dark"] .hljs-meta {
-    color: #6a9955;
-}
-
-[data-bs-theme="dark"] .hljs-number,
-[data-bs-theme="dark"] .hljs-regexp,
-[data-bs-theme="dark"] .hljs-literal,
-[data-bs-theme="dark"] .hljs-variable,
-[data-bs-theme="dark"] .hljs-template-variable,
-[data-bs-theme="dark"] .hljs-link {
-    color: #b5cea8;
-}
-
-/* Стили для вкладок с кодом */
->>>>>>> a2370a2 (Initial commit)
 .nav-tabs .nav-link {
     color: var(--bs-body-color);
 }
 
 .nav-tabs .nav-link.active {
-<<<<<<< HEAD
     color: var(--bs-primary);
     border-color: var(--bs-primary);
 }
@@ -434,25 +214,6 @@ pre {
 
 .alert-info {
     border-left: 4px solid var(--bs-primary);
-=======
-    background-color: var(--bs-body-bg);
-    border-color: var(--bs-border-color);
-    border-bottom-color: var(--bs-body-bg);
-    color: var(--bs-primary);
-}
-
-[data-bs-theme="dark"] .nav-tabs .nav-link.active {
-    background-color: var(--bs-body-bg);
-    border-color: var(--bs-border-color);
-    border-bottom-color: var(--bs-body-bg);
-}
-
-/* Стили для текста в примерах */
-[data-bs-theme="dark"] .alert-info {
-    background-color: rgba(13, 202, 240, 0.15);
-    border-color: rgba(13, 202, 240, 0.3);
-    color: #e6e6e6;
->>>>>>> a2370a2 (Initial commit)
 }
 </style>
 {% endblock %} 

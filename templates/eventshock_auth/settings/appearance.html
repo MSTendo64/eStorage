@@ -20,12 +20,6 @@
                         </select>
                     </div>
                     <div class="mb-3">
-<<<<<<< HEAD
-                        <label class="form-label">Язык</label>
-                        <select name="language" class="form-select">
-                            <option value="ru" {% if user.userprofile.language == 'ru' %}selected{% endif %}>Русский</option>
-                            <option value="en" {% if user.userprofile.language == 'en' %}selected{% endif %}>English</option>
-=======
                         <label class="form-label">{{ t.settings.language }}</label>
                         <select name="language" class="form-select" onchange="changeLanguage(this)">
                             {% for lang in available_languages %}
@@ -33,7 +27,6 @@
                                     {{ lang.name }}
                                 </option>
                             {% endfor %}
->>>>>>> a2370a2 (Initial commit)
                         </select>
                     </div>
                 </div>
@@ -309,8 +302,6 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Ошибка при сохранении настроек');
     });
 });
-<<<<<<< HEAD
-=======
 
 function changeLanguage(select) {
     const form = document.createElement('form');
@@ -332,6 +323,5 @@ function changeLanguage(select) {
     document.body.appendChild(form);
     form.submit();
 }
->>>>>>> a2370a2 (Initial commit)
 </script>
 {% endblock %} 

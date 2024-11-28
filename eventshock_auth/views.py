@@ -210,23 +210,6 @@ def settings_appearance(request):
             
         profile.save()
         
-<<<<<<< HEAD
-        # Возвращаем JSON с обновленными настройками для AJAX запросов
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'theme': profile.theme,
-                'language': profile.language,
-                'accent_color': profile.accent_color,
-                'custom_text_color': profile.custom_text_color,
-                'text_color': profile.text_color
-            })
-            
-        messages.success(request, 'Настройки внешнего вида обновлены')
-        return redirect('settings_appearance')
-        
-    return render(request, 'eventshock_auth/settings/appearance.html', {'active_tab': 'appearance'})
-=======
         # Обработка смены языка
         language = request.POST.get('language')
         if language:
@@ -243,10 +226,7 @@ def settings_appearance(request):
             messages.success(request, 'Настройки внешнего вида обновлены')
             return response
             
-    return render(request, 'eventshock_auth/settings/appearance.html', {
-        'active_tab': 'appearance'
-    })
->>>>>>> a2370a2 (Initial commit)
+    return render(request, 'eventshock_auth/settings/appearance.html', {'active_tab': 'appearance'})
 
 @login_required
 def settings_general(request):

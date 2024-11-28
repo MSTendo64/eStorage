@@ -98,11 +98,6 @@
     </script>
 </head>
 <body>
-<<<<<<< HEAD
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand" href="/">Eventshock Storage</a>
-=======
     <!-- Добавляем переводы в глобальную область видимости -->
     {{ t|json_script:"translations" }}
     <script>
@@ -129,11 +124,9 @@
         window.t = t;
     </script>
 
-    <!-- Заменяем статический текст на переменные -->
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="/">{{ t.common.site_name }}</a>
->>>>>>> a2370a2 (Initial commit)
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -141,55 +134,25 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-<<<<<<< HEAD
-                            <a class="nav-link" href="{% url 'dashboard' %}">Мои файлы</a>
-=======
                             <a class="nav-link" href="{% url 'dashboard' %}">{{ t.storage.my_files }}</a>
->>>>>>> a2370a2 (Initial commit)
                         </li>
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'esadmin:dashboard' %}">
-<<<<<<< HEAD
-                                <i class="fas fa-cog"></i> Панель управления
-=======
                                 <i class="fas fa-cog"></i> {{ t.admin.dashboard }}
->>>>>>> a2370a2 (Initial commit)
                             </a>
                         </li>
                         {% endif %}
                         <li class="nav-item">
-<<<<<<< HEAD
-                            <a class="nav-link" href="{% url 'manage_accounts' %}">Связанные аккаунты</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'settings_profile' %}">
-                                <i class="fas fa-cog"></i> Настройки
-=======
                             <a class="nav-link" href="{% url 'manage_accounts' %}">{{ t.settings.linked_accounts }}</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'settings_profile' %}">
                                 <i class="fas fa-cog"></i> {{ t.settings.settings }}
->>>>>>> a2370a2 (Initial commit)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'youtube_download' %}">
-<<<<<<< HEAD
-                                <i class="fab fa-youtube"></i> Скачать с YouTube
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Выход</a>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Вход</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'register' %}">Реистрация</a>
-=======
                                 <i class="fab fa-youtube"></i> {{ t.storage.youtube_download }}
                             </a>
                         </li>
@@ -202,7 +165,6 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'register' %}">{{ t.auth.register }}</a>
->>>>>>> a2370a2 (Initial commit)
                         </li>
                     {% endif %}
                 </ul>
@@ -313,11 +275,7 @@
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modalEl => {
             const modal = new bootstrap.Modal(modalEl, {
-<<<<<<< HEAD
                 backdrop: false,  // Отключаем стандартный backdrop
-=======
-                backdrop: false,  // Отключаем стандартнй backdrop
->>>>>>> a2370a2 (Initial commit)
                 keyboard: true
             });
             
@@ -334,8 +292,6 @@
         });
     });
     </script>
-<<<<<<< HEAD
-=======
 
     <style>
     /* Основные переменные для акцентного цвета */
@@ -976,6 +932,5 @@
         updateStorageUsage();
     }
     </script>
->>>>>>> a2370a2 (Initial commit)
 </body>
 </html> 

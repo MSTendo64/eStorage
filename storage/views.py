@@ -22,12 +22,7 @@ import yt_dlp
 import urllib.request
 import urllib.parse
 import queue
-<<<<<<< HEAD
-=======
-from django.core.files.uploadhandler import TemporaryFileUploadHandler
-from django.views.decorators.csrf import csrf_exempt
 from urllib.parse import quote
->>>>>>> a2370a2 (Initial commit)
 
 # Создаем глобальную очередь для прогресса
 progress_queue = queue.Queue()
@@ -92,20 +87,14 @@ def download_file(request, token):
         if not os.path.exists(downloads_dir):
             os.makedirs(downloads_dir)
             
-<<<<<<< HEAD
         # Создаем безопасное имя файла для кеша
         safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', file.filename)
         download_filename = f"{uuid.uuid4().hex}_{safe_filename}"
-=======
-        # Копируем файл в папку downloads с уникальным именем
-        download_filename = f"{uuid.uuid4().hex}_{file.filename}"
->>>>>>> a2370a2 (Initial commit)
         download_path = os.path.join(downloads_dir, download_filename)
         
         # Копируем файл
         shutil.copy2(file.file.path, download_path)
         
-<<<<<<< HEAD
         # Создаем URL для скачивания
         download_url = f"{settings.MEDIA_URL}downloads/{download_filename}"
         
@@ -121,21 +110,6 @@ def download_file(request, token):
         response = HttpResponse(open(download_path, 'rb'), content_type='application/octet-stream')
         response['Content-Disposition'] = f'attachment; filename="{file.filename}"'
         return response
-=======
-        # Открываем файл и отправляем его с правильным именем
-        with open(download_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{quote(file.filename)}'
-            
-            # Помечаем токен как использованный
-            download_token.is_used = True
-            download_token.save()
-            
-            # Запускаем отложенное удаление файла
-            cache.set(f'delete_file_{download_filename}', True, 300)  # 5 минут на скачивание
-            
-            return response
->>>>>>> a2370a2 (Initial commit)
             
     except DownloadToken.DoesNotExist:
         raise Http404("Ссылка недействительна")
@@ -650,11 +624,7 @@ def download_youtube_video(request):
                             os.remove(temp_file)
 
                     if request.user.is_authenticated:
-<<<<<<< HEAD
                         # Создаем запись в базе данных только для авторизованных пользователей
-=======
-                        # Создаем запись в базе данных только для авто��изованных пользователей
->>>>>>> a2370a2 (Initial commit)
                         UserFile.objects.create(
                             user=request.user,
                             file=f'{request.user.id}/{filename}',
@@ -667,11 +637,7 @@ def download_youtube_video(request):
                             'redirect_url': reverse('dashboard')
                         })
                     else:
-<<<<<<< HEAD
                         # Для неавторизованных пользователей возвращаем прямую ссылку на скачивание
-=======
-                        # Для неавторизованных пользователей возвращаем прямую сылку на скачивание
->>>>>>> a2370a2 (Initial commit)
                         download_url = f'/media/temp_downloads/{filename}'
                         return JsonResponse({
                             'success': True,
@@ -709,8 +675,6 @@ def download_youtube_video(request):
 def video_list(request):
     videos = YouTubeVideo.objects.all().order_by('-downloaded_at')
     return render(request, 'storage/video_list.html', {'videos': videos})
-<<<<<<< HEAD
-=======
 
 @csrf_exempt
 def upload_chunk(request, filename):
@@ -775,4 +739,3 @@ def check_file(request):
         'chunked': filesize > settings.LARGE_FILE_SIZE_THRESHOLD,
         'chunk_size': settings.CHUNKED_UPLOAD_CHUNK_SIZE
     })
->>>>>>> a2370a2 (Initial commit)
