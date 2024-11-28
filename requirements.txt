@@ -38,5 +38,15 @@ tqdm==4.67.0
 typing_extensions==4.12.2
 tzdata==2024.2
 urllib3==2.2.3
-whitenoise==6.8.2
 yt-dlp==2024.11.18
+Django>=4.2.0
+python-dotenv==1.0.0
+requests==2.31.0
+django-crispy-forms==2.0
+crispy-bootstrap5==0.7
+django-oauth-toolkit==2.3.0
+django-cors-headers==4.3.1 
+django-redis==5.4.0
+psycopg2-binary==2.9.9  # Для PostgreSQL
+whitenoise==6.6.0  # Для раздачи статики
+sentry-sdk==1.39.1
