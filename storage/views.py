@@ -494,7 +494,11 @@ def download_progress(request):
 
 @login_required
 def download_youtube_video(request):
-    if request.method == 'POST':
+    if request.method == 'GET':
+        # Рендерим страницу с формой для ввода URL
+        return render(request, 'storage/youtube_download.html')
+        
+    elif request.method == 'POST':
         try:
             data = json.loads(request.body)
             url = data.get('url')

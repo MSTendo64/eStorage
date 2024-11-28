@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Скачать с YouTube | {{ t.common.site_name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Скачать видео с YouTube</h5>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label">URL видео</label>
+            <input type="url" class="form-control" id="videoUrl" 
+                   placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Качество</label>
+            <select class="form-select" id="videoQuality">
+                <option value="1080p">1080p</option>
+                <option value="720p">720p</option>
+                <option value="480p">480p</option>
+                <option value="360p">360p</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="downloadVideo()">
+            <i class="fas fa-download me-2"></i>Скачать
+        </button>
+    </div>
+</div>
+
+<script>
+function downloadVideo() {
+    const url = document.getElementById('videoUrl').value;
+    const quality = document.getElementById('videoQuality').value;
+    
+    if (!url) {
+        alert('Пожалуйста, введите URL видео');
+        return;
+    }
+    
+    showLoading('Загрузка видео...', true);
+    
+    fetch('/storage/youtube/download/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            url: url,
+            quality: quality
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Ошибка при загрузке видео');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            hideLoading();
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            }
+        } else {
+            throw new Error(data.error || 'Неизвестная ошибка');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        alert(error.message || 'Ошибка при загрузке видео');
+    });
+}
+
+function showLoading(text, showProgress = false) {
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-light mb-3"></div>
+            <div class="text-light">${text}</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+    const overlay = document.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+</script>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+</style>
+{% endblock %}
