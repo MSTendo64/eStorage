@@ -210,6 +210,7 @@ def settings_appearance(request):
             
         profile.save()
         
+<<<<<<< HEAD
         # Возвращаем JSON с обновленными настройками для AJAX запросов
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
@@ -225,6 +226,27 @@ def settings_appearance(request):
         return redirect('settings_appearance')
         
     return render(request, 'eventshock_auth/settings/appearance.html', {'active_tab': 'appearance'})
+=======
+        # Обработка смены языка
+        language = request.POST.get('language')
+        if language:
+            request.user.userprofile.language = language
+            request.user.userprofile.save()
+            
+            # Устанавливаем язык в сессии
+            request.session['django_language'] = language
+            
+            # Устанавливаем cookie для языка
+            response = redirect('settings_appearance')
+            response.set_cookie('django_language', language, max_age=365*24*60*60)
+            
+            messages.success(request, 'Настройки внешнего вида обновлены')
+            return response
+            
+    return render(request, 'eventshock_auth/settings/appearance.html', {
+        'active_tab': 'appearance'
+    })
+>>>>>>> a2370a2 (Initial commit)
 
 @login_required
 def settings_general(request):

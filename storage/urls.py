@@ -18,4 +18,9 @@ urlpatterns = [
     path('youtube/preview/', views.get_video_info, name='youtube_preview'),
     path('youtube/progress/', views.download_progress, name='youtube_progress'),
     path('youtube/videos/', views.video_list, name='video_list'),
+<<<<<<< HEAD
+=======
+    path('check-file/', views.check_file, name='check_file'),
+    path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
+>>>>>>> a2370a2 (Initial commit)
 ] 

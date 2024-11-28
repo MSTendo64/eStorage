@@ -21,12 +21,22 @@ class UserProfile(models.Model):
         ('dark', 'Темная'),
         ('auto', 'Системная')
     ], default='light')
+<<<<<<< HEAD
     language = models.CharField(max_length=10, choices=[
         ('ru', 'Русский'),
         ('en', 'English')
     ], default='ru')
     developer_mode = models.BooleanField(default=False)
     storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в айтах
+=======
+    language = models.CharField(max_length=2, default='ru', choices=[
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('ja', '日本語')
+    ])
+    developer_mode = models.BooleanField(default=False)
+    storage_quota = models.BigIntegerField(default=10737418240)  # 10 GB в йтах
+>>>>>>> a2370a2 (Initial commit)
     background_image = models.ImageField(upload_to='backgrounds/', null=True, blank=True)
     accent_color = models.CharField(max_length=7, default='#0d6efd',  # Bootstrap primary color
                                   help_text='HEX color code')
@@ -67,6 +77,22 @@ class UserProfile(models.Model):
         """Возвращает отформатированный размер квоты"""
         return self.format_size(self.storage_quota)
 
+<<<<<<< HEAD
+=======
+    def accent_color_rgb(self):
+        """Конвертирует HEX в RGB"""
+        color = self.accent_color.lstrip('#')
+        return f"{int(color[:2], 16)}, {int(color[2:4], 16)}, {int(color[4:], 16)}"
+
+    def accent_color_darker(self):
+        """Возвращает более темную версию акцентного цвета"""
+        color = self.accent_color.lstrip('#')
+        r = max(int(color[:2], 16) - 30, 0)
+        g = max(int(color[2:4], 16) - 30, 0)
+        b = max(int(color[4:], 16) - 30, 0)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+>>>>>>> a2370a2 (Initial commit)
 class LinkedAccount(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='linked_accounts')
     provider = models.CharField(max_length=50)  # 'google', 'github', etc.

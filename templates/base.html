@@ -98,9 +98,42 @@
     </script>
 </head>
 <body>
+<<<<<<< HEAD
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="/">Eventshock Storage</a>
+=======
+    <!-- Добавляем переводы в глобальную область видимости -->
+    {{ t|json_script:"translations" }}
+    <script>
+        // Функция для получения перевода
+        function t(key) {
+            try {
+                const parts = key.split('.');
+                let value = JSON.parse(document.getElementById('translations').textContent);
+                for (const part of parts) {
+                    if (value && value[part]) {
+                        value = value[part];
+                    } else {
+                        return key;
+                    }
+                }
+                return value;
+            } catch (e) {
+                console.error('Translation error:', e);
+                return key;
+            }
+        }
+
+        // Делаем функцию доступной глобально
+        window.t = t;
+    </script>
+
+    <!-- Заменяем статический текст на переменные -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">{{ t.common.site_name }}</a>
+>>>>>>> a2370a2 (Initial commit)
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -108,25 +141,42 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
+<<<<<<< HEAD
                             <a class="nav-link" href="{% url 'dashboard' %}">Мои файлы</a>
+=======
+                            <a class="nav-link" href="{% url 'dashboard' %}">{{ t.storage.my_files }}</a>
+>>>>>>> a2370a2 (Initial commit)
                         </li>
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'esadmin:dashboard' %}">
+<<<<<<< HEAD
                                 <i class="fas fa-cog"></i> Панель управления
+=======
+                                <i class="fas fa-cog"></i> {{ t.admin.dashboard }}
+>>>>>>> a2370a2 (Initial commit)
                             </a>
                         </li>
                         {% endif %}
                         <li class="nav-item">
+<<<<<<< HEAD
                             <a class="nav-link" href="{% url 'manage_accounts' %}">Связанные аккаунты</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'settings_profile' %}">
                                 <i class="fas fa-cog"></i> Настройки
+=======
+                            <a class="nav-link" href="{% url 'manage_accounts' %}">{{ t.settings.linked_accounts }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'settings_profile' %}">
+                                <i class="fas fa-cog"></i> {{ t.settings.settings }}
+>>>>>>> a2370a2 (Initial commit)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'youtube_download' %}">
+<<<<<<< HEAD
                                 <i class="fab fa-youtube"></i> Скачать с YouTube
                             </a>
                         </li>
@@ -139,6 +189,20 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'register' %}">Реистрация</a>
+=======
+                                <i class="fab fa-youtube"></i> {{ t.storage.youtube_download }}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout' %}">{{ t.auth.logout }}</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">{{ t.auth.login }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">{{ t.auth.register }}</a>
+>>>>>>> a2370a2 (Initial commit)
                         </li>
                     {% endif %}
                 </ul>
@@ -249,7 +313,11 @@
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modalEl => {
             const modal = new bootstrap.Modal(modalEl, {
+<<<<<<< HEAD
                 backdrop: false,  // Отключаем стандартный backdrop
+=======
+                backdrop: false,  // Отключаем стандартнй backdrop
+>>>>>>> a2370a2 (Initial commit)
                 keyboard: true
             });
             
@@ -266,5 +334,648 @@
         });
     });
     </script>
+<<<<<<< HEAD
+=======
+
+    <style>
+    /* Основные переменные для акцентного цвета */
+    :root {
+        --bs-primary: {{ user.userprofile.accent_color|default:'#0d6efd' }};
+        --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'13, 110, 253' }};
+        --bs-link-color: var(--bs-primary);
+        --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#0a58ca' }};
+    }
+
+    /* Кнопки */
+    .btn-primary {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--bs-link-hover-color) !important;
+        border-color: var(--bs-link-hover-color) !important;
+    }
+
+    .btn-outline-primary {
+        color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--bs-primary) !important;
+        color: #fff !important;
+    }
+
+    /* Прогресс-бары */
+    .progress-bar {
+        background-color: var(--bs-primary) !important;
+    }
+
+    /* Чекбоксы и радио кнопки */
+    .form-check-input:checked {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    /* Активные элементы навигации */
+    .nav-pills .nav-link.active,
+    .nav-pills .show > .nav-link {
+        background-color: var(--bs-primary) !important;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    /* Ссылки */
+    a {
+        color: var(--bs-primary);
+    }
+
+    a:hover {
+        color: var(--bs-link-hover-color);
+    }
+
+    /* Плееры */
+    .plyr {
+        --plyr-color-main: var(--bs-primary) !important;
+        --plyr-range-fill-background: var(--bs-primary) !important;
+    }
+
+    .plyr__control--overlaid {
+        background: var(--bs-primary) !important;
+    }
+
+    .plyr--full-ui input[type=range] {
+        color: var(--bs-primary) !important;
+    }
+
+    .plyr__control:hover {
+        background: var(--bs-primary) !important;
+    }
+
+    .plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
+        background: var(--bs-primary) !important;
+    }
+
+    /* Бордеры и акценты */
+    .border-primary {
+        border-color: var(--bs-primary) !important;
+    }
+
+    .bg-primary {
+        background-color: var(--bs-primary) !important;
+    }
+
+    .text-primary {
+        color: var(--bs-primary) !important;
+    }
+
+    /* Фокус элементов */
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--bs-primary) !important;
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25) !important;
+    }
+
+    /* Модальные окна */
+    .modal-header {
+        border-bottom-color: var(--bs-primary) !important;
+    }
+
+    /* Пагинация */
+    .page-item.active .page-link {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    .page-link {
+        color: var(--bs-primary) !important;
+    }
+
+    .page-link:hover {
+        color: var(--bs-link-hover-color) !important;
+    }
+
+    /* Списки */
+    .list-group-item.active {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    /* Слайдеры и ползунки */
+    input[type="range"]::-webkit-slider-thumb {
+        background: var(--bs-primary) !important;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        background: var(--bs-primary) !important;
+    }
+
+    /* Выделение текста */
+    ::selection {
+        background-color: rgba(var(--bs-primary-rgb), 0.2);
+    }
+
+    /* Полупрозрачные панели */
+    .card {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.8) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+    }
+
+    .card-header {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
+        border-bottom: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+    }
+
+    .modal-content {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
+        backdrop-filter: blur(10px);
+    }
+
+    .list-group-item {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.8) !important;
+        border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+    }
+
+    .navbar {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.8) !important;
+        backdrop-filter: blur(10px);
+    }
+
+    .dropdown-menu {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+    }
+
+    /* Улучшенная читаемость для теной темы */
+    [data-bs-theme="dark"] .card,
+    [data-bs-theme="dark"] .modal-content,
+    [data-bs-theme="dark"] .list-group-item,
+    [data-bs-theme="dark"] .navbar,
+    [data-bs-theme="dark"] .dropdown-menu {
+        background-color: rgba(33, 37, 41, 0.8) !important;
+    }
+
+    [data-bs-theme="dark"] .card-header {
+        background-color: rgba(33, 37, 41, 0.9) !important;
+    }
+
+    /* Эффект стекла */
+    .glass-effect {
+        background: rgba(var(--bs-body-bg-rgb), 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+    }
+
+    /* Улучшенные тени для глубины */
+    .card,
+    .modal-content,
+    .dropdown-menu {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+                    0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Плавные переходы */
+    .card,
+    .modal-content,
+    .list-group-item,
+    .navbar,
+    .dropdown-menu {
+        transition: background-color 0.3s ease,
+                    backdrop-filter 0.3s ease,
+                    box-shadow 0.3s ease;
+    }
+
+    /* Улучшенная контрастность для теста */
+    .card,
+    .list-group-item,
+    .dropdown-menu {
+        color: var(--bs-body-color);
+    }
+
+    /* Исправление для вложенных элементов */
+    .card .table,
+    .card .list-group-item {
+        background-color: transparent !important;
+    }
+
+    /* Улучшенный hover эффект */
+    .card:hover,
+    .list-group-item:hover {
+        backdrop-filter: blur(15px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.12),
+                    0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    </style>
+
+    <style>
+    /* Адаптивный цвет текста */
+    body {
+        position: relative;
+    }
+
+    /* Функция для определения яркости фона и адаптации текста */
+    <script>
+    function updateTextColors() {
+        // Получаем цвет фона (из изображения или установленного фона)
+        const getBackgroundColor = (element) => {
+            const bgImage = window.getComputedStyle(element).backgroundImage;
+            if (bgImage !== 'none') {
+                // Создаем временный canvas для анализа изображения
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.src = bgImage.replace(/url\(['"]?(.*?)['"]?\)/i, '$1');
+                
+                img.onload = () => {
+                    canvas.width = 1;
+                    canvas.height = 1;
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    updateElementsColor(brightness);
+                };
+            } else {
+                const bgColor = window.getComputedStyle(element).backgroundColor;
+                const [r, g, b] = bgColor.match(/\d+/g).map(Number);
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                updateElementsColor(brightness);
+            }
+        };
+
+        const updateElementsColor = (brightness) => {
+            // Получаем все элементы вне панелей
+            const elements = document.querySelectorAll('body > *:not(.card):not(.navbar):not(.modal)');
+            elements.forEach(element => {
+                if (!element.closest('.card') && !element.closest('.navbar') && !element.closest('.modal')) {
+                    const textColor = brightness > 128 ? '#000000' : '#ffffff';
+                    element.style.setProperty('--adaptive-color', textColor);
+                    element.style.color = 'var(--adaptive-color)';
+                    
+                    // Обновляем цвет ссылок
+                    const links = element.querySelectorAll('a:not(.btn)');
+                    links.forEach(link => {
+                        link.style.color = 'var(--bs-primary)';
+                        link.style.textShadow = brightness > 128 ? 'none' : '0 0 10px rgba(0,0,0,0.5)';
+                    });
+                }
+            });
+        };
+
+        // Запускаем анализ цвета фона
+        getBackgroundColor(document.body);
+    }
+
+    // Запускаем при загрузке страницы
+    document.addEventListener('DOMContentLoaded', updateTextColors);
+
+    // Обновляем при изменении темы
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'data-bs-theme') {
+                updateTextColors();
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-bs-theme']
+    });
+
+    // Обновляем при изменении размера окна (для адаптивных фонов)
+    window.addEventListener('resize', updateTextColors);
+    </script>
+
+    /* Стили для адаптивного текста */
+    body > *:not(.card):not(.navbar):not(.modal) {
+        transition: color 0.3s ease;
+    }
+
+    /* Улучшенная читаемость для светлого текста на темном фоне */
+    [data-adaptive-light="true"] {
+        text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* Улучшенная читаемость для темного текста на светлом фоне */
+    [data-adaptive-dark="true"] {
+        text-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+
+    /* Исключения для определенных элементов */
+    .card *, .navbar *, .modal * {
+        color: inherit;
+    }
+    </style>
+
+    <style>
+    /* Адаптивный цвет текста для навигации */
+    .nav-link {
+        color: var(--bs-body-color) !important;
+    }
+
+    .nav-link:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    /* Стили для боковой навигации в настройках */
+    .list-group-item {
+        color: var(--bs-body-color) !important;
+    }
+
+    .list-group-item:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    .list-group-item.active {
+        color: #fff !important;
+    }
+
+    /* Стили для навигации в шапке */
+    .navbar-nav .nav-link {
+        color: var(--bs-body-color) !important;
+        text-shadow: 0 0 10px rgba(var(--bs-body-bg-rgb), 0.5);
+    }
+
+    .navbar-nav .nav-link:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    /* Стили для заголовков и текста в настройках */
+    .settings-nav .nav-link {
+        color: var(--bs-body-color) !important;
+        position: relative;
+    }
+
+    .settings-nav .nav-link:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    .settings-nav .nav-link.active {
+        color: var(--bs-primary) !important;
+        font-weight: 500;
+    }
+
+    /* Улучшенная контрастность для текста */
+    [data-bs-theme="light"] {
+        --text-color: #212529;
+    }
+
+    [data-bs-theme="dark"] {
+        --text-color: #f8f9fa;
+    }
+
+    /* Применяем цвет текста к элментам */
+    .nav-link,
+    .list-group-item,
+    .navbar-nav .nav-link,
+    h1, h2, h3, h4, h5, h6,
+    .text-muted {
+        color: var(--text-color) !important;
+    }
+
+    /* Исключения для активных элементов и при наведении */
+    .nav-link:hover,
+    .list-group-item:hover,
+    .navbar-nav .nav-link:hover {
+        color: var(--bs-primary) !important;
+    }
+
+    .list-group-item.active,
+    .nav-link.active {
+        color: #fff !important;
+    }
+
+    /* Добавляем тень для лучшей читаемости */
+    .navbar-nav .nav-link,
+    .settings-nav .nav-link,
+    .list-group-item {
+        text-shadow: 0 0 5px rgba(var(--bs-body-bg-rgb), 0.5);
+    }
+
+    /* Стили для текста на прозрачном фоне */
+    .transparent-bg {
+        position: relative;
+    }
+
+    .transparent-bg::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(var(--bs-body-bg-rgb), 0.5);
+        z-index: -1;
+        border-radius: inherit;
+    }
+    </style>
+
+    <!-- Добавим класс для навигации в настройках -->
+    <div class="settings-nav">
+        <!-- ... существующая навигация ... -->
+    </div>
+
+    <style>
+    /* Базовые стили для текста вне панелей */
+    body > *:not(.card):not(.navbar):not(.modal):not(script):not(style) {
+        color: var(--adaptive-text-color, var(--bs-body-color));
+        transition: color 0.3s ease;
+    }
+
+    /* Стили для текста на прозрачном фоне */
+    .transparent-text {
+        text-shadow: 0 0 10px rgba(var(--bs-body-bg-rgb), 0.5);
+    }
+    </style>
+
+    <script>
+    function analyzeBackgroundColor() {
+        const getAverageBackgroundColor = (element) => {
+            const rect = element.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            // Создаем canvas для анализа фона
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Рисуем текущий фон
+            const html = document.documentElement;
+            const computedStyle = getComputedStyle(html);
+            ctx.fillStyle = computedStyle.backgroundColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Если есть фоновое изображение, добавляем его
+            const bgImage = computedStyle.backgroundImage;
+            if (bgImage !== 'none') {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.src = bgImage.replace(/url\(['"]?(.*?)['"]?\)/i, '$1');
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const pixel = ctx.getImageData(x, y, 1, 1).data;
+                        resolve({r: pixel[0], g: pixel[1], b: pixel[2]});
+                    };
+                });
+            }
+            
+            // Если нет изображения, возвращаем цвет фона
+            const backgroundColor = computedStyle.backgroundColor.match(/\d+/g).map(Number);
+            return Promise.resolve({r: backgroundColor[0], g: backgroundColor[1], b: backgroundColor[2]});
+        };
+        
+        const updateTextColor = async (element) => {
+            if (!element.closest('.card') && !element.closest('.navbar') && !element.closest('.modal')) {
+                const color = await getAverageBackgroundColor(element);
+                const brightness = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
+                const textColor = brightness > 128 ? '#000000' : '#ffffff';
+                element.style.setProperty('--adaptive-text-color', textColor);
+                
+                // Добавляем тень для лучшей читаемости
+                if (brightness > 128) {
+                    element.classList.remove('transparent-text');
+                } else {
+                    element.classList.add('transparent-text');
+                }
+            }
+        };
+        
+        // Обновляем цвет для всех элементов вне панелей
+        const elements = document.querySelectorAll('body > *:not(.card):not(.navbar):not(.modal):not(script):not(style)');
+        elements.forEach(updateTextColor);
+    }
+
+    // Запускаем анализ при загрузке страницы
+    document.addEventListener('DOMContentLoaded', analyzeBackgroundColor);
+
+    // Обновляем при изменении размера окна
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(analyzeBackgroundColor, 100);
+    });
+
+    // Обновляем при изменении фона
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && 
+                (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
+                analyzeBackgroundColor();
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+    </script>
+
+    <style>
+    /* Стили для прогресс-баров */
+    .progress-bar {
+        transition: width 1s ease-in-out;
+        width: 0;  /* Начальная ширина */
+    }
+
+    /* Анимация для прогресс-баров */
+    @keyframes fillProgress {
+        from { width: 0; }
+        to { width: var(--target-width); }
+    }
+
+    .progress-bar.animate {
+        animation: fillProgress 1s ease-in-out forwards;
+    }
+    </style>
+
+    <script>
+    // Функция для анимации прогресс-баров
+    function initProgressBars() {
+        const progressBars = document.querySelectorAll('.progress-bar[data-value]');
+        progressBars.forEach(bar => {
+            const value = bar.getAttribute('data-value');
+            // Устанавливаем целевую ширину как CSS переменную
+            bar.style.setProperty('--target-width', `${value}%`);
+            // Добавляем класс для анимации с небольшой задержкой
+            setTimeout(() => {
+                bar.classList.add('animate');
+            }, 100);
+        });
+    }
+
+    // Запускаем анимацию при загрузке страницы
+    document.addEventListener('DOMContentLoaded', initProgressBars);
+
+    // Обновляем системные ресурсы каждые 30 секунд
+    function updateSystemResources() {
+        fetch('/esadmin/system-stats/')
+            .then(response => response.json())
+            .then(data => {
+                // Обновляем CPU
+                const cpuBar = document.getElementById('cpuProgress');
+                if (cpuBar) {
+                    cpuBar.style.setProperty('--target-width', `${data.cpu_percent}%`);
+                    cpuBar.classList.add('animate');
+                    document.getElementById('cpuValue').textContent = `${data.cpu_percent}%`;
+                }
+
+                // Обновляем RAM
+                const ramBar = document.getElementById('ramProgress');
+                if (ramBar) {
+                    ramBar.style.setProperty('--target-width', `${data.ram_percent}%`);
+                    ramBar.classList.add('animate');
+                    document.getElementById('ramValue').textContent = `${data.ram_percent}%`;
+                }
+
+                // Обновляем Disk
+                const diskBar = document.getElementById('diskProgress');
+                if (diskBar) {
+                    diskBar.style.setProperty('--target-width', `${data.disk_percent}%`);
+                    diskBar.classList.add('animate');
+                    document.getElementById('diskValue').textContent = `${data.disk_percent}%`;
+                }
+            });
+    }
+
+    // Запускаем обновление системных ресурсов
+    if (document.querySelector('.system-resources')) {
+        updateSystemResources();
+        setInterval(updateSystemResources, 30000);
+    }
+
+    // Обновляем использование хранилища
+    function updateStorageUsage() {
+        fetch('/storage/stats/')
+            .then(response => response.json())
+            .then(data => {
+                const storageBar = document.querySelector('.storage-progress-bar');
+                if (storageBar) {
+                    storageBar.style.setProperty('--target-width', `${data.percent}%`);
+                    storageBar.classList.add('animate');
+                    document.querySelector('.storage-percent').textContent = `${data.percent}%`;
+                    document.querySelector('.storage-used').textContent = data.used_formatted;
+                    document.querySelector('.storage-total').textContent = data.quota_formatted;
+                }
+            });
+    }
+
+    // Запускаем обновление использования хранилища
+    if (document.querySelector('.storage-progress-bar')) {
+        updateStorageUsage();
+    }
+    </script>
+>>>>>>> a2370a2 (Initial commit)
 </body>
 </html> 

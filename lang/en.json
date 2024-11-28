@@ -1,0 +1,108 @@
+{
+    "id": "en",
+    "name": "English",
+    "translations": {
+        "common": {
+            "save": "Save",
+            "cancel": "Cancel",
+            "delete": "Delete",
+            "edit": "Edit",
+            "create": "Create",
+            "upload": "Upload",
+            "download": "Download",
+            "search": "Search",
+            "loading": "Loading..."
+        },
+        "auth": {
+            "login": "Login",
+            "logout": "Logout",
+            "register": "Register",
+            "username": "Username",
+            "password": "Password",
+            "email": "Email",
+            "confirm_password": "Confirm Password",
+            "forgot_password": "Forgot Password?",
+            "remember_me": "Remember Me"
+        },
+        "storage": {
+            "delete_selected": "Delete Selected",
+            "download_selected": "Download Selected",
+            "archive_selected": "Archive Selected",
+            "confirm_delete_selected": "Are you sure you want to delete selected files?",
+            "upload_error": "File upload error",
+            "please_wait": "Please wait...",
+            "my_files": "My Files",
+            "upload_files": "Upload Files",
+            "drag_files": "Drag files here",
+            "or": "or",
+            "select_files": "Select Files",
+            "file_name": "File Name",
+            "file_size": "Size",
+            "upload_date": "Upload Date",
+            "actions": "Actions",
+            "storage_usage": "Storage Usage",
+            "used_of": "used of",
+            "file_types": {
+                "image": "Image",
+                "video": "Video",
+                "audio": "Audio",
+                "document": "Document",
+                "archive": "Archive",
+                "other": "Other"
+            },
+            "youtube_download": "Download from YouTube",
+            "file_list": {
+                "title": "My Files",
+                "search_placeholder": "Search files by name...",
+                "table": {
+                    "filename": "File Name",
+                    "type": "Type",
+                    "upload_date": "Upload Date",
+                    "actions": "Actions"
+                },
+                "actions": {
+                    "preview": "Preview",
+                    "play": "Play",
+                    "listen": "Listen",
+                    "view_contents": "View Contents",
+                    "extract": "Extract",
+                    "download": "Download",
+                    "delete": "Delete",
+                    "public": "Public",
+                    "private": "Private"
+                },
+                "no_files": "You don't have any uploaded files yet"
+            }
+        },
+        "settings": {
+            "settings": "Settings",
+            "profile": "Profile",
+            "appearance": "Appearance",
+            "language": "Language",
+            "theme": {
+                "title": "Theme",
+                "light": "Light",
+                "dark": "Dark",
+                "system": "System"
+            },
+            "api": {
+                "title": "API & Integrations",
+                "create_key": "Create API Key",
+                "create_token": "Create ESUID Token",
+                "key_name": "Key Name",
+                "token_name": "Token Name",
+                "allowed_domains": "Allowed Domains"
+            }
+        },
+        "admin": {
+            "dashboard": "Dashboard",
+            "users": "Users",
+            "system": {
+                "title": "System",
+                "cpu_usage": "CPU Usage",
+                "ram_usage": "RAM Usage",
+                "disk_usage": "Disk Usage"
+            }
+        }
+    }
+} 

@@ -20,10 +20,20 @@
                         </select>
                     </div>
                     <div class="mb-3">
+<<<<<<< HEAD
                         <label class="form-label">Язык</label>
                         <select name="language" class="form-select">
                             <option value="ru" {% if user.userprofile.language == 'ru' %}selected{% endif %}>Русский</option>
                             <option value="en" {% if user.userprofile.language == 'en' %}selected{% endif %}>English</option>
+=======
+                        <label class="form-label">{{ t.settings.language }}</label>
+                        <select name="language" class="form-select" onchange="changeLanguage(this)">
+                            {% for lang in available_languages %}
+                                <option value="{{ lang.id }}" {% if lang.id == current_language %}selected{% endif %}>
+                                    {{ lang.name }}
+                                </option>
+                            {% endfor %}
+>>>>>>> a2370a2 (Initial commit)
                         </select>
                     </div>
                 </div>
@@ -299,5 +309,29 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Ошибка при сохранении настроек');
     });
 });
+<<<<<<< HEAD
+=======
+
+function changeLanguage(select) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "settings_appearance" %}';
+    
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    const lang = document.createElement('input');
+    lang.type = 'hidden';
+    lang.name = 'language';
+    lang.value = select.value;
+    
+    form.appendChild(csrf);
+    form.appendChild(lang);
+    document.body.appendChild(form);
+    form.submit();
+}
+>>>>>>> a2370a2 (Initial commit)
 </script>
 {% endblock %} 

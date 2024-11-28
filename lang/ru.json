@@ -1,0 +1,108 @@
+{
+    "id": "ru",
+    "name": "Русский",
+    "translations": {
+        "common": {
+            "save": "Сохранить",
+            "cancel": "Отмена",
+            "delete": "Удалить",
+            "edit": "Редактировать",
+            "create": "Создать",
+            "upload": "Загрузить",
+            "download": "Скачать",
+            "search": "Поиск",
+            "loading": "Загрузка..."
+        },
+        "auth": {
+            "login": "Вход",
+            "logout": "Выход",
+            "register": "Регистрация",
+            "username": "Имя пользователя",
+            "password": "Пароль",
+            "email": "Email",
+            "confirm_password": "Подтвердите пароль",
+            "forgot_password": "Забыли пароль?",
+            "remember_me": "Запомнить меня"
+        },
+        "storage": {
+            "delete_selected": "Удалить выбранные",
+            "download_selected": "Скачать выбранные",
+            "archive_selected": "Архивировать выбранные",
+            "confirm_delete_selected": "Вы уверены, что хотите удалить выбранные файлы?",
+            "upload_error": "Ошибка при загрузке файла",
+            "please_wait": "Пожалуйста, подождите...",
+            "my_files": "Мои файлы",
+            "upload_files": "Загрузить файлы",
+            "drag_files": "Перетащите файлы сюда",
+            "or": "или",
+            "select_files": "Выберите файлы",
+            "file_name": "Название файла",
+            "file_size": "Размер",
+            "upload_date": "Дата загрузки",
+            "actions": "Действия",
+            "storage_usage": "Использование хранилища",
+            "used_of": "использовано из",
+            "file_types": {
+                "image": "Изображение",
+                "video": "Видео",
+                "audio": "Аудио",
+                "document": "Документ",
+                "archive": "Архив",
+                "other": "Другое"
+            },
+            "youtube_download": "Скачать с YouTube",
+            "file_list": {
+                "title": "Мои файлы",
+                "search_placeholder": "Поиск файлов по имени...",
+                "table": {
+                    "filename": "Название файла",
+                    "type": "Тип",
+                    "upload_date": "Дата загрузки",
+                    "actions": "Действия"
+                },
+                "actions": {
+                    "preview": "Просмотр",
+                    "play": "Воспроизвести",
+                    "listen": "Прослушать",
+                    "view_contents": "Просмотр содержимого",
+                    "extract": "Распаковать",
+                    "download": "Скачать",
+                    "delete": "Удалить",
+                    "public": "Публичный",
+                    "private": "Приватный"
+                },
+                "no_files": "У вас пока нет загруженных файлов"
+            }
+        },
+        "settings": {
+            "settings": "Настройки",
+            "profile": "Профиль",
+            "appearance": "Внешний вид",
+            "language": "Язык",
+            "theme": {
+                "title": "Тема",
+                "light": "Светлая",
+                "dark": "Темная",
+                "system": "Системная"
+            },
+            "api": {
+                "title": "API и Интеграции",
+                "create_key": "Создать API ключ",
+                "create_token": "Создать ESUID токен",
+                "key_name": "Название ключа",
+                "token_name": "Название токена",
+                "allowed_domains": "Разрешенные домены"
+            }
+        },
+        "admin": {
+            "dashboard": "Панель управления",
+            "users": "Пользователи",
+            "system": {
+                "title": "Система",
+                "cpu_usage": "Использование CPU",
+                "ram_usage": "Использование RAM",
+                "disk_usage": "Использование диска"
+            }
+        }
+    }
+} 

@@ -22,6 +22,12 @@ import yt_dlp
 import urllib.request
 import urllib.parse
 import queue
+<<<<<<< HEAD
+=======
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
+from django.views.decorators.csrf import csrf_exempt
+from urllib.parse import quote
+>>>>>>> a2370a2 (Initial commit)
 
 # Создаем глобальную очередь для прогресса
 progress_queue = queue.Queue()
@@ -86,14 +92,20 @@ def download_file(request, token):
         if not os.path.exists(downloads_dir):
             os.makedirs(downloads_dir)
             
+<<<<<<< HEAD
         # Создаем безопасное имя файла для кеша
         safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', file.filename)
         download_filename = f"{uuid.uuid4().hex}_{safe_filename}"
+=======
+        # Копируем файл в папку downloads с уникальным именем
+        download_filename = f"{uuid.uuid4().hex}_{file.filename}"
+>>>>>>> a2370a2 (Initial commit)
         download_path = os.path.join(downloads_dir, download_filename)
         
         # Копируем файл
         shutil.copy2(file.file.path, download_path)
         
+<<<<<<< HEAD
         # Создаем URL для скачивания
         download_url = f"{settings.MEDIA_URL}downloads/{download_filename}"
         
@@ -109,6 +121,21 @@ def download_file(request, token):
         response = HttpResponse(open(download_path, 'rb'), content_type='application/octet-stream')
         response['Content-Disposition'] = f'attachment; filename="{file.filename}"'
         return response
+=======
+        # Открываем файл и отправляем его с правильным именем
+        with open(download_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/octet-stream')
+            response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{quote(file.filename)}'
+            
+            # Помечаем токен как использованный
+            download_token.is_used = True
+            download_token.save()
+            
+            # Запускаем отложенное удаление файла
+            cache.set(f'delete_file_{download_filename}', True, 300)  # 5 минут на скачивание
+            
+            return response
+>>>>>>> a2370a2 (Initial commit)
             
     except DownloadToken.DoesNotExist:
         raise Http404("Ссылка недействительна")
@@ -623,7 +650,11 @@ def download_youtube_video(request):
                             os.remove(temp_file)
 
                     if request.user.is_authenticated:
+<<<<<<< HEAD
                         # Создаем запись в базе данных только для авторизованных пользователей
+=======
+                        # Создаем запись в базе данных только для авто��изованных пользователей
+>>>>>>> a2370a2 (Initial commit)
                         UserFile.objects.create(
                             user=request.user,
                             file=f'{request.user.id}/{filename}',
@@ -636,7 +667,11 @@ def download_youtube_video(request):
                             'redirect_url': reverse('dashboard')
                         })
                     else:
+<<<<<<< HEAD
                         # Для неавторизованных пользователей возвращаем прямую ссылку на скачивание
+=======
+                        # Для неавторизованных пользователей возвращаем прямую сылку на скачивание
+>>>>>>> a2370a2 (Initial commit)
                         download_url = f'/media/temp_downloads/{filename}'
                         return JsonResponse({
                             'success': True,
@@ -674,3 +709,70 @@ def download_youtube_video(request):
 def video_list(request):
     videos = YouTubeVideo.objects.all().order_by('-downloaded_at')
     return render(request, 'storage/video_list.html', {'videos': videos})
+<<<<<<< HEAD
+=======
+
+@csrf_exempt
+def upload_chunk(request, filename):
+    if request.method == 'POST':
+        try:
+            chunk = request.FILES['file']
+            chunk_number = int(request.POST.get('chunk', 0))
+            total_chunks = int(request.POST.get('chunks', 1))
+            
+            # Путь для временного файла
+            temp_path = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, f"{request.user.id}_{filename}.part")
+            
+            # Записываем чанк
+            with open(temp_path, 'ab') as f:
+                for chunk in chunk.chunks():
+                    f.write(chunk)
+            
+            # Если это последний чанк
+            if chunk_number == total_chunks - 1:
+                # Перемещаем файл в постоянное хранилище
+                final_path = os.path.join(settings.MEDIA_ROOT, str(request.user.id), filename)
+                os.makedirs(os.path.dirname(final_path), exist_ok=True)
+                os.rename(temp_path, final_path)
+                
+                # Создаем запись в БД
+                UserFile.objects.create(
+                    user=request.user,
+                    file=f'{request.user.id}/{filename}',
+                    filename=filename
+                )
+                
+                return JsonResponse({'status': 'complete'})
+            
+            return JsonResponse({'status': 'chunk_uploaded'})
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
+def check_file(request):
+    filename = request.GET.get('filename')
+    filesize = int(request.GET.get('filesize', 0))
+    
+    # Проверяем размер файла
+    if filesize > settings.MAX_FILE_SIZE:
+        return JsonResponse({
+            'error': 'File too large',
+            'max_size': settings.MAX_FILE_SIZE
+        }, status=400)
+    
+    # Проверяем доступное место
+    user_storage = request.user.userprofile.get_used_storage()
+    if user_storage + filesize > request.user.userprofile.storage_quota:
+        return JsonResponse({
+            'error': 'Not enough storage space',
+            'available': request.user.userprofile.storage_quota - user_storage
+        }, status=400)
+    
+    return JsonResponse({
+        'chunked': filesize > settings.LARGE_FILE_SIZE_THRESHOLD,
+        'chunk_size': settings.CHUNKED_UPLOAD_CHUNK_SIZE
+    })
+>>>>>>> a2370a2 (Initial commit)

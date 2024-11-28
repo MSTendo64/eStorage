@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
+<<<<<<< HEAD
 {% block title %}Мои файлы | Eventshock Storage{% endblock %}
+=======
+{% block title %}{{ t.storage.my_files }} | {{ t.common.site_name }}{% endblock %}
+>>>>>>> a2370a2 (Initial commit)
 
 {% block content %}
 <style>
@@ -96,9 +100,15 @@
 <div class="loading-overlay" id="loadingOverlay">
     <div class="text-center">
         <div class="spinner-border loading-spinner text-light" role="status">
+<<<<<<< HEAD
             <span class="visually-hidden">Загрузка...</span>
         </div>
         <div class="loading-text" id="loadingText">Пожалуйста, подождите...</div>
+=======
+            <span class="visually-hidden">{{ t.common.loading }}</span>
+        </div>
+        <div class="loading-text" id="loadingText">{{ t.common.please_wait }}</div>
+>>>>>>> a2370a2 (Initial commit)
         <div class="progress-container d-none" id="progressContainer">
             <div class="progress upload-progress">
                 <div class="progress-bar" role="progressbar" style="width: 0%" id="uploadProgress"></div>
@@ -114,11 +124,17 @@
             <div class="card-body">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                     <div class="storage-info mb-3 mb-md-0">
+<<<<<<< HEAD
                         <h5 class="mb-2">Использование хранилища</h5>
                         <div class="progress" style="height: 10px; width: 200px;">
                             <div class="progress-bar {% if user.userprofile.get_storage_percent > 90 %}bg-danger{% elif user.userprofile.get_storage_percent > 70 %}bg-warning{% else %}bg-success{% endif %}" 
                                  role="progressbar" 
                                  style="width: 0%"
+=======
+                        <h5 class="mb-2">{{ t.storage.storage_usage }}</h5>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar storage-progress-bar" role="progressbar" 
+>>>>>>> a2370a2 (Initial commit)
                                  data-value="{{ user.userprofile.get_storage_percent }}"
                                  aria-valuenow="{{ user.userprofile.get_storage_percent }}" 
                                  aria-valuemin="0" 
@@ -126,14 +142,24 @@
                             </div>
                         </div>
                         <small class="text-muted">
+<<<<<<< HEAD
                             {{ user.userprofile.get_used_storage_formatted }} из 
                             {{ user.userprofile.get_quota_formatted }}
+=======
+                            <span class="storage-used">{{ user.userprofile.get_used_storage_formatted }}</span> 
+                            {{ t.storage.used_of }} 
+                            <span class="storage-total">{{ user.userprofile.get_quota_formatted }}</span>
+>>>>>>> a2370a2 (Initial commit)
                             (<span class="storage-percent">{{ user.userprofile.get_storage_percent }}</span>%)
                         </small>
                     </div>
                     <div>
                         <button class="btn btn-primary" onclick="toggleUploadPanel()">
+<<<<<<< HEAD
                             <i class="fas fa-plus me-2"></i>Загрузить
+=======
+                            <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
+>>>>>>> a2370a2 (Initial commit)
                         </button>
                     </div>
                 </div>
@@ -144,6 +170,7 @@
 
 <div class="d-none d-md-block mb-3">
     <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
+<<<<<<< HEAD
         <i class="fas fa-trash"></i> Удалить выбранные
     </button>
     <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
@@ -151,6 +178,15 @@
     </button>
     <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
         <i class="fas fa-archive"></i> Архивировать выбранные
+=======
+        <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
+    </button>
+    <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
+        <i class="fas fa-download"></i> {{ t.storage.download_selected }}
+    </button>
+    <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
+        <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
+>>>>>>> a2370a2 (Initial commit)
     </button>
     <span class="ms-3" id="selectedCount"></span>
 </div>
@@ -159,17 +195,28 @@
     <div class="col-md-12">
         <div id="uploadPanel" class="card mb-4" style="display: none;">
             <div class="card-body">
+<<<<<<< HEAD
                 <div class="upload-zone p-5 text-center border-2 border-dashed rounded" 
                      ondrop="handleDrop(event)" ondragover="handleDragOver(event)" 
                      ondragleave="handleDragLeave(event)">
                     <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
                     <h4>Перетащите файлы сюда</h4>
                     <p class="text-muted">или</p>
+=======
+                <div class="upload-zone p-5 text-center border-2 border-dashed rounded">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+                    <h4>{{ t.storage.drag_files }}</h4>
+                    <p class="text-muted">{{ t.storage.or }}</p>
+>>>>>>> a2370a2 (Initial commit)
                     <form id="uploadForm" method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="file" id="fileInput" name="file" class="d-none" multiple>
                         <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+<<<<<<< HEAD
                             Выберите файлы
+=======
+                            {{ t.storage.select_files }}
+>>>>>>> a2370a2 (Initial commit)
                         </button>
                     </form>
                 </div>
@@ -180,7 +227,11 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
+<<<<<<< HEAD
         <h2>Мои файлы</h2>
+=======
+        <h2>{{ t.storage.file_list.title }}</h2>
+>>>>>>> a2370a2 (Initial commit)
         <div class="card mb-4">
             <div class="card-body">
                 <div class="input-group">
@@ -188,7 +239,11 @@
                         <i class="fas fa-search"></i>
                     </span>
                     <input type="text" class="form-control" id="fileSearch" 
+<<<<<<< HEAD
                            placeholder="Поиск файлов по имени...">
+=======
+                           placeholder="{{ t.storage.file_list.search_placeholder }}">
+>>>>>>> a2370a2 (Initial commit)
                 </div>
             </div>
         </div>
@@ -203,10 +258,17 @@
                                     <th>
                                         <input type="checkbox" class="form-check-input" id="selectAll">
                                     </th>
+<<<<<<< HEAD
                                     <th>Название файла</th>
                                     <th>Тип</th>
                                     <th>Дата загрузки</th>
                                     <th>Действия</th>
+=======
+                                    <th>{{ t.storage.file_list.table.filename }}</th>
+                                    <th>{{ t.storage.file_list.table.type }}</th>
+                                    <th>{{ t.storage.file_list.table.upload_date }}</th>
+                                    <th>{{ t.storage.file_list.table.actions }}</th>
+>>>>>>> a2370a2 (Initial commit)
                                 </tr>
                             </thead>
                             <tbody>
@@ -222,6 +284,7 @@
                                         <td>
                                             {% if file.is_image %}
                                                 <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
+<<<<<<< HEAD
                                                     <i class="fas fa-eye"></i> Просмотр
                                                 </button>
                                             {% elif file.is_video %}
@@ -245,12 +308,45 @@
                                             </button>
                                             <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
                                                 <i class="fas fa-trash"></i> Удалить
+=======
+                                                    <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                                </button>
+                                            {% elif file.is_video %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                                    <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                                </button>
+                                            {% elif file.is_audio %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                                    <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                                </button>
+                                            {% elif file.is_archive %}
+                                                <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                                    <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                                </button>
+                                                <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
+                                                    <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
+                                                <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                                <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+>>>>>>> a2370a2 (Initial commit)
                                             </button>
                                             <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
                                                     onclick="togglePublicity('{{ file.id }}', this)"
                                                     data-public="{{ file.is_public|yesno:'true,false' }}">
                                                 <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+<<<<<<< HEAD
                                                 {% if file.is_public %}Публичный{% else %}Приватный{% endif %}
+=======
+                                                {% if file.is_public %}
+                                                    {{ t.storage.file_list.actions.public }}
+                                                {% else %}
+                                                    {{ t.storage.file_list.actions.private }}
+                                                {% endif %}
+>>>>>>> a2370a2 (Initial commit)
                                             </button>
                                         </td>
                                     </tr>
@@ -316,7 +412,11 @@
                 </div>
             </div>
         {% else %}
+<<<<<<< HEAD
             <p>У вас пока нет загруженных файлов.</p>
+=======
+            <p>{{ t.storage.file_list.no_files }}</p>
+>>>>>>> a2370a2 (Initial commit)
         {% endif %}
     </div>
 </div>
@@ -339,7 +439,11 @@
                         <source type="video/mp4" src="">
                     </video>
                     
+<<<<<<< HEAD
                     <!-- Контейнер для аудио -->
+=======
+                    <!-- Контейнер ля аудио -->
+>>>>>>> a2370a2 (Initial commit)
                     <audio id="audioPreview" class="d-none">
                         <source type="audio/mpeg" src="">
                     </audio>
@@ -692,7 +796,11 @@ document.getElementById('archiveSearch').addEventListener('input', function(e) {
 });
 
 function extractArchive(fileId) {
+<<<<<<< HEAD
     if (!confirm('Вы уверены, что хотите распаковать этот архив?')) {
+=======
+    if (!confirm('Вы уверены, что хотите распаковать этот ахив?')) {
+>>>>>>> a2370a2 (Initial commit)
         return;
     }
     
@@ -710,7 +818,11 @@ function extractArchive(fileId) {
             location.reload();
         } else {
             hideLoading();
+<<<<<<< HEAD
             alert(data.error || 'Ошибка при распаковке архива');
+=======
+            alert(data.error || 'Ошибка при рспаковке архиа');
+>>>>>>> a2370a2 (Initial commit)
         }
     })
     .catch(error => {
@@ -837,7 +949,11 @@ function updateBulkButtons() {
 }
 
 function bulkDelete() {
+<<<<<<< HEAD
     if (!confirm('Вы уверены, что хотите удалить выбранные файлы?')) {
+=======
+    if (!confirm(t('storage.confirm_delete_selected'))) {
+>>>>>>> a2370a2 (Initial commit)
         return;
     }
     
@@ -926,18 +1042,39 @@ function bulkArchive() {
 }
 
 // Функции для управления оверлеем загрузки
+<<<<<<< HEAD
 function showLoading(text = 'Пожалуйста, подождите...', showProgress = false) {
+=======
+function showLoading(text = t('common.please_wait'), showProgress = false) {
+>>>>>>> a2370a2 (Initial commit)
     const overlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
     const progressContainer = document.getElementById('progressContainer');
     
+<<<<<<< HEAD
     loadingText.textContent = text;
     progressContainer.classList.toggle('d-none', !showProgress);
     overlay.style.display = 'flex';
+=======
+    if (overlay && loadingText && progressContainer) {
+        loadingText.textContent = text;
+        progressContainer.classList.toggle('d-none', !showProgress);
+        overlay.style.display = 'flex';
+        
+        // Сбрасываем прогресс
+        const progressBar = document.getElementById('uploadProgress');
+        const progressText = document.getElementById('progressText');
+        if (progressBar && progressText) {
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+        }
+    }
+>>>>>>> a2370a2 (Initial commit)
 }
 
 function hideLoading() {
     const overlay = document.getElementById('loadingOverlay');
+<<<<<<< HEAD
     overlay.style.display = 'none';
     
     // Сбрасваем прогресс
@@ -945,15 +1082,75 @@ function hideLoading() {
     const progressText = document.getElementById('progressText');
     progressBar.style.width = '0%';
     progressText.textContent = '0%';
+=======
+    if (overlay) {
+        // Плавно скрываем оверлей
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.style.opacity = '1';
+        }, 300);
+    }
+>>>>>>> a2370a2 (Initial commit)
 }
 
 function updateProgress(percent) {
     const progressBar = document.getElementById('uploadProgress');
     const progressText = document.getElementById('progressText');
+<<<<<<< HEAD
     progressBar.style.width = `${percent}%`;
     progressText.textContent = `${percent}%`;
 }
 
+=======
+    if (progressBar && progressText) {
+        // Округляем до одного знака после запятой
+        const roundedPercent = Math.round(percent * 10) / 10;
+        
+        // Анимируем прогресс-бар с помощью requestAnimationFrame
+        const currentWidth = parseFloat(progressBar.style.width) || 0;
+        const targetWidth = roundedPercent;
+        
+        function animate() {
+            const diff = targetWidth - currentWidth;
+            const step = diff * 0.1; // Плавный шаг анимации
+            
+            if (Math.abs(diff) > 0.1) {
+                const newWidth = currentWidth + step;
+                progressBar.style.width = `${newWidth}%`;
+                progressText.textContent = `${roundedPercent}%`;
+                requestAnimationFrame(animate);
+            } else {
+                progressBar.style.width = `${targetWidth}%`;
+                progressText.textContent = `${roundedPercent}%`;
+            }
+        }
+        
+        requestAnimationFrame(animate);
+        
+        // Если загрузка завершена, ждем 1 секунду перед скрытием
+        if (roundedPercent >= 100) {
+            setTimeout(() => {
+                hideLoading();
+            }, 1000);
+        }
+    }
+}
+
+// Обновим стили для прогресс-бара
+const style = document.createElement('style');
+style.textContent = `
+    .progress-bar {
+        transition: width 0.1s linear;
+    }
+    
+    #loadingOverlay {
+        transition: opacity 0.3s ease;
+    }
+`;
+document.head.appendChild(style);
+
+>>>>>>> a2370a2 (Initial commit)
 // Обработка загрузки файла
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -986,7 +1183,11 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     
     xhr.onerror = function() {
         hideLoading();
+<<<<<<< HEAD
         alert('Ошибка при загрузке файла');
+=======
+        alert(t('storage.upload_error'));
+>>>>>>> a2370a2 (Initial commit)
     };
     
     xhr.send(formData);
@@ -1008,16 +1209,27 @@ function toggleUploadPanel() {
 
 function handleDragOver(e) {
     e.preventDefault();
+<<<<<<< HEAD
     e.currentTarget.classList.add('dragover');
+=======
+    e.stopPropagation();
+    this.classList.add('dragover');
+>>>>>>> a2370a2 (Initial commit)
 }
 
 function handleDragLeave(e) {
     e.preventDefault();
+<<<<<<< HEAD
     e.currentTarget.classList.remove('dragover');
+=======
+    e.stopPropagation();
+    this.classList.remove('dragover');
+>>>>>>> a2370a2 (Initial commit)
 }
 
 function handleDrop(e) {
     e.preventDefault();
+<<<<<<< HEAD
     e.currentTarget.classList.remove('dragover');
     
     const files = e.dataTransfer.files;
@@ -1039,12 +1251,93 @@ function uploadFile(file) {
         return;
     }
     
+=======
+    e.stopPropagation();
+    this.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        Array.from(files).forEach(file => {
+            uploadFile(file);
+        });
+    }
+}
+
+function uploadFile(file) {
+    // Проверяем файл перед загрузкой
+    fetch(`/storage/check-file/?filename=${encodeURIComponent(file.name)}&filesize=${file.size}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.chunked) {
+                uploadLargeFile(file, data.chunk_size);
+            } else {
+                uploadSmallFile(file);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ошибка при проверке файла');
+        });
+}
+
+function uploadLargeFile(file, chunkSize) {
+    const chunks = Math.ceil(file.size / chunkSize);
+    let currentChunk = 0;
+    
+    showLoading('Загрузка файла...', true);
+    
+    function uploadNextChunk() {
+        const start = currentChunk * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+        
+        const formData = new FormData();
+        formData.append('file', chunk);
+        formData.append('chunk', currentChunk);
+        formData.append('chunks', chunks);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        fetch(`/storage/upload-chunk/${encodeURIComponent(file.name)}/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'complete') {
+                hideLoading();
+                location.reload();
+            } else {
+                currentChunk++;
+                updateProgress((currentChunk / chunks) * 100);
+                
+                if (currentChunk < chunks) {
+                    uploadNextChunk();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+            alert('Ошибка при загрузке файла');
+        });
+    }
+    
+    uploadNextChunk();
+}
+
+function uploadSmallFile(file) {
+    showLoading('Загрузка файла...', true);
+    
+>>>>>>> a2370a2 (Initial commit)
     const formData = new FormData();
     formData.append('file', file);
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     
+<<<<<<< HEAD
     showLoading(`Загрузка файла ${file.name}...`, true);
     
+=======
+>>>>>>> a2370a2 (Initial commit)
     const xhr = new XMLHttpRequest();
     xhr.open('POST', window.location.href, true);
     
@@ -1057,7 +1350,10 @@ function uploadFile(file) {
     
     xhr.onload = function() {
         if (xhr.status === 200) {
+<<<<<<< HEAD
             updateStorageProgress();  // Обновляем прогресс
+=======
+>>>>>>> a2370a2 (Initial commit)
             location.reload();
         } else {
             hideLoading();
@@ -1073,6 +1369,7 @@ function uploadFile(file) {
     xhr.send(formData);
 }
 
+<<<<<<< HEAD
 // Обработка выбора файлов через кнопку
 const fileInput = document.getElementById('fileInput');
 if (fileInput) {
@@ -1080,6 +1377,42 @@ if (fileInput) {
         handleFiles(this.files);
     });
 }
+=======
+// Обновим обработчики для загрузки файлов
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('fileInput');
+    const uploadForm = document.getElementById('uploadForm');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (this.files.length > 0) {
+                Array.from(this.files).forEach(file => {
+                    uploadFile(file);
+                });
+                // Очищаем input после загрузки
+                this.value = '';
+            }
+        });
+    }
+
+    // Обработка drag and drop
+    const uploadZone = document.querySelector('.upload-zone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', handleDragOver);
+        uploadZone.addEventListener('dragleave', handleDragLeave);
+        uploadZone.addEventListener('drop', handleDrop);
+
+        // Добавляем обработчик клика на кнопку "Выберите файлы"
+        const selectButton = uploadZone.querySelector('button');
+        if (selectButton) {
+            selectButton.onclick = function(e) {
+                e.preventDefault();
+                fileInput.click();
+            };
+        }
+    }
+});
+>>>>>>> a2370a2 (Initial commit)
 
 // Функция для одиночного удаления файла
 function deleteFile(fileId, fileName) {

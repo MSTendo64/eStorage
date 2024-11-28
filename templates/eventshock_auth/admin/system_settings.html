@@ -11,6 +11,7 @@
                 <dl class="row">
                     <dt class="col-sm-4">CPU</dt>
                     <dd class="col-sm-8">
+<<<<<<< HEAD
                         <div class="progress" style="height: 5px;">
                             <div class="progress-bar bg-primary" role="progressbar" id="cpuProgress"
                                  style="width: 0%"
@@ -18,6 +19,19 @@
                             </div>
                         </div>
                         <small class="text-muted">Использование: <span id="cpuValue">{{ cpu_percent }}</span>%</small>
+=======
+                        <div class="system-resources">
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar" id="cpuProgress" role="progressbar" 
+                                     data-value="{{ cpu_percent }}"
+                                     aria-valuenow="{{ cpu_percent }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">CPU: <span id="cpuValue">{{ cpu_percent }}</span>%</small>
+                        </div>
+>>>>>>> a2370a2 (Initial commit)
                     </dd>
                     
                     <dt class="col-sm-4">RAM</dt>

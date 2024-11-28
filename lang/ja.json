@@ -1,0 +1,108 @@
+{
+    "id": "ja",
+    "name": "日本語",
+    "translations": {
+        "common": {
+            "save": "保存",
+            "cancel": "キャンセル",
+            "delete": "削除",
+            "edit": "編集",
+            "create": "作成",
+            "upload": "アップロード",
+            "download": "ダウンロード",
+            "search": "検索",
+            "loading": "読み込み中..."
+        },
+        "auth": {
+            "login": "ログイン",
+            "logout": "ログアウト",
+            "register": "登録",
+            "username": "ユーザー名",
+            "password": "パスワード",
+            "email": "メールアドレス",
+            "confirm_password": "パスワードの確認",
+            "forgot_password": "パスワードをお忘れですか？",
+            "remember_me": "ログイン状態を保持"
+        },
+        "storage": {
+            "delete_selected": "選択したファイルを削除",
+            "download_selected": "選択したファイルをダウンロード",
+            "archive_selected": "選択したファイルをアーカイブ",
+            "confirm_delete_selected": "選択したファイルを削除しますか？",
+            "upload_error": "ファイルアップロードエラー",
+            "please_wait": "しばらくお待ちください...",
+            "my_files": "マイファイル",
+            "upload_files": "ファイルをアップロード",
+            "drag_files": "ここにファイルをドロップ",
+            "or": "または",
+            "select_files": "ファイルを選択",
+            "file_name": "ファイル名",
+            "file_size": "サイズ",
+            "upload_date": "アップロード日",
+            "actions": "アクション",
+            "storage_usage": "ストレージ使用量",
+            "used_of": "使用中 / ",
+            "file_types": {
+                "image": "画像",
+                "video": "動画",
+                "audio": "音声",
+                "document": "文書",
+                "archive": "アーカイブ",
+                "other": "その他"
+            },
+            "youtube_download": "YouTubeからダウンロード",
+            "file_list": {
+                "title": "マイファイル",
+                "search_placeholder": "ファイル名で検索...",
+                "table": {
+                    "filename": "ファイル名",
+                    "type": "種類",
+                    "upload_date": "アップロード日",
+                    "actions": "アクション"
+                },
+                "actions": {
+                    "preview": "プレビュー",
+                    "play": "再生",
+                    "listen": "再生",
+                    "view_contents": "内容を表示",
+                    "extract": "解凍",
+                    "download": "ダウンロード",
+                    "delete": "削除",
+                    "public": "公開",
+                    "private": "非公開"
+                },
+                "no_files": "アップロードされたファイルはありません"
+            }
+        },
+        "settings": {
+            "settings": "設定",
+            "profile": "プロフィール",
+            "appearance": "外観",
+            "language": "言語",
+            "theme": {
+                "title": "テーマ",
+                "light": "ライト",
+                "dark": "ダーク",
+                "system": "システム"
+            },
+            "api": {
+                "title": "API & 連携",
+                "create_key": "APIキーを作成",
+                "create_token": "ESUIDトークンを作成",
+                "key_name": "キー名",
+                "token_name": "トークン名",
+                "allowed_domains": "許可されたドメイン"
+            }
+        },
+        "admin": {
+            "dashboard": "ダッシュボード",
+            "users": "ユーザー",
+            "system": {
+                "title": "システム",
+                "cpu_usage": "CPU使用率",
+                "ram_usage": "メモリ使用率",
+                "disk_usage": "ディスク使用率"
+            }
+        }
+    }
+} 
