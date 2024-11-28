@@ -231,7 +231,7 @@
         </div>
 
         {% if files %}
-            <!-- Десктопная врсия (таблица) -->
+            <!-- Десктопная в��сия (таблица) -->
             <div class="d-none d-md-block">
                 <div class="files-container">
                     <div class="table-responsive">
@@ -381,7 +381,7 @@
     </div>
 </div>
 
-<!-- Обновленно�� одальное окно для просмотра содержимого архива -->
+<!-- Обновленно одальное окно для просмотра содержимого архива -->
 <div class="modal fade" id="archiveContentsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -1440,41 +1440,53 @@ function uploadFile(file) {
 
     showLoading('Загрузка файла: ' + file.name, true);
 
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+    // Добавляем обработку прогресса загрузки
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', window.location.href, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+    // Обработка прогресса загрузки
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            updateProgress(percentComplete);
         }
-    })
-    .then(response => {
-        if (!response.ok) {
+    };
+
+    // Обработка завершения загрузки
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    throw new Error(response.error);
+                }
+                updateStorageProgress();
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } catch (error) {
+                // Если ответ не JSON или успешный HTML
+                updateStorageProgress();
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            }
+        } else {
             throw new Error('Network response was not ok');
         }
-        // Проверяем тип контента
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
-        } else {
-            // Если ответ не JSON, считаем это успешной загрузкой
-            return { success: true };
-        }
-    })
-    .then(data => {
-        if (data.error) {
-            throw new Error(data.error);
-        }
-        updateStorageProgress();
-        // Перезагружаем страницу после успешной загрузки
-        setTimeout(() => {
-            location.reload();
-        }, 500);
-    })
-    .catch(error => {
-        console.error('Error:', error);
+    };
+
+    // Обработка ошибок
+    xhr.onerror = function() {
+        console.error('Error:', xhr.statusText);
         hideLoading();
-        alert('Ошибка при загрузке файла: ' + file.name + '\n' + error.message);
-    });
+        alert('Ошибка при загрузке файла: ' + file.name + '\n' + 
+              'Возможно, файл слишком большой или произошла сетевая ошибка');
+    };
+
+    // Отправляем файл
+    xhr.send(formData);
 }
 
 // Обновим функцию handleFiles
