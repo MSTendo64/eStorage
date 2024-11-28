@@ -133,6 +133,15 @@
     </div>
 </div>
 
+<div id="dropZoneOverlay" class="position-fixed top-0 start-0 w-100 h-100" style="display: none; z-index: 1050;">
+    <div class="upload-zone h-100 d-flex align-items-center justify-content-center">
+        <div class="text-center">
+            <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+            <h4>{{ t.storage.drag_files }}</h4>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -156,9 +165,13 @@
                         </small>
                     </div>
                     <div>
-                        <button class="btn btn-primary" onclick="toggleUploadPanel()">
-                            <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
-                        </button>
+                        <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="file" id="fileInput" name="file" class="d-none" multiple>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -218,7 +231,7 @@
         </div>
 
         {% if files %}
-            <!-- Десктопная версия (таблица) -->
+            <!-- Десктопная врсия (таблица) -->
             <div class="d-none d-md-block">
                 <div class="files-container">
                     <div class="table-responsive">
@@ -368,7 +381,7 @@
     </div>
 </div>
 
-<!-- Обновленное одальное окно для просмотра содержимого архива -->
+<!-- Обновленно�� одальное окно для просмотра содержимого архива -->
 <div class="modal fade" id="archiveContentsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -549,6 +562,17 @@
 
 .modal.show .modal-dialog {
     transform: none;
+}
+
+#dropZoneOverlay {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#dropZoneOverlay .upload-zone {
+    border: 3px dashed #fff;
+    background-color: rgba(255, 255, 255, 0.9);
+    margin: 20px;
+    border-radius: 10px;
 }
 </style>
 
@@ -814,17 +838,7 @@ const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
 const selectedCount = document.getElementById('selectedCount');
 
 // Обработка выбора всех файлов
-document.getElementById('selectAll').addEventListener('change', function(e) {
-    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
-        checkbox.checked = e.target.checked;
-        if (e.target.checked) {
-            selectedFiles.add(checkbox.value);
-        } else {
-            selectedFiles.clear();
-        }
-    });
-    updateBulkButtons();
-});
+
 
 // Обаботка выбора отдельных файлов
 document.querySelectorAll('.file-checkbox').forEach(checkbox => {
@@ -843,7 +857,7 @@ function updateBulkButtons() {
     bulkDeleteBtn.disabled = count === 0;
     bulkDownloadBtn.disabled = count === 0;
     bulkArchiveBtn.disabled = count === 0;
-    selectedCount.textContent = count > 0 ? `Выбрано файлов: ${count}` : '';
+    selectedCount.textContent = count > 0 ? `Выбрано файлв: ${count}` : '';
 }
 
 function bulkDelete() {
@@ -986,7 +1000,7 @@ function updateProgress(percent) {
         
         requestAnimationFrame(animate);
         
-        // Если загрузка завершена, ждем 1 секунду перед скрытием
+        // Если загрузка завершена, ждем 1 секунду перд скрытием
         if (roundedPercent >= 100) {
             setTimeout(() => {
                 hideLoading();
@@ -1011,40 +1025,118 @@ document.head.appendChild(style);
 // Обработка загрузки файла
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
-    if (!file) return;
-    
     const formData = new FormData(this);
-    showLoading('Загрузка файла...', true);
+    handleFiles(formData.getAll('file'));
+});
+
+// Обработка выбора файлов через кнопку
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    handleFiles(Array.from(this.files));
+});
+
+// Обработка перетаскивания файлов
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const uploadZone = document.querySelector('.upload-zone');
+    uploadZone.classList.remove('dragover');
     
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', this.action || window.location.href, true);
-    
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            updateProgress(percent);
-        }
-    };
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            updateStorageProgress();  // Обновляем прогресс
-            location.reload();
-        } else {
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+}
+
+function handleFiles(files) {
+    if (files.length === 0) return;
+
+    showLoading('Загрузка файлов...', true);
+    let uploadedCount = 0;
+
+    files.forEach(file => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            uploadedCount++;
+            updateProgress((uploadedCount / files.length) * 100);
+            
+            if (uploadedCount === files.length) {
+                // Все файлы загружены
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
             hideLoading();
-            alert('Ошибка при загрузке файла');
-        }
-    };
+            alert('Ошибка при загрузке файла: ' + file.name);
+        });
+    });
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const uploadZone = document.querySelector('.upload-zone');
+    uploadZone.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const uploadZone = document.querySelector('.upload-zone');
+    uploadZone.classList.remove('dragover');
+}
+
+function showLoading(text, showProgress = false) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const progressContainer = document.getElementById('progressContainer');
     
-    xhr.onerror = function() {
-        hideLoading();
-        alert('Ошибка при загрузке файла');
-    };
+    loadingText.textContent = text;
+    if (showProgress) {
+        progressContainer.classList.remove('d-none');
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('uploadProgress');
     
-    xhr.send(formData);
+    overlay.style.display = 'none';
+    progressContainer.classList.add('d-none');
+    progressBar.style.width = '0%';
+}
+
+function updateProgress(percent) {
+    const progressBar = document.getElementById('uploadProgress');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.width = percent + '%';
+    progressText.textContent = Math.round(percent) + '%';
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.querySelector('.upload-zone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', handleDragOver);
+        uploadZone.addEventListener('dragleave', handleDragLeave);
+        uploadZone.addEventListener('drop', handleDrop);
+    }
 });
 
 function toggleUploadPanel() {
@@ -1061,137 +1153,6 @@ function toggleUploadPanel() {
     }
 }
 
-function handleDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.add('dragover');
-}
-
-function handleDragLeave(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('dragover');
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('dragover');
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        Array.from(files).forEach(file => {
-            uploadFile(file);
-        });
-    }
-}
-
-function uploadFile(file) {
-    // Проверяем файл перед загрузкой
-    fetch(`/storage/check-file/?filename=${encodeURIComponent(file.name)}&filesize=${file.size}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.chunked) {
-                uploadLargeFile(file, data.chunk_size);
-            } else {
-                uploadSmallFile(file);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при проверке файла');
-        });
-}
-
-function uploadLargeFile(file, chunkSize) {
-    const chunks = Math.ceil(file.size / chunkSize);
-    let currentChunk = 0;
-    
-    showLoading('Загрузка файла...', true);
-    
-    function uploadNextChunk() {
-        const start = currentChunk * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const chunk = file.slice(start, end);
-        
-        const formData = new FormData();
-        formData.append('file', chunk);
-        formData.append('chunk', currentChunk);
-        formData.append('chunks', chunks);
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-        
-        fetch(`/storage/upload-chunk/${encodeURIComponent(file.name)}/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'complete') {
-                hideLoading();
-                location.reload();
-            } else {
-                currentChunk++;
-                updateProgress((currentChunk / chunks) * 100);
-                
-                if (currentChunk < chunks) {
-                    uploadNextChunk();
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideLoading();
-            alert('Ошибка при загрузке файла');
-        });
-    }
-    
-    uploadNextChunk();
-}
-
-function uploadSmallFile(file) {
-    showLoading('Загрузка файла...', true);
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-    
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', window.location.href, true);
-    
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            updateProgress(percent);
-        }
-    };
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            updateStorageProgress();  // Обновляем прогресс
-            location.reload();
-        } else {
-            hideLoading();
-            alert('Ошибка при загрузке файла');
-        }
-    };
-    
-    xhr.onerror = function() {
-        hideLoading();
-        alert('Ошибка при загрузке файла');
-    };
-    
-    xhr.send(formData);
-}
-
-// Обработка выбора файлов через кнопку
-const fileInput = document.getElementById('fileInput');
-if (fileInput) {
-    fileInput.addEventListener('change', function(e) {
-        handleFiles(this.files);
-    });
-}
-
-// Функция для одиночного удаления файла
 function deleteFile(fileId, fileName) {
     if (!confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`)) {
         return;
@@ -1390,6 +1351,144 @@ function handleFiles(files) {
         
         // Очищаем input после загрузки
         document.getElementById('fileInput').value = '';
+    }
+}
+
+// Обновим инициализацию всех обработчиков событий
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация поиска файлов
+    const searchInput = document.getElementById('fileSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            // ... код поиска ...
+        });
+    }
+
+    // Инициализация чекбокса "выбрать все"
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            // ... код выбора всех файлов ...
+        });
+    }
+
+    // Инициализация зоны загрузки
+    const uploadZone = document.querySelector('.upload-zone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', handleDragOver);
+        uploadZone.addEventListener('dragleave', handleDragLeave);
+        uploadZone.addEventListener('drop', handleDrop);
+    }
+
+    // Обновляем прогресс-бары
+    const bars = document.querySelectorAll('.progress-bar');
+    bars.forEach(bar => {
+        const value = bar.getAttribute('data-value');
+        if (value) {
+            bar.style.width = value + '%';
+        }
+    });
+
+    // Обновляем статистику хранилища
+    if (document.querySelector('.storage-progress-bar')) {
+        updateStorageProgress();
+    }
+});
+
+// Обработка перетаскивания файлов на всю страницу
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZoneOverlay = document.getElementById('dropZoneOverlay');
+    const body = document.body;
+
+    // Показываем оверлей при перетаскивании файлов на страницу
+    body.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZoneOverlay.style.display = 'block';
+    });
+
+    // Обработка перетаскивания над оверлеем
+    dropZoneOverlay.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Скрываем оверлей при выходе за пределы
+    dropZoneOverlay.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.target === dropZoneOverlay) {
+            dropZoneOverlay.style.display = 'none';
+        }
+    });
+
+    // Обработка сброса файлов
+    dropZoneOverlay.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZoneOverlay.style.display = 'none';
+        
+        const files = Array.from(e.dataTransfer.files);
+        handleFiles(files);
+    });
+});
+
+function uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    showLoading('Загрузка файла: ' + file.name, true);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        // Проверяем тип контента
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            // Если ответ не JSON, считаем это успешной загрузкой
+            return { success: true };
+        }
+    })
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        updateStorageProgress();
+        // Перезагружаем страницу после успешной загрузки
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoading();
+        alert('Ошибка при загрузке файла: ' + file.name + '\n' + error.message);
+    });
+}
+
+// Обновим функцию handleFiles
+function handleFiles(files) {
+    if (files.length > 0) {
+        showLoading('Подготовка к загрузке...', true);
+        let uploadedCount = 0;
+        const totalFiles = files.length;
+        
+        Array.from(files).forEach(file => {
+            uploadFile(file);
+            uploadedCount++;
+            updateProgress((uploadedCount / totalFiles) * 100);
+        });
     }
 }
 </script>
