@@ -495,10 +495,23 @@ def download_progress(request):
 def download_youtube_video(request):
     if request.method == 'POST':
         try:
-            url = request.POST.get('url')
+            url = request.POST.get('url', '').strip()  # Получаем и очищаем URL
+            if not url:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'URL не может быть пустым'
+                })
+
             format_id = request.POST.get('format', 'best')
             
-            # Обновленные настройки yt-dlp
+            # Проверяем валидность URL
+            if not url.startswith(('http://', 'https://')):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Неверный формат URL'
+                })
+
+            # Настройки yt-dlp
             ydl_opts = {
                 'format': format_id,
                 'outtmpl': '%(title)s.%(ext)s',
@@ -514,7 +527,6 @@ def download_youtube_video(request):
                     'key': 'FFmpegVideoConvertor',
                     'preferedformat': 'mp4',
                 }],
-                # Добавляем новые параметры
                 'http_chunk_size': 10485760,  # 10MB
                 'retries': 10,
                 'fragment_retries': 10,
@@ -533,56 +545,66 @@ def download_youtube_video(request):
                 ]
             }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Получаем информацию о видео
-                info = ydl.extract_info(url, download=False)
-                filename = ydl.prepare_filename(info)
-                
-                # Создаем папку для пользователя если её нет
-                user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
-                if not os.path.exists(user_folder):
-                    os.makedirs(user_folder)
-                
-                # Обновляем путь для сохранения
-                ydl_opts['outtmpl'] = os.path.join(user_folder, '%(title)s.%(ext)s')
-                
-                # Скачиваем видео с обновленными настройками
+            try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    # Получаем информацию о видео
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        raise Exception('Не удалось получить информацию о видео')
+
+                    filename = ydl.prepare_filename(info)
+                    
+                    # Создаем папку для пользователя если её нет
+                    user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
+                    if not os.path.exists(user_folder):
+                        os.makedirs(user_folder)
+                    
+                    # Обновляем путь для сохранения
+                    ydl_opts['outtmpl'] = os.path.join(user_folder, '%(title)s.%(ext)s')
+                    
+                    # Скачиваем видео
                     ydl.download([url])
-                
-                # Получаем финальное имя файла
-                filename = os.path.basename(filename)
-                
-                if request.user.is_authenticated:
-                    UserFile.objects.create(
-                        user=request.user,
-                        file=f'{request.user.id}/{filename}',
-                        filename=filename,
-                        file_type='video'
-                    )
-                    return JsonResponse({
-                        'success': True,
-                        'message': 'Видео успешно загружено в ваше хранилище',
-                        'redirect_url': reverse('dashboard')
-                    })
-                else:
-                    download_url = f'/media/temp_downloads/{filename}'
-                    return JsonResponse({
-                        'success': True,
-                        'download_url': download_url,
-                        'filename': filename
-                    })
+                    
+                    # Получаем финальное имя файла
+                    filename = os.path.basename(filename)
+                    
+                    if request.user.is_authenticated:
+                        UserFile.objects.create(
+                            user=request.user,
+                            file=f'{request.user.id}/{filename}',
+                            filename=filename,
+                            file_type='video'
+                        )
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Видео успешно загружено в ваше хранилище',
+                            'redirect_url': reverse('dashboard')
+                        })
+                    else:
+                        download_url = f'/media/temp_downloads/{filename}'
+                        return JsonResponse({
+                            'success': True,
+                            'download_url': download_url,
+                            'filename': filename
+                        })
+
+            except Exception as e:
+                print(f"YouTube download error: {str(e)}")
+                error_msg = str(e)
+                if 'Video unavailable' in error_msg:
+                    error_msg = 'Видео недоступно. Возможно, оно приватное или было удалено.'
+                elif 'Sign in' in error_msg:
+                    error_msg = 'Видео требует авторизации на YouTube.'
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Ошибка при загрузке видео: {error_msg}'
+                })
                     
         except Exception as e:
-            print(f"YouTube error details: {str(e)}")
-            error_msg = str(e)
-            if 'Video unavailable' in error_msg:
-                error_msg = 'Видео недоступно. Возможно, оно приватное или было удалено.'
-            elif 'Sign in' in error_msg:
-                error_msg = 'Видео требует авторизации на YouTube.'
+            print(f"General error: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'error': f'Ошибка при загрузке видео: {error_msg}'
+                'error': f'Ошибка при загрузке видео: {str(e)}'
             })
             
     return render(request, 'storage/youtube_download.html')
