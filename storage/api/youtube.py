@@ -81,15 +81,15 @@ def task_status(request, task_id):
 @permission_classes([IsAuthenticated])
 @renderer_classes([JSONRenderer])
 def task_list(request):
-    tasks = DownloadTask.objects.filter(user=request.user).order_by('-created_at')[:10]
+    tasks = DownloadTask.objects.filter(user=request.user).order_by('-created_at')[:5]
     return Response({
         'tasks': [{
             'id': task.id,
-            'url': task.url,
             'status': task.status,
             'progress': task.progress,
             'speed': task.speed,
             'error': task.error,
-            'created_at': task.created_at
+            'created_at': task.created_at,
+            'completed_at': task.completed_at
         } for task in tasks]
     }) 

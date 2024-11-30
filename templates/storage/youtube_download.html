@@ -92,15 +92,13 @@
     </div>
 </div>
 
-<!-- Добавим панель загрузок после формы -->
-<div class="card mt-4" id="downloadTasks">
+<!-- Добавьте после основной карточки -->
+<div class="card mt-4">
     <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-tasks me-2"></i>Загрузки
-        </h5>
+        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Текущие загрузки</h5>
     </div>
     <div class="card-body">
-        <div class="list-group" id="tasksList">
+        <div id="downloadTasks">
             <!-- Здесь будут отображаться задачи -->
         </div>
     </div>
@@ -366,50 +364,52 @@ function updateProgress(progress, speed) {
 }
 
 // Функция для обновления списка задач
-async function updateTasksList() {
-    const tasksList = document.getElementById('tasksList');
-    const response = await fetch('/storage/api/yt-tasks/');
-    const data = await response.json();
-    
-    tasksList.innerHTML = '';
-    
-    data.tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'list-group-item';
+async function updateTasks() {
+    try {
+        const response = await fetch('/storage/api/yt-tasks/');
+        const data = await response.json();
         
-        const statusClass = {
-            'pending': 'text-muted',
-            'processing': 'text-primary',
-            'completed': 'text-success',
-            'failed': 'text-danger'
-        }[task.status];
+        const tasksContainer = document.getElementById('downloadTasks');
+        tasksContainer.innerHTML = '';
         
-        taskElement.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-1">${task.url}</h6>
-                    <small class="${statusClass}">${task.status}</small>
+        data.tasks.forEach(task => {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task-item mb-3';
+            
+            const statusClass = {
+                'pending': 'bg-secondary',
+                'processing': 'bg-primary',
+                'completed': 'bg-success',
+                'failed': 'bg-danger'
+            }[task.status];
+            
+            taskElement.innerHTML = `
+                <div class="d-flex align-items-center mb-2">
+                    <h6 class="mb-0 me-2">${task.title || 'Загрузка...'}</h6>
+                    <span class="badge ${statusClass}">${task.status}</span>
                 </div>
-                <div class="text-end">
-                    <small class="text-muted">${new Date(task.created_at).toLocaleString()}</small>
+                <div class="progress" style="height: 5px;">
+                    <div class="progress-bar ${statusClass}" 
+                         role="progressbar" 
+                         style="width: ${task.progress}%" 
+                         aria-valuenow="${task.progress}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
                 </div>
-            </div>
-            ${task.status === 'processing' ? `
-                <div class="progress mt-2" style="height: 5px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                         role="progressbar" style="width: ${task.progress}%"></div>
-                </div>
-                <small class="text-muted">${task.progress.toFixed(1)}% • ${task.speed.toFixed(2)} MB/s</small>
-            ` : ''}
-            ${task.error ? `<small class="text-danger">${task.error}</small>` : ''}
-        `;
-        
-        tasksList.appendChild(taskElement);
-    });
+                ${task.speed ? `<small class="text-muted">${task.speed.toFixed(2)} MB/s</small>` : ''}
+                ${task.error ? `<div class="text-danger mt-1"><small>${task.error}</small></div>` : ''}
+            `;
+            
+            tasksContainer.appendChild(taskElement);
+        });
+    } catch (error) {
+        console.error('Error updating tasks:', error);
+    }
 }
 
 // Обновляем список задач каждые 2 секунды
-setInterval(updateTasksList, 2000);
+setInterval(updateTasks, 2000);
 </script>
 
 <style>
@@ -487,6 +487,16 @@ setInterval(updateTasksList, 2000);
 
 .progress-bar.bg-success {
     background-color: var(--bs-success) !important;
+}
+
+.task-item {
+    padding: 1rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+}
+
+.task-item .progress {
+    background-color: var(--bs-gray-200);
 }
 </style>
 {% endblock %} 

@@ -1,8 +1,6 @@
 import yt_dlp
 import os
 import logging
-import ssl
-import certifi
 from django.conf import settings
 from .models import UserFile, DownloadTask
 from django.utils import timezone
@@ -31,6 +29,25 @@ class VideoDownloader:
             except Exception as e:
                 logger.error(f"Progress callback error: {str(e)}")
                 
+    def replace_audio(self, video_path, audio_path, output_path):
+        try:
+            # Заменяем аудио дорожку с помощью ffmpeg
+            cmd = [
+                'ffmpeg', '-y',
+                '-i', video_path,  # Видео файл
+                '-i', audio_path,  # Аудио файл
+                '-c:v', 'copy',    # Копируем видео без перекодирования
+                '-c:a', 'aac',     # Кодируем аудио в AAC
+                '-map', '0:v:0',   # Берем видео из первого файла
+                '-map', '1:a:0',   # Берем аудио из второго файла
+                output_path
+            ]
+            subprocess.run(cmd, check=True)
+            return True
+        except Exception as e:
+            logger.error(f"Error replacing audio: {str(e)}")
+            return False
+                
     def download(self):
         try:
             self.task.status = 'processing'
@@ -39,82 +56,46 @@ class VideoDownloader:
             # Создаем папку пользователя
             user_folder = os.path.join(settings.MEDIA_ROOT, str(self.task.user.id))
             os.makedirs(user_folder, exist_ok=True)
-
-            # Общие настройки для всех загрузок
-            common_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'nocheckcertificate': True,
-                'socket_timeout': 30,
-                'retries': 10,
-                'fragment_retries': 10,
-                'http_chunk_size': 10485760,  # 10MB
-                'ssl_verify': False,
-                'legacy_server_connect': True
-            }
             
-            # Настройки для аудио
-            audio_opts = common_opts.copy()
-            audio_opts.update({
-                'format': 'worstvideo[ext=mp4]+bestaudio[ext=m4a]/worst[ext=mp4]',
-                'outtmpl': os.path.join(user_folder, 'temp_audio.%(ext)s'),
-            })
-
-            # Скачиваем аудио
-            with yt_dlp.YoutubeDL(audio_opts) as ydl:
-                try:
-                    ydl.download([self.task.url])
-                except Exception as e:
-                    logger.error(f"Audio download error: {str(e)}")
-                    raise
-
-            # Настройки для видео
-            video_opts = common_opts.copy()
-            video_opts.update({
-                'format': self.task.format_id if self.task.format_id else 'bestvideo[height<=1080][ext=mp4]',
+            # Скачиваем видео в лучшем качестве
+            ydl_opts = settings.YOUTUBE_DOWNLOAD_SETTINGS.copy()
+            ydl_opts.update({
+                'format': self.task.format_id if self.task.format_id else 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
                 'outtmpl': os.path.join(user_folder, '%(title)s.%(ext)s'),
                 'progress_hooks': [self.progress_callback],
+                'nocheckcertificate': True,
+                'no_warnings': True
             })
             
-            with yt_dlp.YoutubeDL(video_opts) as ydl:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Получаем информацию о видео
                 info = ydl.extract_info(self.task.url, download=False)
                 filename = ydl.prepare_filename(info)
                 
                 # Скачиваем видео
                 ydl.download([self.task.url])
-
-                try:
-                    # Объединяем видео и аудио с помощью ffmpeg
-                    temp_audio = os.path.join(user_folder, 'temp_audio.mp4')
-                    final_video = os.path.join(user_folder, os.path.basename(filename))
-                    output_file = os.path.join(user_folder, 'final_' + os.path.basename(filename))
-
-                    subprocess.run([
-                        'ffmpeg',
-                        '-i', final_video,  # видео
-                        '-i', temp_audio,   # аудио
-                        '-c:v', 'copy',     # копируем видео без перекодирования
-                        '-c:a', 'aac',      # кодируем аудио в AAC
-                        '-strict', 'experimental',
-                        '-map', '0:v:0',    # берем видео из первого файла
-                        '-map', '1:a:0',    # берем аудио из второго файла
-                        '-y',               # перезаписываем файл если существует
-                        output_file
-                    ], check=True)
-
+                
+                # Скачиваем аудио из низкого качества
+                audio_opts = ydl_opts.copy()
+                audio_opts.update({
+                    'format': 'worstaudio/worst',
+                    'outtmpl': os.path.join(user_folder, 'temp_audio.%(ext)s')
+                })
+                
+                with yt_dlp.YoutubeDL(audio_opts) as audio_ydl:
+                    audio_ydl.download([self.task.url])
+                
+                # Заменяем аудио дорожку
+                video_path = filename
+                audio_path = os.path.join(user_folder, 'temp_audio.webm')  # или другое расширение
+                output_path = os.path.join(user_folder, f'final_{os.path.basename(filename)}')
+                
+                if self.replace_audio(video_path, audio_path, output_path):
                     # Удаляем временные файлы
-                    os.remove(temp_audio)
-                    os.remove(final_video)
-                    os.rename(output_file, final_video)
-
-                except subprocess.CalledProcessError as e:
-                    logger.error(f"FFmpeg error: {str(e)}")
-                    raise
-                except Exception as e:
-                    logger.error(f"File processing error: {str(e)}")
-                    raise
-
+                    os.remove(video_path)
+                    os.remove(audio_path)
+                    os.rename(output_path, video_path)
+                
                 # Создаем запись файла
                 UserFile.objects.create(
                     user=self.task.user,
