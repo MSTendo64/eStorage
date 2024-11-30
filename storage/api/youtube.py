@@ -8,6 +8,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def progress_hook(d):
+    if d['status'] == 'downloading':
+        try:
+            total_bytes = d.get('total_bytes')
+            downloaded_bytes = d.get('downloaded_bytes', 0)
+            if total_bytes:
+                percentage = (downloaded_bytes / total_bytes) * 100
+                speed = d.get('speed', 0)
+                speed_mb = speed / 1024 / 1024 if speed else 0
+                from storage.views import progress_queue
+                progress_queue.put(f"{percentage:.1f}:{speed_mb:.2f}")
+        except Exception as e:
+            logger.error(f"Progress hook error: {str(e)}")
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def youtube_download(request):
@@ -35,24 +49,21 @@ def youtube_download(request):
             'no_warnings': True
         })
 
-        def progress_hook(d):
-            if d['status'] == 'downloading':
-                try:
-                    total_bytes = d.get('total_bytes')
-                    downloaded_bytes = d.get('downloaded_bytes', 0)
-                    if total_bytes:
-                        percentage = (downloaded_bytes / total_bytes) * 100
-                        speed = d.get('speed', 0)
-                        speed_mb = speed / 1024 / 1024 if speed else 0
-                        from storage.views import progress_queue
-                        progress_queue.put(f"{percentage:.1f}:{speed_mb:.2f}")
-                except Exception as e:
-                    logger.error(f"Progress hook error: {str(e)}")
-
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([youtube_url])
                 logger.info(f"Video downloaded successfully: {youtube_url}")
+                
+                # Создаем запись в базе данных
+                from storage.models import UserFile
+                filename = os.path.basename(ydl.prepare_filename(ydl.extract_info(youtube_url, download=False)))
+                UserFile.objects.create(
+                    user=request.user,
+                    file=f'{request.user.id}/{filename}',
+                    filename=filename,
+                    file_type='video'
+                )
+                
                 return Response({'success': True})
         except Exception as e:
             logger.error(f"Download error: {str(e)}")
