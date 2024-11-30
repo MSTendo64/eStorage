@@ -151,7 +151,6 @@ class DownloadTask(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.URLField()
-    title = models.CharField(max_length=255, null=True, blank=True)
     format_id = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     progress = models.FloatField(default=0)
@@ -160,6 +159,7 @@ class DownloadTask(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    title = models.CharField(max_length=255, null=True, blank=True)
     
     class Meta:
         ordering = ['-created_at']
