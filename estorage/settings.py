@@ -148,7 +148,14 @@ YOUTUBE_DOWNLOAD_SETTINGS = {
         'size',
         'br',
         'asr'
-    ]
+    ],
+    'nocheckcertificate': True,
+    'no_warnings': True,
+    'quiet': True,
+    'socket_timeout': 30,
+    'retries': 10,
+    'ignoreerrors': True,
+    'noplaylist': True,
 }
 
 # Video quality requirements
