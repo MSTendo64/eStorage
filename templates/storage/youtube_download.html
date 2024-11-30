@@ -138,6 +138,38 @@ async function checkVideo(url) {
     }
 }
 
+// Обновляем обработку прогресса
+let eventSource = null;
+
+function startProgressMonitoring() {
+    // Закрываем предыдущее соединение если есть
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    eventSource = new EventSource('/storage/youtube/progress/');
+    
+    eventSource.onmessage = function(e) {
+        if (e.data === 'ping') return;  // Игнорируем пинги
+        
+        const [percent, speed] = e.data.split(':');
+        if (percent && speed) {
+            document.querySelector('.progress-bar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = percent + '%';
+            document.getElementById('speedText').textContent = speed + ' MB/s';
+            
+            if (parseFloat(percent) >= 100) {
+                eventSource.close();
+            }
+        }
+    };
+
+    eventSource.onerror = function(e) {
+        console.error('SSE Error:', e);
+        eventSource.close();
+    };
+}
+
 async function downloadVideo() {
     const url = document.getElementById('youtubeUrl').value;
     const formatId = document.getElementById('formatSelect').value;
@@ -146,7 +178,9 @@ async function downloadVideo() {
         showLoading('Подготовка к загрузке...');
         document.getElementById('downloadProgress').style.display = 'block';
         
-        // Используем новый API endpoint
+        // Запускаем мониторинг прогресса
+        startProgressMonitoring();
+        
         const response = await fetch('/storage/api/yt-download/', {
             method: 'POST',
             headers: {
@@ -162,7 +196,6 @@ async function downloadVideo() {
         const data = await response.json();
         
         if (data.success) {
-            // Показываем сообщение об успехе
             alert('Видео успешно загружено!');
             location.reload();
         } else {
@@ -171,23 +204,20 @@ async function downloadVideo() {
     } catch (error) {
         alert('Ошибка при загрузке видео: ' + error.message);
     } finally {
+        if (eventSource) {
+            eventSource.close();
+        }
         hideLoading();
         document.getElementById('downloadProgress').style.display = 'none';
     }
 }
 
-// Подключаемся к SSE для получения прогресса
-const eventSource = new EventSource('/storage/youtube/progress/');
-eventSource.onmessage = function(e) {
-    const [percent, speed] = e.data.split(':');
-    document.querySelector('.progress-bar').style.width = percent + '%';
-    document.getElementById('progressText').textContent = percent + '%';
-    document.getElementById('speedText').textContent = speed + ' MB/s';
-    
-    if (percent >= 100) {
+// При уходе со страницы закрываем соединение
+window.addEventListener('beforeunload', function() {
+    if (eventSource) {
         eventSource.close();
     }
-};
+});
 
 // Вспомогательные функции
 function formatDuration(seconds) {

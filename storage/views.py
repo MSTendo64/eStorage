@@ -481,16 +481,28 @@ def get_video_info(request):
         })
 
 def download_progress(request):
-    def generate():
+    """
+    Server-Sent Events endpoint для отслеживания прогресса загрузки
+    """
+    def event_stream():
         while True:
             try:
-                progress = progress_queue.get(timeout=30)  # 30 секунд таймаут
-                yield f"data: {progress}\n\n"
+                # Получаем данные из очереди с таймаутом
+                data = progress_queue.get(timeout=30)
+                yield f"data: {data}\n\n"
             except queue.Empty:
+                # Отправляем пинг каждые 30 секунд чтобы поддерживать соединение
+                yield f"data: ping\n\n"
+            except Exception as e:
+                logger.error(f"Error in event stream: {str(e)}")
                 break
-    
-    response = StreamingHttpResponse(generate(), content_type='text/event-stream')
+
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
     response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # Отключаем буферизацию Nginx
     return response
 
 def download_youtube_video(request):
