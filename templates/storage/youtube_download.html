@@ -145,32 +145,58 @@ async function checkVideo(url) {
 let eventSource = null;
 
 function startProgressMonitoring() {
-    // Закрываем предыдущее соединение если есть
     if (eventSource) {
         eventSource.close();
     }
 
-    eventSource = new EventSource('/storage/youtube/progress/');
-    
-    eventSource.onmessage = function(e) {
-        if (e.data === 'ping') return;  // Игнорируем пинги
+    try {
+        eventSource = new EventSource('/storage/youtube/progress/');
         
-        const [percent, speed] = e.data.split(':');
-        if (percent && speed) {
-            document.querySelector('.progress-bar').style.width = percent + '%';
-            document.getElementById('progressText').textContent = percent + '%';
-            document.getElementById('speedText').textContent = speed + ' MB/s';
+        eventSource.onmessage = function(e) {
+            if (e.data === 'ping') return;
             
-            if (parseFloat(percent) >= 100) {
+            if (e.data.startsWith('error:')) {
+                console.error('SSE Error:', e.data);
                 eventSource.close();
+                return;
             }
-        }
-    };
+            
+            const [percent, speed] = e.data.split(':');
+            if (percent && speed) {
+                const progressBar = document.querySelector('.progress-bar');
+                const progressText = document.getElementById('progressText');
+                const speedText = document.getElementById('speedText');
+                
+                if (progressBar && progressText && speedText) {
+                    progressBar.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                    speedText.textContent = speed + ' MB/s';
+                    
+                    if (parseFloat(percent) >= 100) {
+                        eventSource.close();
+                    }
+                }
+            }
+        };
 
-    eventSource.onerror = function(e) {
-        console.error('SSE Error:', e);
-        eventSource.close();
-    };
+        eventSource.onerror = function(e) {
+            console.error('SSE Error:', e);
+            if (eventSource.readyState === EventSource.CLOSED) {
+                console.log('SSE connection closed');
+            } else {
+                setTimeout(() => {
+                    console.log('Attempting to reconnect...');
+                    startProgressMonitoring();
+                }, 5000);
+            }
+        };
+
+        eventSource.onopen = function() {
+            console.log('SSE connection opened');
+        };
+    } catch (error) {
+        console.error('Error setting up SSE:', error);
+    }
 }
 
 async function downloadVideo() {
