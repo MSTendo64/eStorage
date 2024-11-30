@@ -72,6 +72,10 @@ class VideoDownloader:
                 info = ydl.extract_info(self.task.url, download=False)
                 filename = ydl.prepare_filename(info)
                 
+                # Сохраняем заголовок
+                self.task.title = info.get('title', '')
+                self.task.save(update_fields=['title'])
+                
                 # Скачиваем видео
                 ydl.download([self.task.url])
                 
@@ -107,6 +111,10 @@ class VideoDownloader:
                     duration=info.get('duration', 0),
                     thumbnail_url=info.get('thumbnail', '')
                 )
+                
+                if self.task.progress >= 100:
+                    self.task.status = 'saving'
+                    self.task.save(update_fields=['status'])
                 
                 self.task.status = 'completed'
                 self.task.completed_at = timezone.now()

@@ -379,14 +379,23 @@ async function updateTasks() {
             const statusClass = {
                 'pending': 'bg-secondary',
                 'processing': 'bg-primary',
+                'saving': 'bg-info',
                 'completed': 'bg-success',
                 'failed': 'bg-danger'
+            }[task.status];
+            
+            const statusText = {
+                'pending': 'В очереди',
+                'processing': 'Загрузка',
+                'saving': 'Сохранение',
+                'completed': 'Завершено',
+                'failed': 'Ошибка'
             }[task.status];
             
             taskElement.innerHTML = `
                 <div class="d-flex align-items-center mb-2">
                     <h6 class="mb-0 me-2">${task.title || 'Загрузка...'}</h6>
-                    <span class="badge ${statusClass}">${task.status}</span>
+                    <span class="badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="progress" style="height: 5px;">
                     <div class="progress-bar ${statusClass}" 
@@ -397,11 +406,19 @@ async function updateTasks() {
                          aria-valuemax="100">
                     </div>
                 </div>
-                ${task.speed ? `<small class="text-muted">${task.speed.toFixed(2)} MB/s</small>` : ''}
+                ${task.status === 'processing' ? 
+                    `<small class="text-muted">${task.speed ? task.speed.toFixed(2) + ' MB/s' : ''}</small>` : ''}
                 ${task.error ? `<div class="text-danger mt-1"><small>${task.error}</small></div>` : ''}
             `;
             
             tasksContainer.appendChild(taskElement);
+            
+            // Если задача завершена, обновляем страницу через 2 секунды
+            if (task.status === 'completed') {
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            }
         });
     } catch (error) {
         console.error('Error updating tasks:', error);

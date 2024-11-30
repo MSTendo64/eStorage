@@ -90,6 +90,8 @@ def task_list(request):
             'speed': task.speed,
             'error': task.error,
             'created_at': task.created_at,
-            'completed_at': task.completed_at
+            'completed_at': task.completed_at,
+            'url': task.url,
+            'title': task.title
         } for task in tasks]
     }) 
