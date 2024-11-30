@@ -91,7 +91,7 @@ def task_list(request):
             'error': task.error,
             'created_at': task.created_at,
             'completed_at': task.completed_at,
-            'url': task.url,
-            'title': task.title
+            'title': task.title,
+            'url': task.url
         } for task in tasks]
     }) 

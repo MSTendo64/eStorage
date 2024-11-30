@@ -406,19 +406,18 @@ async function updateTasks() {
                          aria-valuemax="100">
                     </div>
                 </div>
-                ${task.status === 'processing' ? 
-                    `<small class="text-muted">${task.speed ? task.speed.toFixed(2) + ' MB/s' : ''}</small>` : ''}
-                ${task.error ? `<div class="text-danger mt-1"><small>${task.error}</small></div>` : ''}
+                ${task.status === 'completed' ? 
+                    '<div class="text-success mt-1"><small><i class="fas fa-check me-1"></i>Загрузка завершена</small></div>' :
+                    task.status === 'saving' ? 
+                        '<div class="text-info mt-1"><small><i class="fas fa-cog fa-spin me-1"></i>Сохранение файла...</small></div>' :
+                    task.status === 'processing' && task.speed ? 
+                        `<small class="text-muted">${task.speed.toFixed(2)} MB/s</small>` : 
+                    task.error ? 
+                        `<div class="text-danger mt-1"><small>${task.error}</small></div>` : ''
+                }
             `;
             
             tasksContainer.appendChild(taskElement);
-            
-            // Если задача завершена, обновляем страницу через 2 секунды
-            if (task.status === 'completed') {
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-            }
         });
     } catch (error) {
         console.error('Error updating tasks:', error);
