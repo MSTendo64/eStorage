@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from ..models import DownloadTask
@@ -7,7 +7,7 @@ from ..tasks import VideoDownloader
 import threading
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 @renderer_classes([JSONRenderer])
 def youtube_download(request):
     try:
@@ -19,6 +19,14 @@ def youtube_download(request):
                 'success': False,
                 'error': 'URL не указан'
             }, status=400)
+        
+        # Проверяем авторизацию
+        if not request.user.is_authenticated:
+            return Response({
+                'success': False,
+                'error': 'Для скачивания видео необходимо авторизоваться',
+                'require_auth': True
+            }, status=401)
             
         # Создаем задачу
         task = DownloadTask.objects.create(
@@ -45,10 +53,18 @@ def youtube_download(request):
         }, status=500)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 @renderer_classes([JSONRenderer])
 def task_status(request, task_id):
     try:
+        # Проверяем авторизацию
+        if not request.user.is_authenticated:
+            return Response({
+                'success': False,
+                'error': 'Для просмотра статуса необходимо авторизоваться',
+                'require_auth': True
+            }, status=401)
+            
         task = DownloadTask.objects.get(id=task_id, user=request.user)
         return Response({
             'status': task.status,

@@ -226,7 +226,14 @@ async function downloadVideo() {
             // Запускаем мониторинг прогресса
             monitorProgress(data.task_id);
         } else {
-            throw new Error(data.error);
+            if (data.require_auth) {
+                // Если требуется авторизация, перенаправляем на страницу входа
+                const loginUrl = '{% url "login" %}';
+                const currentUrl = encodeURIComponent(window.location.pathname);
+                window.location.href = `${loginUrl}?next=${currentUrl}`;
+            } else {
+                throw new Error(data.error);
+            }
         }
     } catch (error) {
         alert('Ошибка при загрузке видео: ' + error.message);
@@ -240,6 +247,14 @@ async function monitorProgress(taskId) {
         while (true) {
             const response = await fetch(`/storage/api/yt-task/${taskId}/`);
             const data = await response.json();
+            
+            if (data.require_auth) {
+                // Если сессия истекла, перенаправляем на страницу входа
+                const loginUrl = '{% url "login" %}';
+                const currentUrl = encodeURIComponent(window.location.pathname);
+                window.location.href = `${loginUrl}?next=${currentUrl}`;
+                break;
+            }
             
             updateProgress(data.progress, data.speed);
             
@@ -298,6 +313,41 @@ function hideLoading() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {  // Добавляем проверку
         overlay.style.display = 'none';
+    }
+}
+
+function updateProgress(progress, speed) {
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    const speedText = document.getElementById('speedText');
+    
+    if (progressBar && progressText && speedText) {
+        // Округляем значения для лучшего отображения
+        const roundedProgress = Math.round(progress * 10) / 10;
+        const roundedSpeed = Math.round(speed * 100) / 100;
+        
+        // Обновляем прогресс-бар
+        progressBar.style.width = `${roundedProgress}%`;
+        progressBar.setAttribute('aria-valuenow', roundedProgress);
+        
+        // Обновляем текст
+        progressText.textContent = `${roundedProgress}%`;
+        speedText.textContent = `${roundedSpeed} MB/s`;
+        
+        // Добавляем анимацию для плавности
+        progressBar.style.transition = 'width 0.3s ease-in-out';
+        
+        // Меняем цвет в зависимости от прогресса
+        if (roundedProgress < 30) {
+            progressBar.classList.remove('bg-success', 'bg-warning');
+            progressBar.classList.add('bg-info');
+        } else if (roundedProgress < 70) {
+            progressBar.classList.remove('bg-info', 'bg-success');
+            progressBar.classList.add('bg-warning');
+        } else {
+            progressBar.classList.remove('bg-info', 'bg-warning');
+            progressBar.classList.add('bg-success');
+        }
     }
 }
 </script>
@@ -361,6 +411,22 @@ function hideLoading() {
 
 .upload-progress {
     height: 0.5rem;
+}
+
+.progress-bar {
+    transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+}
+
+.progress-bar.bg-info {
+    background-color: var(--bs-info) !important;
+}
+
+.progress-bar.bg-warning {
+    background-color: var(--bs-warning) !important;
+}
+
+.progress-bar.bg-success {
+    background-color: var(--bs-success) !important;
 }
 </style>
 {% endblock %} 

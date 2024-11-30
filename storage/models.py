@@ -25,7 +25,13 @@ class UserFile(models.Model):
     is_public = models.BooleanField(default=False)
     public_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
     file_size = models.BigIntegerField(default=0)
-
+    
+    # Добавляем поля для информации о видео
+    title = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    duration = models.IntegerField(null=True, blank=True)
+    thumbnail_url = models.URLField(null=True, blank=True)
+    
     class Meta:
         ordering = ['-uploaded_at']
 
@@ -34,6 +40,7 @@ class UserFile(models.Model):
             self.public_token = uuid.uuid4().hex
         elif not self.is_public:
             self.public_token = None
+            
         # Определяем тип файла по расширению
         ext = os.path.splitext(self.filename)[1].lower()
         if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
@@ -46,8 +53,10 @@ class UserFile(models.Model):
             self.file_type = 'archive'
         else:
             self.file_type = 'other'
+            
         if not self.file_size and self.file:
             self.file_size = self.file.size
+            
         super().save(*args, **kwargs)
 
     @property
