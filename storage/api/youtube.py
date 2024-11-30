@@ -1,12 +1,14 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, renderer_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer
 from ..models import DownloadTask
 from ..tasks import VideoDownloader
 import threading
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@renderer_classes([JSONRenderer])
 def youtube_download(request):
     try:
         url = request.data.get('url')
@@ -44,6 +46,7 @@ def youtube_download(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@renderer_classes([JSONRenderer])
 def task_status(request, task_id):
     try:
         task = DownloadTask.objects.get(id=task_id, user=request.user)
