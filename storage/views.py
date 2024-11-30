@@ -481,41 +481,35 @@ def get_video_info(request):
         })
 
 def download_progress(request):
-    """
-    Server-Sent Events endpoint для отслеживания прогресса загрузки
-    """
     def event_stream():
         try:
             while True:
                 try:
-                    # Получаем данные из очереди с таймаутом
                     data = progress_queue.get(timeout=30)
                     if data:
                         yield f"data: {data}\n\n"
+                    else:
+                        yield "data: ping\n\n"
                 except queue.Empty:
-                    # Отправляем пинг каждые 30 секунд
                     yield "data: ping\n\n"
                 except Exception as e:
-                    logger.error(f"Error in event stream: {str(e)}")
-                    yield f"data: error: {str(e)}\n\n"
+                    logger.error(f"Stream error: {str(e)}")
+                    yield f"data: error:{str(e)}\n\n"
                     break
         except GeneratorExit:
             logger.info("Client disconnected")
         except Exception as e:
             logger.error(f"Stream error: {str(e)}")
 
-    try:
-        response = StreamingHttpResponse(
-            event_stream(),
-            content_type='text/event-stream'
-        )
-        response['Cache-Control'] = 'no-cache'
-        response['X-Accel-Buffering'] = 'no'
-        response['Access-Control-Allow-Origin'] = '*'
-        return response
-    except Exception as e:
-        logger.error(f"SSE setup error: {str(e)}")
-        return HttpResponse(status=500)
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Access-Control-Allow-Headers'] = '*'
+    return response
 
 def download_youtube_video(request):
     if request.method == 'POST':

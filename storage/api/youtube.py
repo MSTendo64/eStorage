@@ -11,43 +11,16 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def youtube_download(request):
-    """
-    API endpoint для загрузки видео с YouTube
-    POST /api/yt-download/
-    
-    Параметры:
-    - url: URL видео на YouTube
-    - format_id: ID формата видео (опционально)
-    """
-    youtube_url = request.data.get('url')
-    format_id = request.data.get('format_id')
-    
-    if not youtube_url:
-        return Response({
-            'success': False,
-            'error': 'URL не указан'
-        }, status=400)
-        
     try:
-        # Получаем информацию о видео
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'nocheckcertificate': True,
-            'extract_flat': True
-        }
+        youtube_url = request.data.get('url')
+        format_id = request.data.get('format_id')
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(youtube_url, download=False)
-                logger.info(f"Video info extracted: {info.get('title')}")
-            except Exception as e:
-                logger.error(f"Error extracting video info: {str(e)}")
-                return Response({
-                    'success': False,
-                    'error': f'Ошибка при получении информации о видео: {str(e)}'
-                }, status=400)
-
+        if not youtube_url:
+            return Response({
+                'success': False,
+                'error': 'URL не указан'
+            }, status=400)
+            
         # Определяем папку для сохранения
         user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
         os.makedirs(user_folder, exist_ok=True)
@@ -57,31 +30,40 @@ def youtube_download(request):
         ydl_opts.update({
             'format': format_id if format_id else 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
             'outtmpl': os.path.join(user_folder, '%(title)s.%(ext)s'),
+            'progress_hooks': [progress_hook],
+            'nocheckcertificate': True,
+            'no_warnings': True
         })
+
+        def progress_hook(d):
+            if d['status'] == 'downloading':
+                try:
+                    total_bytes = d.get('total_bytes')
+                    downloaded_bytes = d.get('downloaded_bytes', 0)
+                    if total_bytes:
+                        percentage = (downloaded_bytes / total_bytes) * 100
+                        speed = d.get('speed', 0)
+                        speed_mb = speed / 1024 / 1024 if speed else 0
+                        from storage.views import progress_queue
+                        progress_queue.put(f"{percentage:.1f}:{speed_mb:.2f}")
+                except Exception as e:
+                    logger.error(f"Progress hook error: {str(e)}")
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([youtube_url])
                 logger.info(f"Video downloaded successfully: {youtube_url}")
-                
-                return Response({
-                    'success': True,
-                    'title': info.get('title'),
-                    'duration': info.get('duration'),
-                    'thumbnail': info.get('thumbnail'),
-                    'message': 'Видео успешно загружено'
-                })
-                
+                return Response({'success': True})
         except Exception as e:
-            logger.error(f"Error downloading video: {str(e)}")
+            logger.error(f"Download error: {str(e)}")
             return Response({
                 'success': False,
-                'error': f'Ошибка при загрузке видео: {str(e)}'
+                'error': str(e)
             }, status=400)
 
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"API error: {str(e)}")
         return Response({
             'success': False,
-            'error': f'Неожиданная ошибка: {str(e)}'
+            'error': str(e)
         }, status=500) 
