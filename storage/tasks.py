@@ -1,9 +1,12 @@
 import yt_dlp
 import os
 import logging
+import ssl
+import certifi
 from django.conf import settings
 from .models import UserFile, DownloadTask
 from django.utils import timezone
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -36,63 +39,82 @@ class VideoDownloader:
             # Создаем папку пользователя
             user_folder = os.path.join(settings.MEDIA_ROOT, str(self.task.user.id))
             os.makedirs(user_folder, exist_ok=True)
-            
-            # Сначала скачиваем видео в низком качестве для аудио
-            audio_opts = {
-                'format': 'best[height<=360][ext=mp4]/best[height<=144][ext=mp4]',
+
+            # Общие настройки для всех загрузок
+            common_opts = {
                 'quiet': True,
                 'no_warnings': True,
-                'outtmpl': os.path.join(user_folder, 'temp_audio.mp4'),
+                'nocheckcertificate': True,
+                'socket_timeout': 30,
+                'retries': 10,
+                'fragment_retries': 10,
+                'http_chunk_size': 10485760,  # 10MB
+                'ssl_verify': False,
+                'legacy_server_connect': True
             }
+            
+            # Настройки для аудио
+            audio_opts = common_opts.copy()
+            audio_opts.update({
+                'format': 'worstvideo[ext=mp4]+bestaudio[ext=m4a]/worst[ext=mp4]',
+                'outtmpl': os.path.join(user_folder, 'temp_audio.%(ext)s'),
+            })
 
+            # Скачиваем аудио
             with yt_dlp.YoutubeDL(audio_opts) as ydl:
-                ydl.download([self.task.url])
-                temp_audio_path = os.path.join(user_folder, 'temp_audio.mp4')
+                try:
+                    ydl.download([self.task.url])
+                except Exception as e:
+                    logger.error(f"Audio download error: {str(e)}")
+                    raise
 
-            # Настройки для загрузки основного видео
-            ydl_opts = settings.YOUTUBE_DOWNLOAD_SETTINGS.copy()
-            ydl_opts.update({
-                'format': self.task.format_id if self.task.format_id else 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
+            # Настройки для видео
+            video_opts = common_opts.copy()
+            video_opts.update({
+                'format': self.task.format_id if self.task.format_id else 'bestvideo[height<=1080][ext=mp4]',
                 'outtmpl': os.path.join(user_folder, '%(title)s.%(ext)s'),
                 'progress_hooks': [self.progress_callback],
-                'nocheckcertificate': True,
-                'no_warnings': True
             })
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(video_opts) as ydl:
                 # Получаем информацию о видео
                 info = ydl.extract_info(self.task.url, download=False)
                 filename = ydl.prepare_filename(info)
                 
                 # Скачиваем видео
                 ydl.download([self.task.url])
-                
-                # Извлекаем аудио из низкого качества
-                import subprocess
-                subprocess.run([
-                    'ffmpeg', '-i', temp_audio_path,
-                    '-vn', '-acodec', 'copy',
-                    os.path.join(user_folder, 'temp_audio_only.aac')
-                ])
 
-                # Комбинируем видео с аудио
-                final_path = os.path.join(user_folder, os.path.basename(filename))
-                subprocess.run([
-                    'ffmpeg', '-i', final_path,
-                    '-i', os.path.join(user_folder, 'temp_audio_only.aac'),
-                    '-c:v', 'copy', '-c:a', 'aac',
-                    os.path.join(user_folder, 'final_' + os.path.basename(filename))
-                ])
+                try:
+                    # Объединяем видео и аудио с помощью ffmpeg
+                    temp_audio = os.path.join(user_folder, 'temp_audio.mp4')
+                    final_video = os.path.join(user_folder, os.path.basename(filename))
+                    output_file = os.path.join(user_folder, 'final_' + os.path.basename(filename))
 
-                # Удаляем временные файлы
-                os.remove(temp_audio_path)
-                os.remove(os.path.join(user_folder, 'temp_audio_only.aac'))
-                os.remove(final_path)
-                os.rename(
-                    os.path.join(user_folder, 'final_' + os.path.basename(filename)),
-                    final_path
-                )
-                
+                    subprocess.run([
+                        'ffmpeg',
+                        '-i', final_video,  # видео
+                        '-i', temp_audio,   # аудио
+                        '-c:v', 'copy',     # копируем видео без перекодирования
+                        '-c:a', 'aac',      # кодируем аудио в AAC
+                        '-strict', 'experimental',
+                        '-map', '0:v:0',    # берем видео из первого файла
+                        '-map', '1:a:0',    # берем аудио из второго файла
+                        '-y',               # перезаписываем файл если существует
+                        output_file
+                    ], check=True)
+
+                    # Удаляем временные файлы
+                    os.remove(temp_audio)
+                    os.remove(final_video)
+                    os.rename(output_file, final_video)
+
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"FFmpeg error: {str(e)}")
+                    raise
+                except Exception as e:
+                    logger.error(f"File processing error: {str(e)}")
+                    raise
+
                 # Создаем запись файла
                 UserFile.objects.create(
                     user=self.task.user,
