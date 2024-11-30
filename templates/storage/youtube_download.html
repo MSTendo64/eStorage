@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}Скачать с YouTube | Eventshock Storage{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fab fa-youtube text-danger me-2"></i>Скачать видео с YouTube</h5>
+    </div>
+    <div class="card-body">
+        {% if not is_authenticated %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Для скачивания видео длиннее {{ max_duration }} минут необходимо 
+                <a href="{% url 'login' %}?next={{ request.path }}">авторизоваться</a>
+            </div>
+        {% endif %}
+
+        <form id="youtubeForm" class="mb-4">
+            <div class="mb-3">
+                <label class="form-label">URL видео</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fab fa-youtube"></i>
+                    </span>
+                    <input type="url" class="form-control" id="youtubeUrl" 
+                           placeholder="https://www.youtube.com/watch?v=..." required>
+                    <button type="submit" class="btn btn-primary" id="checkButton">
+                        <i class="fas fa-search me-2"></i>Проверить
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Информация о видео -->
+        <div id="videoInfo" style="display: none;">
+            <div class="row">
+                <div class="col-md-4">
+                    <img id="thumbnail" src="" alt="Thumbnail" class="img-fluid rounded mb-3">
+                </div>
+                <div class="col-md-8">
+                    <h5 id="videoTitle"></h5>
+                    <p id="videoChannel" class="text-muted"></p>
+                    <div id="videoStats" class="mb-3">
+                        <span class="me-3"><i class="fas fa-clock me-1"></i><span id="videoDuration"></span></span>
+                        <span><i class="fas fa-eye me-1"></i><span id="videoViews"></span></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Качество видео</label>
+                        <select class="form-select" id="formatSelect"></select>
+                    </div>
+                    
+                    <button class="btn btn-success" id="downloadButton" onclick="downloadVideo()">
+                        <i class="fas fa-download me-2"></i>Скачать
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Прогресс загрузки -->
+        <div id="downloadProgress" class="mt-4" style="display: none;">
+            <div class="progress mb-2" style="height: 20px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%"></div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span id="progressText">0%</span>
+                <span id="speedText">0 MB/s</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedFormatId = null;
+
+document.getElementById('youtubeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const url = document.getElementById('youtubeUrl').value;
+    await checkVideo(url);
+});
+
+async function checkVideo(url) {
+    try {
+        showLoading('Получение информации о видео...');
+        const response = await fetch('/storage/youtube/preview/?url=' + encodeURIComponent(url));
+        const data = await response.json();
+        
+        if (data.success) {
+            // Показываем информацию о видео
+            document.getElementById('videoInfo').style.display = 'block';
+            document.getElementById('thumbnail').src = data.thumbnail_url;
+            document.getElementById('videoTitle').textContent = data.title;
+            document.getElementById('videoChannel').textContent = data.channel;
+            document.getElementById('videoDuration').textContent = formatDuration(data.duration);
+            document.getElementById('videoViews').textContent = formatNumber(data.view_count);
+            
+            // Заполняем список форматов
+            const formatSelect = document.getElementById('formatSelect');
+            formatSelect.innerHTML = '';
+            data.formats.forEach(format => {
+                const option = document.createElement('option');
+                option.value = format.format_id;
+                option.textContent = `${format.resolution} (${format.fps}fps)`;
+                formatSelect.appendChild(option);
+            });
+            
+            // Устанавливаем формат по умолчанию
+            if (data.default_format) {
+                formatSelect.value = data.default_format;
+                selectedFormatId = data.default_format;
+            }
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        alert('Ошибка при получении информации о видео: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function downloadVideo() {
+    const url = document.getElementById('youtubeUrl').value;
+    const formatId = document.getElementById('formatSelect').value;
+    
+    try {
+        showLoading('Подготовка к загрузке...');
+        document.getElementById('downloadProgress').style.display = 'block';
+        
+        // Используем новый API endpoint
+        const response = await fetch('/storage/api/yt-download/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                url: url,
+                format_id: formatId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Показываем сообщение об успехе
+            alert('Видео успешно загружено!');
+            location.reload();
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        alert('Ошибка при загрузке видео: ' + error.message);
+    } finally {
+        hideLoading();
+        document.getElementById('downloadProgress').style.display = 'none';
+    }
+}
+
+// Подключаемся к SSE для получения прогресса
+const eventSource = new EventSource('/storage/youtube/progress/');
+eventSource.onmessage = function(e) {
+    const [percent, speed] = e.data.split(':');
+    document.querySelector('.progress-bar').style.width = percent + '%';
+    document.getElementById('progressText').textContent = percent + '%';
+    document.getElementById('speedText').textContent = speed + ' MB/s';
+    
+    if (percent >= 100) {
+        eventSource.close();
+    }
+};
+
+// Вспомогательные функции
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat().format(num);
+}
+
+function showLoading(text) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    loadingText.textContent = text;
+    overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'none';
+}
+</script>
+
+<style>
+.progress {
+    height: 20px;
+    border-radius: 10px;
+    background-color: #f0f0f0;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+#videoInfo {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.input-group-text {
+    background-color: transparent;
+}
+
+.form-control:focus + .input-group-text {
+    border-color: var(--bs-primary);
+}
+</style>
+{% endblock %} 
