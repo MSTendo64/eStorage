@@ -14,7 +14,7 @@ SECRET_KEY = 'ih2201fopweuhOHB@@DOQ}IUWGBDIOWdwq@#@#id!843109)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['s.eventshock-soft.ru', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['s.eventshock-soft.ru', '127.0.0.1', 'localhost', '147.45.48.56']
 
 # Application definition
 INSTALLED_APPS = [
