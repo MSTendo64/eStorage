@@ -207,17 +207,12 @@ async function downloadVideo() {
         showLoading('Подготовка к загрузке...');
         document.getElementById('downloadProgress').style.display = 'block';
         
-        // Запускаем мониторинг прогресса
-        startProgressMonitoring();
-        
-        // Получаем CSRF токен из мета-тега
-        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-        
+        // Запускаем загрузку
         const response = await fetch('/storage/api/yt-download/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
             },
             body: JSON.stringify({
                 url: url,
@@ -228,17 +223,40 @@ async function downloadVideo() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Видео успешно загружено!');
-            location.reload();
+            // Запускаем мониторинг прогресса
+            monitorProgress(data.task_id);
         } else {
-            throw new Error(data.error || 'Ошибка при загрузке видео');
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        alert('Ошибка при загрузке видео: ' + error.message);
+        hideLoading();
+        document.getElementById('downloadProgress').style.display = 'none';
+    }
+}
+
+async function monitorProgress(taskId) {
+    try {
+        while (true) {
+            const response = await fetch(`/storage/api/yt-task/${taskId}/`);
+            const data = await response.json();
+            
+            updateProgress(data.progress, data.speed);
+            
+            if (data.status === 'completed') {
+                alert('Видео успешно загружено!');
+                location.reload();
+                break;
+            } else if (data.status === 'failed') {
+                throw new Error(data.error || 'Ошибка при загрузке');
+                break;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
     } catch (error) {
         alert('Ошибка при загрузке видео: ' + error.message);
     } finally {
-        if (eventSource) {
-            eventSource.close();
-        }
         hideLoading();
         document.getElementById('downloadProgress').style.display = 'none';
     }

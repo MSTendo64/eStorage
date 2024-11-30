@@ -22,4 +22,5 @@ urlpatterns = [
     path('check-file/', views.check_file, name='check_file'),
     path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
     path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
+    path('api/yt-task/<int:task_id>/', youtube.task_status, name='api_task_status'),
 ] 
