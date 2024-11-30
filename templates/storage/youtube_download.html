@@ -89,17 +89,13 @@
                 <span id="speedText">0 MB/s</span>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Добавьте после основной карточки -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Текущие загрузки</h5>
-    </div>
-    <div class="card-body">
-        <div id="downloadTasks">
-            <!-- Здесь будут отображаться задачи -->
+        <!-- Добавьте после прогресс-бара -->
+        <div id="completedVideos" class="mt-4" style="display: none;">
+            <h5>Загруженные видео</h5>
+            <div class="row" id="videoList">
+                <!-- Сюда будут добавляться видео -->
+            </div>
         </div>
     </div>
 </div>
@@ -261,7 +257,6 @@ async function monitorProgress(taskId) {
             const data = await response.json();
             
             if (data.require_auth) {
-                // Если сессия истекла, перенаправляем на страницу входа
                 const loginUrl = '{% url "login" %}';
                 const currentUrl = encodeURIComponent(window.location.pathname);
                 window.location.href = `${loginUrl}?next=${currentUrl}`;
@@ -271,8 +266,8 @@ async function monitorProgress(taskId) {
             updateProgress(data.progress, data.speed);
             
             if (data.status === 'completed') {
-                alert('Видео успешно загружено!');
-                location.reload();
+                await addCompletedVideo(taskId);
+                document.getElementById('completedVideos').style.display = 'block';
                 break;
             } else if (data.status === 'failed') {
                 throw new Error(data.error || 'Ошибка при загрузке');
@@ -286,6 +281,32 @@ async function monitorProgress(taskId) {
     } finally {
         hideLoading();
         document.getElementById('downloadProgress').style.display = 'none';
+    }
+}
+
+async function addCompletedVideo(taskId) {
+    const response = await fetch(`/storage/api/yt-task/${taskId}/`);
+    const data = await response.json();
+    
+    if (data.file) {
+        const videoHtml = `
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <img src="${data.file.thumbnail_url}" class="card-img-top" alt="${data.file.title}">
+                    <div class="card-body">
+                        <h6 class="card-title">${data.file.title}</h6>
+                        <p class="card-text small text-muted">
+                            ${formatDuration(data.file.duration)}
+                        </p>
+                        <a href="/storage/download/${data.file.id}/" class="btn btn-primary btn-sm">
+                            <i class="fas fa-download me-1"></i>Скачать
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('videoList').insertAdjacentHTML('afterbegin', videoHtml);
     }
 }
 
@@ -362,71 +383,6 @@ function updateProgress(progress, speed) {
         }
     }
 }
-
-// Функция для обновления списка задач
-async function updateTasks() {
-    try {
-        const response = await fetch('/storage/api/yt-tasks/');
-        const data = await response.json();
-        
-        const tasksContainer = document.getElementById('downloadTasks');
-        tasksContainer.innerHTML = '';
-        
-        data.tasks.forEach(task => {
-            const taskElement = document.createElement('div');
-            taskElement.className = 'task-item mb-3';
-            
-            const statusClass = {
-                'pending': 'bg-secondary',
-                'processing': 'bg-primary',
-                'saving': 'bg-info',
-                'completed': 'bg-success',
-                'failed': 'bg-danger'
-            }[task.status];
-            
-            const statusText = {
-                'pending': 'В очереди',
-                'processing': 'Загрузка',
-                'saving': 'Сохранение',
-                'completed': 'Завершено',
-                'failed': 'Ошибка'
-            }[task.status];
-            
-            taskElement.innerHTML = `
-                <div class="d-flex align-items-center mb-2">
-                    <h6 class="mb-0 me-2">${task.title || 'Загрузка...'}</h6>
-                    <span class="badge ${statusClass}">${statusText}</span>
-                </div>
-                <div class="progress" style="height: 5px;">
-                    <div class="progress-bar ${statusClass}" 
-                         role="progressbar" 
-                         style="width: ${task.progress}%" 
-                         aria-valuenow="${task.progress}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                    </div>
-                </div>
-                ${task.status === 'processing' ? 
-                    `<small class="text-muted">${task.speed ? task.speed.toFixed(2) + ' MB/s' : ''}</small>` : ''}
-                ${task.error ? `<div class="text-danger mt-1"><small>${task.error}</small></div>` : ''}
-            `;
-            
-            tasksContainer.appendChild(taskElement);
-            
-            // Если задача завершена, обновляем страницу через 2 секунды
-            if (task.status === 'completed') {
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-            }
-        });
-    } catch (error) {
-        console.error('Error updating tasks:', error);
-    }
-}
-
-// Обновляем список задач каждые 2 секунды
-setInterval(updateTasks, 2000);
 </script>
 
 <style>
@@ -506,14 +462,16 @@ setInterval(updateTasks, 2000);
     background-color: var(--bs-success) !important;
 }
 
-.task-item {
-    padding: 1rem;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.5rem;
+.card {
+    transition: transform 0.2s;
 }
 
-.task-item .progress {
-    background-color: var(--bs-gray-200);
+.card:hover {
+    transform: translateY(-5px);
+}
+
+#completedVideos {
+    animation: fadeIn 0.3s ease;
 }
 </style>
 {% endblock %} 

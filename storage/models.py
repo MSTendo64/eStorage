@@ -144,8 +144,7 @@ class DownloadTask(models.Model):
     STATUS_CHOICES = [
         ('pending', 'В очереди'),
         ('processing', 'Загрузка'),
-        ('saving', 'Сохранение'),
-        ('completed', 'Завершено'),
+        ('completed', 'Заве��шено'),
         ('failed', 'Ошибка')
     ]
     
@@ -159,7 +158,7 @@ class DownloadTask(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    title = models.CharField(max_length=255, null=True, blank=True)
+    file = models.ForeignKey(UserFile, on_delete=models.SET_NULL, null=True, blank=True)
     
     class Meta:
         ordering = ['-created_at']

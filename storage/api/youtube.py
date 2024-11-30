@@ -75,23 +75,4 @@ def task_status(request, task_id):
     except DownloadTask.DoesNotExist:
         return Response({
             'error': 'Задача не найдена'
-        }, status=404)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-@renderer_classes([JSONRenderer])
-def task_list(request):
-    tasks = DownloadTask.objects.filter(user=request.user).order_by('-created_at')[:5]
-    return Response({
-        'tasks': [{
-            'id': task.id,
-            'status': task.status,
-            'progress': task.progress,
-            'speed': task.speed,
-            'error': task.error,
-            'created_at': task.created_at,
-            'completed_at': task.completed_at,
-            'url': task.url,
-            'title': task.title
-        } for task in tasks]
-    }) 
+        }, status=404) 
