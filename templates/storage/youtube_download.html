@@ -92,6 +92,20 @@
     </div>
 </div>
 
+<!-- Добавим панель загрузок после формы -->
+<div class="card mt-4" id="downloadTasks">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-tasks me-2"></i>Загрузки
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="list-group" id="tasksList">
+            <!-- Здесь будут отображаться задачи -->
+        </div>
+    </div>
+</div>
+
 <script>
 let selectedFormatId = null;
 
@@ -350,6 +364,52 @@ function updateProgress(progress, speed) {
         }
     }
 }
+
+// Функция для обновления списка задач
+async function updateTasksList() {
+    const tasksList = document.getElementById('tasksList');
+    const response = await fetch('/storage/api/yt-tasks/');
+    const data = await response.json();
+    
+    tasksList.innerHTML = '';
+    
+    data.tasks.forEach(task => {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'list-group-item';
+        
+        const statusClass = {
+            'pending': 'text-muted',
+            'processing': 'text-primary',
+            'completed': 'text-success',
+            'failed': 'text-danger'
+        }[task.status];
+        
+        taskElement.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">${task.url}</h6>
+                    <small class="${statusClass}">${task.status}</small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">${new Date(task.created_at).toLocaleString()}</small>
+                </div>
+            </div>
+            ${task.status === 'processing' ? `
+                <div class="progress mt-2" style="height: 5px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: ${task.progress}%"></div>
+                </div>
+                <small class="text-muted">${task.progress.toFixed(1)}% • ${task.speed.toFixed(2)} MB/s</small>
+            ` : ''}
+            ${task.error ? `<small class="text-danger">${task.error}</small>` : ''}
+        `;
+        
+        tasksList.appendChild(taskElement);
+    });
+}
+
+// Обновляем список задач каждые 2 секунды
+setInterval(updateTasksList, 2000);
 </script>
 
 <style>
