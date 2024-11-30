@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .api import youtube
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
@@ -20,4 +21,5 @@ urlpatterns = [
     path('youtube/videos/', views.video_list, name='video_list'),
     path('check-file/', views.check_file, name='check_file'),
     path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
+    path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
 ] 
