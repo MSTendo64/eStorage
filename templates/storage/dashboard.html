@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}{{ t.storage.my_files }} | {{ t.common.site_name }}{% endblock %}
+{% block title %}Мои файлы | {{ user.username }}{% endblock %}
 
 {% block content %}
 <style>
