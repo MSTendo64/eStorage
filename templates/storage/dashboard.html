@@ -160,6 +160,19 @@
 .folder-name {
     font-weight: 500;
 }
+
+/* Вертикальное центрирование модального окна менеджера папок */
+#moveFilesModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 1rem);
+    margin: 0.5rem auto;
+}
+
+#moveFilesModal .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
 </style>
 
 <div class="loading-overlay" id="loadingOverlay">
@@ -2126,11 +2139,15 @@ async function deleteFolder(folderId, folderName) {
 }
 
 async function showMoveFilesModal() {
-    const selectedFiles = getSelectedFiles();
-    if (selectedFiles.length === 0) {
-        alert('Выберите файлы для перемещения');
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
+    if (selectedItems.length === 0) {
+        alert('Выберите файлы или папки для перемещения');
         return;
     }
+    
+    // Определяем что выбрано
+    const selectedFiles = selectedItems.filter(item => !item.startsWith('folder_'));
+    const selectedFolders = selectedItems.filter(item => item.startsWith('folder_'));
     
     // Загружаем дерево папок
     const csrfToken = getCsrfToken();
@@ -2175,12 +2192,15 @@ async function showMoveFilesModal() {
                                 ${renderFoldersTreeHTML(data.folders, 0)}
                             </div>
                             <div class="mt-3">
-                                <small class="text-muted">Выбрано файлов: <strong>${selectedFiles.length}</strong></small>
+                                <small class="text-muted">
+                                    ${selectedFiles.length > 0 ? `Выбрано файлов: <strong>${selectedFiles.length}</strong>` : ''}
+                                    ${selectedFolders.length > 0 ? `${selectedFiles.length > 0 ? ', ' : ''}Выбрано папок: <strong>${selectedFolders.length}</strong>` : ''}
+                                </small>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="button" class="btn btn-primary" onclick="confirmMoveFiles(${selectedFiles.length})" id="confirmMoveBtn" disabled>
+                            <button type="button" class="btn btn-primary" onclick="confirmMoveFiles()" id="confirmMoveBtn" disabled>
                                 <i class="fas fa-arrow-right me-1"></i>Переместить
                             </button>
                         </div>
@@ -2198,6 +2218,8 @@ async function showMoveFilesModal() {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
         window.selectedFolderId = null;
+        window.selectedFilesForMove = selectedFiles;
+        window.selectedFoldersForMove = selectedFolders;
         const modal = new bootstrap.Modal(document.getElementById('moveFilesModal'));
         modal.show();
         
@@ -2266,10 +2288,12 @@ function selectFolderForMove(folderId, element) {
     }
 }
 
-async function confirmMoveFiles(selectedCount) {
-    const selectedFiles = getSelectedFiles();
-    if (selectedFiles.length === 0) {
-        alert('Выберите файлы для перемещения');
+async function confirmMoveFiles() {
+    const selectedFiles = window.selectedFilesForMove || [];
+    const selectedFolders = window.selectedFoldersForMove || [];
+    
+    if (selectedFiles.length === 0 && selectedFolders.length === 0) {
+        alert('Выберите файлы или папки для перемещения');
         return;
     }
     
@@ -2290,8 +2314,11 @@ async function confirmMoveFiles(selectedCount) {
     selectedFiles.forEach(fileId => {
         formData.append('file_ids[]', fileId);
     });
+    selectedFolders.forEach(folderIdStr => {
+        formData.append('folder_ids[]', folderIdStr);
+    });
     if (folderId) {
-        formData.append('folder_id', folderId);
+        formData.append('target_folder_id', folderId);
     }
     formData.append('csrfmiddlewaretoken', csrfToken);
     
@@ -2319,7 +2346,7 @@ async function confirmMoveFiles(selectedCount) {
             }
         }
     } catch (error) {
-        alert('Ошибка при перемещении файлов: ' + error.message);
+        alert('Ошибка при перемещении: ' + error.message);
         if (confirmBtn) {
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Переместить';

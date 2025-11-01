@@ -6,6 +6,7 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 from ..models import Folder, UserFile
 from ..helpers import create_json_response
 
@@ -121,40 +122,85 @@ def delete_folder(request, folder_id):
 @login_required
 @require_http_methods(["POST"])
 def move_files(request):
-    """Перемещение выбранных файлов в папку"""
+    """Перемещение выбранных файлов и папок в целевую папку"""
     try:
         file_ids = request.POST.getlist('file_ids[]')
-        folder_id = request.POST.get('folder_id', None)
+        folder_ids_str = request.POST.getlist('folder_ids[]')
+        target_folder_id = request.POST.get('target_folder_id', None)
         
-        if not file_ids:
-            return create_json_response(False, 'Не выбраны файлы для перемещения', status=400)
+        if not file_ids and not folder_ids_str:
+            return create_json_response(False, 'Не выбраны файлы или папки для перемещения', status=400)
         
         # Получаем целевую папку
         target_folder = None
-        if folder_id:
+        if target_folder_id:
             try:
-                target_folder = Folder.objects.get(id=folder_id, user=request.user)
+                target_folder = Folder.objects.get(id=target_folder_id, user=request.user)
             except Folder.DoesNotExist:
                 return create_json_response(False, 'Целевая папка не найдена', status=404)
         
-        # Получаем файлы и перемещаем их
-        files = UserFile.objects.filter(id__in=file_ids, user=request.user)
-        moved_count = 0
+        moved_files_count = 0
+        moved_folders_count = 0
         
-        for file in files:
-            file.folder = target_folder
-            file.save()
-            moved_count += 1
+        # Перемещаем файлы
+        if file_ids:
+            files = UserFile.objects.filter(id__in=file_ids, user=request.user)
+            for file in files:
+                file.folder = target_folder
+                file.save()
+                moved_files_count += 1
         
-        logger.info(f"{moved_count} files moved to folder {folder_id or 'root'} by user {request.user.id}")
+        # Перемещаем папки
+        if folder_ids_str:
+            folder_ids = []
+            for folder_id_str in folder_ids_str:
+                if folder_id_str.startswith('folder_'):
+                    try:
+                        folder_ids.append(int(folder_id_str.replace('folder_', '')))
+                    except (ValueError, TypeError):
+                        continue
+            
+            if folder_ids:
+                folders = Folder.objects.filter(id__in=folder_ids, user=request.user)
+                for folder in folders:
+                    # Проверка: нельзя переместить папку в саму себя или в свою подпапку
+                    if target_folder and (target_folder.id == folder.id or is_descendant(folder, target_folder)):
+                        continue
+                    
+                    folder.parent = target_folder
+                    try:
+                        folder.save()
+                        moved_folders_count += 1
+                    except ValidationError as e:
+                        logger.warning(f"Cannot move folder {folder.id}: {e}")
+                        continue
         
-        return create_json_response(True, f'{moved_count} файлов успешно перемещено', {
-            'moved_count': moved_count
+        message_parts = []
+        if moved_files_count > 0:
+            message_parts.append(f'{moved_files_count} файлов')
+        if moved_folders_count > 0:
+            message_parts.append(f'{moved_folders_count} папок')
+        
+        logger.info(f"{moved_files_count} files and {moved_folders_count} folders moved by user {request.user.id}")
+        
+        return create_json_response(True, f'{", ".join(message_parts)} успешно перемещено', {
+            'moved_files_count': moved_files_count,
+            'moved_folders_count': moved_folders_count
         })
         
     except Exception as e:
-        logger.error(f"Error moving files: {e}")
-        return create_json_response(False, f'Ошибка при перемещении файлов: {str(e)}', status=500)
+        logger.error(f"Error moving files/folders: {e}")
+        return create_json_response(False, f'Ошибка при перемещении: {str(e)}', status=500)
+
+
+def is_descendant(folder, ancestor):
+    """Проверяет, является ли папка потомком другой папки"""
+    current = folder.parent
+    while current:
+        if current.id == ancestor.id:
+            return True
+        current = current.parent
+    return False
 
 
 @login_required
