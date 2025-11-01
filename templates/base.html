@@ -9,7 +9,6 @@
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         /* Базовые стили */
         :root {
@@ -266,27 +265,7 @@
     }
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
-
-    <script>
-    // Обработка открытия/закрытия модальных окон без backdrop
-    document.addEventListener('DOMContentLoaded', function() {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.addEventListener('show.bs.modal', function() {
-                document.body.style.overflow = 'hidden';
-            });
-            
-            modal.addEventListener('hidden.bs.modal', function() {
-                document.body.style.overflow = '';
-            });
-        });
-    });
-    </script>
-
+    <!-- Bootstrap и другие библиотеки -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
@@ -294,24 +273,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
 
     <script>
+    // Инициализация модальных окон
     document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация всех модальных окон
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modalEl => {
             const modal = new bootstrap.Modal(modalEl, {
-                backdrop: false,  // Отключаем стандартный backdrop
+                backdrop: false,
                 keyboard: true
             });
             
-            // Добавляем обработчики для анимации фона
             modalEl.addEventListener('show.bs.modal', function() {
+                document.body.style.overflow = 'hidden';
                 modalEl.style.display = 'block';
                 setTimeout(() => modalEl.classList.add('show'), 10);
             });
             
             modalEl.addEventListener('hide.bs.modal', function() {
                 modalEl.classList.remove('show');
-                setTimeout(() => modalEl.style.display = 'none', 300);
+                setTimeout(() => {
+                    modalEl.style.display = 'none';
+                    document.body.style.overflow = '';
+                }, 300);
             });
         });
     });
