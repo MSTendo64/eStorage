@@ -334,7 +334,7 @@
                                                     <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
                                                 </button>
                                             {% elif file.is_text %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% elif file.is_document %}
@@ -342,7 +342,7 @@
                                                     <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% elif file.is_code %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% endif %}
@@ -411,7 +411,7 @@
                                         <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
                                     </button>
                                 {% elif file.is_text %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% elif file.is_document %}
@@ -419,7 +419,7 @@
                                         <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% elif file.is_code %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% endif %}

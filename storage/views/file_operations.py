@@ -159,3 +159,42 @@ def generate_download_link(request, file_id):
     except UserFile.DoesNotExist:
         return create_json_response(False, ERROR_FILE_NOT_FOUND, status=404)
 
+
+@login_required
+def save_text_file(request, file_id):
+    """Сохранение изменений в текстовом файле"""
+    try:
+        file = UserFile.objects.get(id=file_id, user=request.user)
+        
+        if not file.is_text and not file.is_code:
+            return create_json_response(False, 'Файл не является текстовым', status=400)
+        
+        if request.method != 'POST':
+            return create_json_response(False, 'Неверный метод запроса', status=405)
+        
+        content = request.POST.get('content', '')
+        
+        # Получаем путь к файлу
+        file_path = get_file_path(file)
+        
+        # Сохраняем содержимое
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # Обновляем размер файла
+            file.file_size = os.path.getsize(file_path)
+            file.save()
+            
+            return create_json_response(True, 'Файл успешно сохранен')
+            
+        except Exception as e:
+            logger.error(f"Error saving text file {file_id}: {e}")
+            return create_json_response(False, f'Ошибка при сохранении: {str(e)}', status=500)
+        
+    except UserFile.DoesNotExist:
+        return create_json_response(False, ERROR_FILE_NOT_FOUND, status=404)
+    except Exception as e:
+        logger.error(f"Error in save_text_file: {e}")
+        return create_json_response(False, f'Ошибка: {str(e)}', status=500)
+

@@ -37,6 +37,23 @@
         .text-purple {
             color: #6f42c1 !important;
         }
+        
+        /* Стили для редактора текста */
+        [data-bs-theme="dark"] .line-numbers {
+            background: rgba(33, 37, 41, 0.9) !important;
+            border-right-color: rgba(255, 255, 255, 0.1) !important;
+            color: #888 !important;
+        }
+        
+        [data-bs-theme="dark"] .text-editor-container textarea {
+            background: rgba(33, 37, 41, 0.95) !important;
+            color: #f8f9fa !important;
+        }
+        
+        /* Стили для номеров строк в темной теме */
+        [data-bs-theme="dark"] .line-numbers div {
+            color: #666 !important;
+        }
     </style>
 
     <!-- Добавим data-атрибуты для хранения данных -->
@@ -1299,7 +1316,7 @@ function updatePlayerHeaderColor(headerSelector, titleSelector) {
 }
 
 // Создание HTML структуры единого плеера
-function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null) {
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, fileId = null) {
     const closeBtn = closeAction 
         ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
         : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
@@ -1334,12 +1351,31 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
             break;
         case 'text':
-            // Для текстовых файлов создаем элемент pre с уникальным ID
+            // Для текстовых файлов создаем редактор с номерами строк
             const textId = 'text-content-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            content = `<pre id="${textId}" style="width: 100%; height: 100%; overflow: auto; padding: 15px; margin: 0; background: var(--bs-body-bg, #ffffff); color: var(--bs-body-color, #000000); font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">Загрузка...</pre>`;
-            // Сохраняем URL для последующей загрузки
+            const lineNumbersId = 'line-numbers-' + textId;
+            const editorId = 'editor-' + textId;
+            
+            content = `
+                <div class="text-editor-container" style="display: flex; width: 100%; height: 100%; overflow: hidden; position: relative;">
+                    <div id="${lineNumbersId}" class="line-numbers" style="flex-shrink: 0; width: 50px; padding: 10px 5px; background: rgba(245, 245, 245, 0.8); border-right: 1px solid rgba(221, 221, 221, 0.5); overflow-y: auto; overflow-x: hidden; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; text-align: right; color: #999; user-select: none; scrollbar-width: thin;">1</div>
+                    <textarea id="${editorId}" style="flex: 1; width: 100%; height: 100%; padding: 10px; margin: 0; border: none; outline: none; background: var(--bs-body-bg, #ffffff); color: var(--bs-body-color, #000000); font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; resize: none; overflow-y: auto; overflow-x: auto; white-space: pre; tab-size: 4;">Загрузка...</textarea>
+                </div>
+                <div class="text-editor-toolbar" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000;">
+                    ${fileId ? `<button class="btn btn-sm btn-success" onclick="saveTextFile('${fileId}', '${editorId}', '${lineNumbersId}')" style="box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                        <i class="fas fa-save me-1"></i> Сохранить
+                    </button>` : ''}
+                </div>
+            `;
+            // Сохраняем данные для последующей загрузки
             window._pendingTextLoad = window._pendingTextLoad || [];
-            window._pendingTextLoad.push({ id: textId, url: url });
+            window._pendingTextLoad.push({ 
+                id: textId, 
+                editorId: editorId,
+                lineNumbersId: lineNumbersId,
+                url: url,
+                fileId: fileId
+            });
             break;
         case 'document':
             // Для документов используем iframe

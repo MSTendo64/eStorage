@@ -283,6 +283,139 @@ const modalResizeState = {
     activeResizeHandle: null
 };
 
+// Функция для обновления номеров строк
+function updateLineNumbers(textarea, lineNumbersDiv) {
+    if (!textarea || !lineNumbersDiv) return;
+    
+    const lines = textarea.value.split('\n');
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 21;
+    const paddingTop = parseFloat(window.getComputedStyle(textarea).paddingTop) || 10;
+    const paddingBottom = parseFloat(window.getComputedStyle(textarea).paddingBottom) || 10;
+    
+    // Обновляем номера строк
+    let numbersHtml = '';
+    for (let i = 1; i <= lines.length; i++) {
+        numbersHtml += `<div style="height: ${lineHeight}px; line-height: ${lineHeight}px; min-height: ${lineHeight}px;">${i}</div>`;
+    }
+    
+    // Добавляем пустые строки для padding
+    lineNumbersDiv.innerHTML = numbersHtml || '<div>1</div>';
+    lineNumbersDiv.style.paddingTop = paddingTop + 'px';
+    lineNumbersDiv.style.paddingBottom = paddingBottom + 'px';
+    
+    // Синхронизируем прокрутку
+    lineNumbersDiv.scrollTop = textarea.scrollTop;
+}
+
+// Функция для сохранения текстового файла
+async function saveTextFile(fileId, editorId, lineNumbersId) {
+    if (!fileId) {
+        alert('Ошибка: ID файла не указан');
+        return;
+    }
+    
+    const editor = document.getElementById(editorId);
+    if (!editor) {
+        alert('Ошибка: редактор не найден');
+        return;
+    }
+    
+    const content = editor.value;
+    const button = event?.target?.closest('button') || document.querySelector(`button[onclick*="${editorId}"]`);
+    
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
+    }
+    
+    try {
+        // Получаем CSRF токен
+        let csrfToken;
+        try {
+            const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfElement && csrfElement.value) {
+                csrfToken = csrfElement.value;
+            } else {
+                // Получаем из cookie
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                csrfToken = getCookie('csrftoken');
+            }
+        } catch(e) {
+            alert('Ошибка: не удалось получить CSRF токен');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+            return;
+        }
+        
+        if (!csrfToken) {
+            alert('Ошибка: CSRF токен не найден. Перезагрузите страницу.');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`/storage/save-text/${fileId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (button) {
+                button.innerHTML = '<i class="fas fa-check me-1"></i> Сохранено';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-primary');
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                    button.disabled = false;
+                }, 2000);
+            }
+            // Можно показать уведомление
+            console.log('Файл успешно сохранен');
+        } else {
+            alert('Ошибка при сохранении: ' + (data.message || 'Неизвестная ошибка'));
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+        }
+    } catch (error) {
+        alert('Ошибка при сохранении: ' + error.message);
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+        }
+    }
+}
+
 async function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     const modalDialog = document.getElementById('previewModalDialog');
@@ -306,7 +439,7 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     }
     
     // Создаем единую структуру плеера
-    const playerData = createUnifiedPlayerHTML(type, url, filename);
+    const playerData = createUnifiedPlayerHTML(type, url, filename, null, null, fileId);
     previewContent.innerHTML = playerData.html;
     
     // Загружаем текстовые файлы после вставки в DOM
@@ -317,11 +450,28 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                 try {
                     const response = await fetch(pending.url);
                     const text = await response.text();
-                    const pre = document.getElementById(pending.id);
-                    if (pre) pre.textContent = text;
+                    const editor = document.getElementById(pending.editorId);
+                    const lineNumbers = document.getElementById(pending.lineNumbersId);
+                    
+                    if (editor) {
+                        editor.value = text;
+                        updateLineNumbers(editor, lineNumbers);
+                        
+                        // Добавляем обработчики для обновления номеров строк
+                        editor.addEventListener('input', () => updateLineNumbers(editor, lineNumbers));
+                        editor.addEventListener('scroll', () => {
+                            if (lineNumbers) {
+                                lineNumbers.scrollTop = editor.scrollTop;
+                            }
+                        });
+                        editor.addEventListener('keyup', () => updateLineNumbers(editor, lineNumbers));
+                        editor.addEventListener('paste', () => {
+                            setTimeout(() => updateLineNumbers(editor, lineNumbers), 10);
+                        });
+                    }
                 } catch(e) {
-                    const pre = document.getElementById(pending.id);
-                    if (pre) pre.textContent = 'Ошибка загрузки файла: ' + e.message;
+                    const editor = document.getElementById(pending.editorId);
+                    if (editor) editor.value = 'Ошибка загрузки файла: ' + e.message;
                 }
             })();
         }
@@ -512,7 +662,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     if (playerElement) {
         // Создаем единую структуру плеера
-        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'');
+        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', null);
         playerElement.innerHTML = playerData.html;
         
         // Инициализируем Plyr для видео/аудио
