@@ -289,6 +289,12 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     const modalContent = document.getElementById('previewModalContent');
     const previewContent = document.getElementById('previewContent');
     
+    // Сохраняем исходный title страницы
+    const originalTitle = document.title;
+    
+    // Изменяем title на "Просмотр {имя файла}"
+    document.title = `Просмотр ${filename}`;
+    
     // Очищаем предыдущий плеер если он существует
     if (globalPlayer) {
         try {
@@ -345,6 +351,9 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     
     // Очищаем при закрытии модального окна
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        // Восстанавливаем исходный title страницы
+        document.title = originalTitle;
+        
         previewContent.innerHTML = '';
         modalResizeState.isResizing = false;
         modalResizeState.activeResizeHandle = null;
