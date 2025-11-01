@@ -49,15 +49,22 @@ def bulk_download(request):
         return create_json_response(False, 'Метод не поддерживается', status=405)
     
     try:
-        file_ids = request.POST.getlist('file_ids[]')
-        files = UserFile.objects.filter(id__in=file_ids, user=request.user)
-        
-        # Получаем выбранные папки (если есть)
-        folder_ids = []
         selected_items = request.POST.getlist('file_ids[]')
+        
+        # Разделяем файлы и папки
+        file_ids = []
+        folder_ids = []
         for item in selected_items:
             if item.startswith('folder_'):
                 folder_ids.append(int(item.replace('folder_', '')))
+            else:
+                try:
+                    file_ids.append(int(item))
+                except (ValueError, TypeError):
+                    continue  # Пропускаем некорректные значения
+        
+        # Получаем выбранные файлы
+        files = UserFile.objects.filter(id__in=file_ids, user=request.user) if file_ids else []
         
         # Собираем все файлы из выбранных папок (рекурсивно)
         folders_files = []
@@ -127,15 +134,22 @@ def bulk_archive(request):
         return create_json_response(False, 'Метод не поддерживается', status=405)
     
     try:
-        file_ids = request.POST.getlist('file_ids[]')
-        files = UserFile.objects.filter(id__in=file_ids, user=request.user)
-        
-        # Получаем выбранные папки (если есть)
-        folder_ids = []
         selected_items = request.POST.getlist('file_ids[]')
+        
+        # Разделяем файлы и папки
+        file_ids = []
+        folder_ids = []
         for item in selected_items:
             if item.startswith('folder_'):
                 folder_ids.append(int(item.replace('folder_', '')))
+            else:
+                try:
+                    file_ids.append(int(item))
+                except (ValueError, TypeError):
+                    continue  # Пропускаем некорректные значения
+        
+        # Получаем выбранные файлы
+        files = UserFile.objects.filter(id__in=file_ids, user=request.user) if file_ids else []
         
         # Собираем все файлы из выбранных папок (рекурсивно)
         folders_files = []
