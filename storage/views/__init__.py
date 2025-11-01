@@ -7,7 +7,8 @@ from .file_operations import (
     delete_file,
     download_file,
     generate_download_link,
-    generate_download_token
+    generate_download_token,
+    save_text_file
 )
 from .archive_operations import (
     get_archive_contents,
@@ -55,6 +56,7 @@ __all__ = [
     'download_file',
     'generate_download_link',
     'generate_download_token',
+    'save_text_file',
     # Archive operations
     'get_archive_contents',
     'extract_archive',
