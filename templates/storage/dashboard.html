@@ -1483,9 +1483,11 @@ function uploadFileChunked(file, chunkSize, callback) {
     const totalChunks = Math.ceil(file.size / chunkSize);
     let currentChunk = 0;
     let start = 0;
+    let uploadedBytes = 0;  // Счетчик загруженных байт для точного прогресса
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
     
-    showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
-
+    // Функция для загрузки чанка
     function uploadChunk() {
         const end = Math.min(start + chunkSize, file.size);
         const chunk = file.slice(start, end);
@@ -1509,9 +1511,41 @@ function uploadFileChunked(file, chunkSize, callback) {
         xhr.open('POST', `/storage/upload-chunk/${encodedFilename}/`, true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('X-CSRFToken', csrfToken);
+        
+        // Устанавливаем таймаут (5 минут на чанк)
+        xhr.timeout = 300000;
+
+        // Обработка прогресса загрузки текущего чанка
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                // Вычисляем общий прогресс: загружено байт + текущий чанк
+                const currentChunkProgress = e.loaded / e.total;
+                const chunkSize = end - start;
+                const currentChunkLoaded = chunkSize * currentChunkProgress;
+                const totalLoaded = uploadedBytes + currentChunkLoaded;
+                const totalPercent = Math.round((totalLoaded / file.size) * 100);
+                
+                updateProgress(totalPercent);
+                showLoading(`Загрузка файла: ${file.name} (${totalPercent}%) - чанк ${currentChunk + 1}/${totalChunks}`, true);
+            }
+        };
+
+        xhr.ontimeout = function() {
+            console.error('Upload timeout for chunk', currentChunk);
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`Retrying chunk ${currentChunk}, attempt ${retryCount}`);
+                setTimeout(() => uploadChunk(), 1000); // Повтор через 1 секунду
+            } else {
+                hideLoading();
+                alert('Ошибка: превышено время ожидания при загрузке чанка. Проверьте соединение с интернетом.');
+                if (callback) callback(false);
+            }
+        };
 
         xhr.onload = function() {
             if (xhr.status === 200) {
+                retryCount = 0; // Сбрасываем счетчик повторов при успехе
                 try {
                     const response = JSON.parse(xhr.responseText);
                     if (response.error) {
@@ -1521,59 +1555,129 @@ function uploadFileChunked(file, chunkSize, callback) {
                         return;
                     }
                     
+                    // Обновляем счетчик загруженных байт
+                    uploadedBytes += (end - start);
+                    
                     if (response.status === 'complete') {
                         // Загрузка завершена
                         updateProgress(100);
-                        if (callback) callback(true);
+                        showLoading('Загрузка завершена!', true);
+                        setTimeout(() => {
+                            hideLoading();
+                            if (callback) callback(true);
+                            // Перезагружаем страницу для обновления списка файлов
+                            setTimeout(() => location.reload(), 500);
+                        }, 500);
                     } else {
                         // Продолжаем загрузку следующего чанка
                         currentChunk++;
                         start = end;
-                        const percent = Math.round((currentChunk / totalChunks) * 100);
+                        const percent = Math.round((uploadedBytes / file.size) * 100);
                         updateProgress(percent);
-                        showLoading('Загрузка файла: ' + file.name + ' (' + percent + '%)', true);
-                        uploadChunk();
+                        showLoading(`Загрузка файла: ${file.name} (${percent}%) - чанк ${currentChunk}/${totalChunks}`, true);
+                        // Небольшая задержка перед следующим чанком для стабильности
+                        setTimeout(() => uploadChunk(), 100);
                     }
                 } catch (error) {
+                    console.error('Parse error:', error);
                     hideLoading();
-                    alert('Ошибка при обработке ответа сервера');
+                    alert('Ошибка при обработке ответа сервера: ' + error.message);
                     if (callback) callback(false);
                 }
             } else if (xhr.status === 403) {
                 // Ошибка 403 - проблема с CSRF или доступом
-                hideLoading();
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    alert('Ошибка доступа: ' + (response.error || 'Запрещено. Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.'));
-                } catch (e) {
-                    alert('Ошибка доступа (403): Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.');
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    // Обновляем CSRF токен и повторяем
+                    const newCsrfToken = getCsrfToken();
+                    if (newCsrfToken && newCsrfToken !== csrfToken) {
+                        console.log('Retrying with new CSRF token');
+                        setTimeout(() => uploadChunk(), 1000);
+                    } else {
+                        hideLoading();
+                        alert('Ошибка доступа (403): Возможно, проблема с CSRF токеном. Перезагрузите страницу.');
+                        if (callback) callback(false);
+                    }
+                } else {
+                    hideLoading();
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        alert('Ошибка доступа: ' + (response.error || 'Запрещено. Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.'));
+                    } catch (e) {
+                        alert('Ошибка доступа (403): Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.');
+                    }
+                    if (callback) callback(false);
                 }
-                if (callback) callback(false);
             } else {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    hideLoading();
-                    alert('Ошибка: ' + (response.error || 'Неизвестная ошибка (код: ' + xhr.status + ')'));
-                    if (callback) callback(false);
-                } catch (e) {
-                    hideLoading();
-                    alert('Ошибка при загрузке файла: ' + file.name + ' (код: ' + xhr.status + ')');
-                    if (callback) callback(false);
+                if (retryCount < MAX_RETRIES && xhr.status >= 500) {
+                    // Повторяем при ошибках сервера
+                    retryCount++;
+                    console.log(`Retrying chunk ${currentChunk} after server error, attempt ${retryCount}`);
+                    setTimeout(() => uploadChunk(), 2000);
+                } else {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        hideLoading();
+                        alert('Ошибка: ' + (response.error || 'Неизвестная ошибка (код: ' + xhr.status + ')'));
+                        if (callback) callback(false);
+                    } catch (e) {
+                        hideLoading();
+                        alert('Ошибка при загрузке файла: ' + file.name + ' (код: ' + xhr.status + ')');
+                        if (callback) callback(false);
+                    }
                 }
             }
         };
 
         xhr.onerror = function() {
-            console.error('Error:', xhr.statusText);
-            hideLoading();
-            alert('Ошибка сети при загрузке файла: ' + file.name);
-            if (callback) callback(false);
+            console.error('Network error for chunk', currentChunk, xhr.statusText);
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`Retrying chunk ${currentChunk} after network error, attempt ${retryCount}`);
+                setTimeout(() => uploadChunk(), 2000);
+            } else {
+                hideLoading();
+                alert('Ошибка сети при загрузке файла: ' + file.name + '\nПроверьте соединение с интернетом.');
+                if (callback) callback(false);
+            }
         };
 
         xhr.send(formData);
     }
-
-    uploadChunk();
+    
+    // Сначала проверяем файл перед загрузкой
+    fetch(`/storage/check-file/?filename=${encodeURIComponent(file.name)}&filesize=${file.size}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка проверки файла: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            hideLoading();
+            alert('Ошибка: ' + data.error);
+            if (callback) callback(false);
+            return;
+        }
+        // Начинаем загрузку после успешной проверки
+        showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
+        uploadChunk();
+    })
+    .catch(error => {
+        console.error('Check file error:', error);
+        hideLoading();
+        alert('Ошибка при проверке файла: ' + error.message + '\nНачинаем загрузку без проверки...');
+        // Все равно начинаем загрузку, если проверка не удалась
+        showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
+        uploadChunk();
+    });
 }
 
 // Обновим функцию handleFiles для последовательной загрузки
