@@ -426,14 +426,13 @@
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
         <div class="modal-content" id="previewModalContent">
-            <div class="modal-header draggable-header" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px;">
-                <h5 class="modal-title" style="font-size: 0.75rem; margin: 0; color: #000; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8); font-weight: 600;" id="previewModalTitle">Просмотр файла</h5>
-                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>
+            <div class="modal-header draggable-header" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between;">
+                <h5 class="modal-title" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="previewModalTitle">Просмотр файла</h5>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
             </div>
             <div class="modal-body text-center p-0" style="position: relative;">
                 <div id="previewContent"></div>
                 <div class="resize-handle resize-handle-se" style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; z-index: 1000;"></div>
-                <div class="resize-handle resize-handle-sw" style="position: absolute; bottom: 0; left: 0; width: 20px; height: 20px; cursor: sw-resize; z-index: 1000;"></div>
             </div>
         </div>
     </div>
@@ -613,17 +612,6 @@
     border-color: transparent transparent rgba(0, 0, 0, 0.3) transparent;
 }
 
-.resize-handle-sw::after {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    left: 2px;
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 0 10px 10px 0;
-    border-color: transparent rgba(0, 0, 0, 0.3) transparent transparent;
-}
 
 #previewContent {
     max-width: 100%;
@@ -747,6 +735,59 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
     }, { once: true });
 }
 
+function updateTitleColor() {
+    const header = document.querySelector('#previewModal .draggable-header');
+    const title = document.getElementById('previewModalTitle');
+    const modalContent = document.getElementById('previewModalContent');
+    
+    if (!header || !title || !modalContent) return;
+    
+    // Получаем цвет фона шапки
+    const style = window.getComputedStyle(header);
+    const bgColor = style.backgroundColor;
+    
+    // Парсим rgba
+    const rgbaMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (rgbaMatch) {
+        const r = parseInt(rgbaMatch[1]);
+        const g = parseInt(rgbaMatch[2]);
+        const b = parseInt(rgbaMatch[3]);
+        const alpha = parseFloat(rgbaMatch[4] || '1');
+        
+        // Получаем цвет контента под шапкой для более точного определения яркости
+        const contentStyle = window.getComputedStyle(modalContent);
+        const contentBg = contentStyle.backgroundColor;
+        const contentMatch = contentBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        
+        let finalR = r, finalG = g, finalB = b;
+        
+        // Если есть цвет контента, смешиваем его с цветом шапки
+        if (contentMatch) {
+            const contentR = parseInt(contentMatch[1]);
+            const contentG = parseInt(contentMatch[2]);
+            const contentB = parseInt(contentMatch[3]);
+            
+            // Смешиваем цвета с учетом прозрачности шапки
+            // backdrop-filter делает фон светлее, но мы упростим и будем учитывать базовый цвет
+            finalR = Math.round(r * alpha + contentR * (1 - alpha));
+            finalG = Math.round(g * alpha + contentG * (1 - alpha));
+            finalB = Math.round(b * alpha + contentB * (1 - alpha));
+        }
+        
+        // Вычисляем яркость по формуле относительной яркости
+        const brightness = (finalR * 0.299 + finalG * 0.587 + finalB * 0.114);
+        
+        // Если фон темный (яркость < 128) - делаем текст светлым, если светлый - темным
+        if (brightness < 128) {
+            title.style.color = '#ffffff';
+            title.style.textShadow = '1px 1px 3px rgba(0, 0, 0, 0.9), -1px -1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8)';
+        } else {
+            title.style.color = '#000000';
+            title.style.textShadow = '1px 1px 3px rgba(255, 255, 255, 0.9), -1px -1px 3px rgba(255, 255, 255, 0.9), 0 0 4px rgba(255, 255, 255, 0.8)';
+        }
+    }
+}
+
 function initDragAndResize() {
     const modalDialog = document.getElementById('previewModalDialog');
     const modalContent = document.getElementById('previewModalContent');
@@ -754,6 +795,26 @@ function initDragAndResize() {
     const resizeHandles = document.querySelectorAll('.resize-handle');
     
     if (!modalDialog || !modalContent || !header) return;
+    
+    // Обновляем цвет текста периодически и при изменениях
+    updateTitleColor();
+    
+    // Обновляем цвет при перемещении модального окна
+    const observer = new MutationObserver(() => {
+        setTimeout(updateTitleColor, 50);
+    });
+    
+    // Наблюдаем за изменениями стилей modalDialog и header
+    if (modalDialog) {
+        observer.observe(modalDialog, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+    }
+    observer.observe(header, {
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
     
     // Drag and drop для шапки
     header.addEventListener('mousedown', (e) => {
@@ -775,11 +836,11 @@ function initDragAndResize() {
         let newX = e.clientX - dragOffset.x;
         let newY = e.clientY - dragOffset.y;
         
-        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только определенная область (верхняя часть)
+        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только до середины экрана (не выше)
         const maxX = window.innerWidth - modalDialog.offsetWidth;
-        // Разрешаем перемещение только в верхней половине экрана (по высоте)
-        const minY = 0;
-        const maxY = window.innerHeight / 2; // Максимум до середины экрана по высоте
+        // Разрешаем перемещение только до середины экрана (не выше середины)
+        const minY = window.innerHeight / 2; // Минимум - середина экрана (нельзя поднять выше)
+        const maxY = window.innerHeight - modalDialog.offsetHeight;
         
         newX = Math.max(0, Math.min(newX, maxX));
         newY = Math.max(minY, Math.min(newY, maxY));
@@ -788,6 +849,9 @@ function initDragAndResize() {
         modalDialog.style.top = newY + 'px';
         modalDialog.style.transform = 'none';
         modalDialog.style.margin = '0';
+        
+        // Обновляем цвет текста при перемещении (на случай изменения фона)
+        updateTitleColor();
     }
     
     function stopDrag() {
@@ -831,48 +895,19 @@ function initDragAndResize() {
         let newWidth = resizeStart.width;
         let newHeight = resizeStart.height;
         
+        // Работаем только с правым нижним углом
         if (activeResizeHandle.classList.contains('resize-handle-se')) {
             // Правый нижний угол - изменяем только размер справа и снизу
             // Верхний левый угол остается на месте (не двигаем modalDialog)
             newWidth = resizeStart.width + deltaX;
             newHeight = resizeStart.height + deltaY;
-        } else if (activeResizeHandle.classList.contains('resize-handle-sw')) {
-            // Левый нижний угол - изменяем размер слева и снизу
-            // Верхний правый угол должен оставаться на месте, но верхний левый может двигаться только по X
-            newWidth = resizeStart.width - deltaX;
-            newHeight = resizeStart.height + deltaY;
-            
-            // Корректируем позицию modalDialog при изменении ширины слева
-            // Верхний угол по Y не двигается, двигаем только по X
-            const newDialogLeft = dialogLeft + deltaX;
-            
-            // Проверяем границы
-            const maxX = window.innerWidth - newWidth;
-            if (newDialogLeft >= 0 && newDialogLeft <= maxX) {
-                modalDialog.style.left = newDialogLeft + 'px';
-                // Top остается на начальной позиции - верхний угол не двигается по Y
-                modalDialog.style.top = dialogTop + 'px';
-            } else {
-                // Если вышли за границы, ограничиваем размер
-                if (newDialogLeft < 0) {
-                    newWidth = dialogLeft + resizeStart.width;
-                    modalDialog.style.left = '0px';
-                } else if (newDialogLeft > maxX) {
-                    newWidth = window.innerWidth - dialogLeft;
-                    modalDialog.style.left = maxX + 'px';
-                }
-                // Top всегда остается на начальной позиции
-                modalDialog.style.top = dialogTop + 'px';
-            }
         }
         
         // Минимальные и максимальные размеры
         const minWidth = 300;
         const minHeight = 200;
-        // Максимальная ширина - от текущей позиции до края экрана
-        const maxWidth = (activeResizeHandle.classList.contains('resize-handle-se')) 
-            ? window.innerWidth - dialogLeft - 10 
-            : dialogLeft + resizeStart.width;
+        // Максимальная ширина - больше растягиваем по ширине (до 95% экрана или от позиции до края)
+        const maxWidth = Math.min(window.innerWidth - dialogLeft - 10, window.innerWidth * 0.95);
         const maxHeight = window.innerHeight - dialogTop - 10;
         
         newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));

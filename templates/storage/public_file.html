@@ -3,57 +3,221 @@
 {% block title %}{{ file.filename }} | Eventshock Storage{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h3>{{ file.filename }}</h3>
+<div class="container-fluid p-0" style="position: relative; height: 100vh; overflow: hidden;">
+    {% if file.is_video %}
+    <!-- Видео плеер с улучшенным интерфейсом -->
+    <div id="publicVideoPlayer" style="position: fixed; left: 50%; top: 60%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 450px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+            <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicVideoTitle">{{ file.filename }}</h5>
+            <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
+                <i class="fas fa-download"></i>
+            </a>
+            <button type="button" class="btn-close btn-close-sm" onclick="window.location.href='/';" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
         </div>
-        <div class="card-body">
-            <div class="preview-container">
-                {% if file.is_image %}
-                    <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.filename }}">
-                {% elif file.is_video %}
-                    <video class="plyr-video" playsinline controls>
-                        <source src="{{ file.file.url }}" type="video/mp4">
-                    </video>
-                {% elif file.is_audio %}
-                    <audio class="plyr-audio" controls>
-                        <source src="{{ file.file.url }}" type="audio/mpeg">
-                    </audio>
-                {% endif %}
-            </div>
-            
-            {% if file.is_video %}
-            <div class="mt-3" id="videoInfo" style="display: none;">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <h6 class="card-title">Информация о видео</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p class="mb-1"><strong>Качество:</strong> <span id="videoQuality">-</span></p>
-                                <p class="mb-1"><strong>Разрешение:</strong> <span id="videoResolution">-</span></p>
-                                <p class="mb-1"><strong>Частота кадров (FPS):</strong> <span id="videoFPS">-</span></p>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="mb-1"><strong>Кодек:</strong> <span id="videoCodec">-</span></p>
-                                <p class="mb-1"><strong>Битрейт:</strong> <span id="videoBitrate">-</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <div class="mt-3">
-                <a href="{{ file.file.url }}" class="btn btn-primary" download>
-                    <i class="fas fa-download me-2"></i>Скачать файл
-                </a>
-            </div>
+        <div style="position: relative; background: #000;">
+            <video id="publicVideo" class="plyr-video" playsinline controls style="width: 100%; height: 100%;">
+                <source src="{{ file.file.url }}" type="video/mp4">
+            </video>
+            <div class="resize-handle-public resize-handle-se-public" style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; z-index: 1000;"></div>
         </div>
     </div>
+    {% elif file.is_image %}
+    <div id="publicImagePlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; max-height: 90vh; z-index: 1000;">
+        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; border-radius: 8px 8px 0 0;">
+            <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicImageTitle">{{ file.filename }}</h5>
+            <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
+                <i class="fas fa-download"></i>
+            </a>
+            <button type="button" class="btn-close btn-close-sm" onclick="window.location.href='/';" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
+        </div>
+        <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.filename }}" style="max-height: 90vh; display: block; border-radius: 0 0 8px 8px;">
+    </div>
+    {% elif file.is_audio %}
+    <div id="publicAudioPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 500px; background: #fff; border-radius: 8px; padding: 1rem; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; margin: -1rem -1rem 1rem -1rem; border-radius: 8px 8px 0 0;">
+            <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicAudioTitle">{{ file.filename }}</h5>
+            <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
+                <i class="fas fa-download"></i>
+            </a>
+            <button type="button" class="btn-close btn-close-sm" onclick="window.location.href='/';" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
+        </div>
+        <audio class="plyr-audio" controls style="width: 100%;">
+            <source src="{{ file.file.url }}" type="audio/mpeg">
+        </audio>
+    </div>
+    {% endif %}
 </div>
 
+<style>
+.resize-handle-public {
+    background: transparent;
+    border: none;
+}
+
+.resize-handle-se-public::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 10px 10px;
+    border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+}
+</style>
+
 <script>
+let isDraggingPublic = false;
+let isResizingPublic = false;
+let dragOffsetPublic = { x: 0, y: 0 };
+let resizeStartPublic = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
+let activeResizeHandlePublic = null;
+
+function updatePublicTitleColor() {
+    const header = document.querySelector('.draggable-header-public');
+    const title = document.querySelector('.modal-title-public');
+    const player = document.getElementById('publicVideoPlayer') || 
+                   document.getElementById('publicImagePlayer') || 
+                   document.getElementById('publicAudioPlayer');
+    
+    if (!header || !title || !player) return;
+    
+    const style = window.getComputedStyle(header);
+    const bgColor = style.backgroundColor;
+    const rgbaMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    
+    if (rgbaMatch) {
+        const r = parseInt(rgbaMatch[1]);
+        const g = parseInt(rgbaMatch[2]);
+        const b = parseInt(rgbaMatch[3]);
+        const alpha = parseFloat(rgbaMatch[4] || '1');
+        
+        const playerStyle = window.getComputedStyle(player);
+        const playerBg = playerStyle.backgroundColor;
+        const playerMatch = playerBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        
+        let finalR = r, finalG = g, finalB = b;
+        if (playerMatch) {
+            const playerR = parseInt(playerMatch[1]);
+            const playerG = parseInt(playerMatch[2]);
+            const playerB = parseInt(playerMatch[3]);
+            finalR = Math.round(r * alpha + playerR * (1 - alpha));
+            finalG = Math.round(g * alpha + playerG * (1 - alpha));
+            finalB = Math.round(b * alpha + playerB * (1 - alpha));
+        }
+        
+        const brightness = (finalR * 0.299 + finalG * 0.587 + finalB * 0.114);
+        if (brightness < 128) {
+            title.style.color = '#ffffff';
+            title.style.textShadow = '1px 1px 3px rgba(0, 0, 0, 0.9), -1px -1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8)';
+        } else {
+            title.style.color = '#000000';
+            title.style.textShadow = '1px 1px 3px rgba(255, 255, 255, 0.9), -1px -1px 3px rgba(255, 255, 255, 0.9), 0 0 4px rgba(255, 255, 255, 0.8)';
+        }
+    }
+}
+
+function initPublicDragAndResize() {
+    const player = document.getElementById('publicVideoPlayer') || 
+                   document.getElementById('publicImagePlayer') || 
+                   document.getElementById('publicAudioPlayer');
+    const header = document.querySelector('.draggable-header-public');
+    const resizeHandle = document.querySelector('.resize-handle-se-public');
+    
+    if (!player || !header) return;
+    
+    updatePublicTitleColor();
+    
+    // Drag and drop
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('btn-close') || e.target.closest('a') || e.target.closest('button')) return;
+        
+        isDraggingPublic = true;
+        const rect = player.getBoundingClientRect();
+        dragOffsetPublic.x = e.clientX - rect.left;
+        dragOffsetPublic.y = e.clientY - rect.top;
+        
+        document.addEventListener('mousemove', handleDragPublic);
+        document.addEventListener('mouseup', stopDragPublic);
+        e.preventDefault();
+    });
+    
+    function handleDragPublic(e) {
+        if (!isDraggingPublic) return;
+        
+        let newX = e.clientX - dragOffsetPublic.x;
+        let newY = e.clientY - dragOffsetPublic.y;
+        
+        const maxX = window.innerWidth - player.offsetWidth;
+        const minY = window.innerHeight / 2;
+        const maxY = window.innerHeight - player.offsetHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(minY, Math.min(newY, maxY));
+        
+        player.style.left = newX + 'px';
+        player.style.top = newY + 'px';
+        player.style.transform = 'none';
+        
+        updatePublicTitleColor();
+    }
+    
+    function stopDragPublic() {
+        isDraggingPublic = false;
+        document.removeEventListener('mousemove', handleDragPublic);
+        document.removeEventListener('mouseup', stopDragPublic);
+    }
+    
+    // Resize
+    if (resizeHandle) {
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizingPublic = true;
+            activeResizeHandlePublic = resizeHandle;
+            const rect = player.getBoundingClientRect();
+            resizeStartPublic.x = e.clientX;
+            resizeStartPublic.y = e.clientY;
+            resizeStartPublic.width = rect.width;
+            resizeStartPublic.height = rect.height;
+            resizeStartPublic.left = rect.left;
+            resizeStartPublic.top = rect.top;
+            
+            document.addEventListener('mousemove', handleResizePublic);
+            document.addEventListener('mouseup', stopResizePublic);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    }
+    
+    function handleResizePublic(e) {
+        if (!isResizingPublic || !activeResizeHandlePublic) return;
+        
+        const deltaX = e.clientX - resizeStartPublic.x;
+        const deltaY = e.clientY - resizeStartPublic.y;
+        
+        let newWidth = resizeStartPublic.width + deltaX;
+        let newHeight = resizeStartPublic.height + deltaY;
+        
+        const minWidth = 300;
+        const minHeight = 200;
+        const maxWidth = Math.min(window.innerWidth - resizeStartPublic.left - 10, window.innerWidth * 0.95);
+        const maxHeight = window.innerHeight - resizeStartPublic.top - 10;
+        
+        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+        
+        player.style.width = newWidth + 'px';
+        player.style.height = newHeight + 'px';
+    }
+    
+    function stopResizePublic() {
+        isResizingPublic = false;
+        activeResizeHandlePublic = null;
+        document.removeEventListener('mousemove', handleResizePublic);
+        document.removeEventListener('mouseup', stopResizePublic);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.plyr-video')) {
         const player = new Plyr('.plyr-video', {
@@ -62,58 +226,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
             ]
         });
-        
-        // Получаем метаданные видео
-        {% if file.public_token %}
-        const metadataUrl = '/storage/public/metadata/{{ file.public_token }}/';
-        fetch(metadataUrl)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.metadata) {
-                    const metadata = data.metadata;
-                    const infoDiv = document.getElementById('videoInfo');
-                    if (infoDiv) {
-                        infoDiv.style.display = 'block';
-                        
-                        // Качество
-                        if (metadata.quality) {
-                            document.getElementById('videoQuality').textContent = metadata.quality;
-                        }
-                        
-                        // Разрешение
-                        if (metadata.width && metadata.height) {
-                            document.getElementById('videoResolution').textContent = 
-                                metadata.width + 'x' + metadata.height;
-                        }
-                        
-                        // FPS
-                        if (metadata.fps) {
-                            document.getElementById('videoFPS').textContent = 
-                                metadata.fps + ' fps';
-                        }
-                        
-                        // Кодек
-                        if (metadata.codec) {
-                            document.getElementById('videoCodec').textContent = metadata.codec;
-                        }
-                        
-                        // Битрейт
-                        if (metadata.bitrate) {
-                            const bitrateMbps = (metadata.bitrate / 1000 / 1000).toFixed(2);
-                            document.getElementById('videoBitrate').textContent = 
-                                bitrateMbps + ' Mbps';
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка при получении метаданных:', error);
-            });
-        {% endif %}
     }
     if (document.querySelector('.plyr-audio')) {
         new Plyr('.plyr-audio');
     }
+    
+    // Инициализируем drag and resize для публичного просмотра
+    setTimeout(() => {
+        initPublicDragAndResize();
+    }, 100);
 });
 </script>
 {% endblock %} 
