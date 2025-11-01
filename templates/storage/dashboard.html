@@ -161,6 +161,14 @@
     font-weight: 500;
 }
 
+.mounted-folder {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+.mounted-folder:hover {
+    background-color: rgba(40, 167, 69, 0.2) !important;
+}
+
 /* Вертикальное центрирование модального окна менеджера папок */
 #moveFilesModal .modal-dialog {
     display: flex;
@@ -298,12 +306,17 @@
         
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
-            <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
-                <i class="fas fa-folder-plus me-1"></i> Создать папку
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
-                <i class="fas fa-folder-open me-1"></i> Переместить в папку
-            </button>
+            <div>
+                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm me-2">
+                    <i class="fas fa-share-alt me-1"></i> Доступы
+                </a>
+                <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
+                    <i class="fas fa-folder-plus me-1"></i> Создать папку
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
+                    <i class="fas fa-folder-open me-1"></i> Переместить в папку
+                </button>
+            </div>
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()">
                         <i class="fas fa-sort me-2"></i>
@@ -382,6 +395,33 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- Примонтированные папки -->
+                                {% for mounted in mounted_folders %}
+                                    <tr class="folder-row mounted-folder" data-filename="{{ mounted.folder.name|lower }}">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input folder-checkbox" 
+                                                   value="mounted_{{ mounted.mounted.id }}" disabled>
+                                        </td>
+                                        <td>
+                                            <span style="color: #28a745;">
+                                                <i class="fas fa-folder text-success me-2"></i>
+                                                <strong>{{ mounted.folder.name }}</strong>
+                                                <small class="text-muted ms-2">(от {{ mounted.owner.username }})</small>
+                                            </span>
+                                        </td>
+                                        <td>Примонтированная папка</td>
+                                        <td>{{ mounted.folder.get_files_count }} файлов</td>
+                                        <td>{{ mounted.folder.created_at|date:"d.m.Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-folder-open"></i> Открыть
+                                            </a>
+                                            <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mounted.mounted.id }})">
+                                                <i class="fas fa-unlink"></i> Отмонтировать
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
                                 <!-- Папки -->
                                 {% for folder in folders %}
                                     <tr class="folder-row" data-filename="{{ folder.name|lower }}">
@@ -399,6 +439,19 @@
                                         <td>{{ folder.get_files_count }} файлов</td>
                                         <td>{{ folder.created_at|date:"d.m.Y H:i" }}</td>
                                         <td>
+                                            <button class="btn btn-sm btn-success" onclick="showShareFolderModal({{ folder.id }})">
+                                                <i class="fas fa-share-alt"></i> Поделиться
+                                            </button>
+                                            {% for access in folder.shared_accesses.all %}
+                                                {% if access.owner == user %}
+                                                    <button class="btn btn-sm btn-warning" onclick="showAccessSettings({{ access.id }})">
+                                                        <i class="fas fa-cog"></i> Доступ
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" onclick="revokeAccess({{ folder.id }})">
+                                                        <i class="fas fa-ban"></i> Отозвать
+                                                    </button>
+                                                {% endif %}
+                                            {% endfor %}
                                             <button class="btn btn-sm btn-info" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
                                                 <i class="fas fa-edit"></i> Переименовать
                                             </button>
@@ -2414,6 +2467,47 @@ function updateSelectAll() {
         const checked = document.querySelectorAll('.file-checkbox:checked, .folder-checkbox:checked');
         selectAll.checked = checkboxes.length > 0 && checkboxes.length === checked.length;
     }
+}
+
+async function revokeAccess(folderId) {
+    if (!confirm('Вы уверены, что хотите отозвать доступ к этой папке у всех пользователей?')) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'revoke_folder_access' 0 %}`.replace('0', folderId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Доступ успешно отозван!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отзыве доступа: ' + error.message);
+    }
+}
+
+function showAccessSettings(accessId) {
+    // Можно создать модальное окно или перенаправить на страницу настроек
+    alert('Функция настройки модификаторов доступа будет добавлена в следующем обновлении');
 }
 </script>
 {% endblock %} 

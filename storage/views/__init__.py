@@ -56,6 +56,19 @@ from .folder_operations import (
     rename_file,
     get_folders_tree
 )
+from .share_operations import (
+    share_folder_wizard,
+    share_folder_email,
+    share_folder_link,
+    revoke_folder_access,
+    update_access_permissions,
+    shared_folders_list,
+    mount_folder,
+    unmount_folder,
+    get_link_access_users,
+    shared_folder_view,
+    shared_file_download
+)
 
 __all__ = [
     # File operations
@@ -102,5 +115,17 @@ __all__ = [
     'move_files',
     'rename_file',
     'get_folders_tree',
+    # Share operations
+    'share_folder_wizard',
+    'share_folder_email',
+    'share_folder_link',
+    'revoke_folder_access',
+    'update_access_permissions',
+    'shared_folders_list',
+    'mount_folder',
+    'unmount_folder',
+    'get_link_access_users',
+    'shared_folder_view',
+    'shared_file_download',
 ]
 

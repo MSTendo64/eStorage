@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Доступы к папкам{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-share-alt me-2"></i>Доступы к папкам</h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Назад
+        </a>
+    </div>
+    
+    <!-- Доступы по email -->
+    {% if email_accesses %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4><i class="fas fa-envelope me-2"></i>Доступы по email</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Папка</th>
+                            <th>Владелец</th>
+                            <th>Права</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for access in email_accesses %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-folder text-warning me-2"></i>
+                                <strong>{{ access.folder.name }}</strong>
+                            </td>
+                            <td>{{ access.owner.username }}</td>
+                            <td>
+                                {% if access.can_view %}<span class="badge bg-info">Просмотр</span>{% endif %}
+                                {% if access.can_download %}<span class="badge bg-success">Скачивание</span>{% endif %}
+                                {% if access.can_modify %}<span class="badge bg-warning">Изменение</span>{% endif %}
+                                {% if access.can_delete %}<span class="badge bg-danger">Удаление</span>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'dashboard' %}?shared_folder={{ access.folder.id }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="mountFolder({{ access.id }})">
+                                    <i class="fas fa-link"></i> Примонтировать
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Доступы по ссылке -->
+    {% if link_accesses %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4><i class="fas fa-link me-2"></i>Доступы по ссылке</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Папка</th>
+                            <th>Владелец</th>
+                            <th>Пользователи</th>
+                            <th>Права</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for link_user in link_accesses %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-folder text-warning me-2"></i>
+                                <strong>{{ link_user.share_access.folder.name }}</strong>
+                            </td>
+                            <td>{{ link_user.share_access.owner.username }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="showLinkUsers({{ link_user.share_access.id }})">
+                                    <i class="fas fa-users"></i> Список ({{ link_user.share_access.get_shared_users_count }}/{{ link_user.share_access.max_users|default:"∞" }})
+                                </button>
+                            </td>
+                            <td>
+                                {% if link_user.share_access.can_view %}<span class="badge bg-info">Просмотр</span>{% endif %}
+                                {% if link_user.share_access.can_download %}<span class="badge bg-success">Скачивание</span>{% endif %}
+                                {% if link_user.share_access.can_modify %}<span class="badge bg-warning">Изменение</span>{% endif %}
+                                {% if link_user.share_access.can_delete %}<span class="badge bg-danger">Удаление</span>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'shared_folder_view' link_user.share_access.share_token %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="mountFolder({{ link_user.share_access.id }})">
+                                    <i class="fas fa-link"></i> Примонтировать
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Примонтированные папки -->
+    {% if mounted_folders %}
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-link me-2"></i>Примонтированные папки</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Папка</th>
+                            <th>Владелец</th>
+                            <th>Примонтировано</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mount in mounted_folders %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-folder text-success me-2"></i>
+                                <strong>{{ mount.shared_access.folder.name }}</strong>
+                            </td>
+                            <td>{{ mount.shared_access.owner.username }}</td>
+                            <td>{{ mount.mounted_at|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if mount.shared_access.access_type == 'link' %}
+                                    <a href="{% url 'shared_folder_view' mount.shared_access.share_token %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'dashboard' %}?shared_folder={{ mount.shared_access.folder.id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mount.id }})">
+                                    <i class="fas fa-unlink"></i> Отмонтировать
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if not email_accesses and not link_accesses and not mounted_folders %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>У вас пока нет доступов к папкам других пользователей.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно со списком пользователей -->
+<div class="modal fade" id="linkUsersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Пользователи с доступом</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="linkUsersList">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (token) return token.value;
+    
+    const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+    return cookieMatch ? cookieMatch[1] : null;
+}
+
+async function mountFolder(accessId) {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'mount_folder' 0 %}`.replace('0', accessId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Папка успешно примонтирована!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при примонтировании папки: ' + error.message);
+    }
+}
+
+async function unmountFolder(mountedId) {
+    if (!confirm('Вы уверены, что хотите отмонтировать эту папку?')) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'unmount_folder' 0 %}`.replace('0', mountedId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отмонтировании папки: ' + error.message);
+    }
+}
+
+async function showLinkUsers(accessId) {
+    const modal = new bootstrap.Modal(document.getElementById('linkUsersModal'));
+    modal.show();
+    
+    const listDiv = document.getElementById('linkUsersList');
+    listDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
+    
+    try {
+        const response = await fetch(`{% url 'get_link_access_users' 0 %}`.replace('0', accessId));
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.users.length === 0) {
+                listDiv.innerHTML = '<p class="text-muted text-center">Пользователи пока не получили доступ по ссылке</p>';
+            } else {
+                let html = '<ul class="list-group">';
+                data.users.forEach(user => {
+                    html += `<li class="list-group-item">
+                        <strong>${user.username}</strong><br>
+                        <small class="text-muted">${user.email} - ${user.accessed_at}</small>
+                    </li>`;
+                });
+                html += '</ul>';
+                listDiv.innerHTML = html;
+            }
+        } else {
+            listDiv.innerHTML = '<p class="text-danger">Ошибка при загрузке списка пользователей</p>';
+        }
+    } catch (error) {
+        listDiv.innerHTML = '<p class="text-danger">Ошибка: ' + error.message + '</p>';
+    }
+}
+</script>
+{% endblock %}
+

@@ -35,4 +35,16 @@ urlpatterns = [
     path('folder/move-files/', views.move_files, name='move_files'),
     path('folder/tree/', views.get_folders_tree, name='get_folders_tree'),
     path('file/rename/<int:file_id>/', views.rename_file, name='rename_file'),
+    # Share operations
+    path('folder/share/<int:folder_id>/', views.share_folder_wizard, name='share_folder_wizard'),
+    path('folder/share-email/<int:folder_id>/', views.share_folder_email, name='share_folder_email'),
+    path('folder/share-link/<int:folder_id>/', views.share_folder_link, name='share_folder_link'),
+    path('folder/revoke-access/<int:folder_id>/', views.revoke_folder_access, name='revoke_folder_access'),
+    path('folder/update-permissions/<int:access_id>/', views.update_access_permissions, name='update_access_permissions'),
+    path('shared-folders/', views.shared_folders_list, name='shared_folders_list'),
+    path('folder/mount/<int:access_id>/', views.mount_folder, name='mount_folder'),
+    path('folder/unmount/<int:mounted_id>/', views.unmount_folder, name='unmount_folder'),
+    path('folder/link-users/<int:access_id>/', views.get_link_access_users, name='get_link_access_users'),
+    path('shared/<str:token>/', views.shared_folder_view, name='shared_folder_view'),
+    path('shared/<str:token>/download/<int:file_id>/', views.shared_file_download, name='shared_file_download'),
 ] 

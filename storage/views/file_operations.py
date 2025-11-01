@@ -11,7 +11,7 @@ from django.http import Http404, JsonResponse, FileResponse, HttpResponse
 from django.urls import reverse
 from urllib.parse import quote
 
-from ..models import UserFile, DownloadToken, Folder
+from ..models import UserFile, DownloadToken, Folder, MountedFolder, SharedFolderAccess
 from ..helpers import (
     ensure_user_folder_exists,
     generate_unique_filename,
@@ -104,6 +104,23 @@ def dashboard(request):
     # Получение списка папок в текущей папке
     folders = Folder.objects.filter(user=request.user, parent=current_folder).order_by('name')
     
+    # Получение примонтированных папок (только в корне)
+    mounted_folders = []
+    if not current_folder:
+        mounted = MountedFolder.objects.filter(user=request.user).select_related(
+            'shared_access', 'shared_access__folder', 'shared_access__owner'
+        )
+        for mount in mounted:
+            # Проверяем доступ
+            access = mount.shared_access
+            if access.can_view:
+                mounted_folders.append({
+                    'folder': access.folder,
+                    'owner': access.owner,
+                    'mounted': mount,
+                    'access': access
+                })
+    
     # Получение пути навигации
     breadcrumbs = []
     if current_folder:
@@ -114,11 +131,18 @@ def dashboard(request):
             parent = parent.parent
         breadcrumbs = breadcrumb_items
     
+    # Получаем папки, к которым пользователь предоставил доступ
+    shared_by_me = SharedFolderAccess.objects.filter(
+        owner=request.user
+    ).select_related('folder')
+    
     return render(request, 'storage/dashboard.html', {
         'files': user_files,
         'folders': folders,
+        'mounted_folders': mounted_folders,
         'current_folder': current_folder,
-        'breadcrumbs': breadcrumbs
+        'breadcrumbs': breadcrumbs,
+        'shared_by_me': shared_by_me
     })
 
 

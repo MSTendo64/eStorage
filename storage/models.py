@@ -69,6 +69,93 @@ class Folder(models.Model):
         """Возвращает общий размер файлов в папке"""
         return sum(f.file_size for f in self.files.all())
 
+
+class SharedFolderAccess(models.Model):
+    """Модель для хранения доступа к папкам"""
+    ACCESS_TYPES = [
+        ('email', 'По email'),
+        ('link', 'По ссылке'),
+    ]
+    
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, related_name='shared_accesses')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_folders')
+    access_type = models.CharField(max_length=10, choices=ACCESS_TYPES)
+    
+    # Для доступа по email
+    granted_to_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, 
+                                         related_name='folder_accesses', 
+                                         help_text='Пользователь, которому предоставлен доступ')
+    
+    # Для доступа по ссылке
+    share_token = models.CharField(max_length=64, unique=True, null=True, blank=True,
+                                   help_text='Токен для доступа по ссылке')
+    max_users = models.IntegerField(default=0, help_text='Максимум пользователей (0 = неограничено)')
+    
+    # Модификаторы доступа
+    can_view = models.BooleanField(default=True, help_text='Может просматривать файлы')
+    can_download = models.BooleanField(default=True, help_text='Может скачивать файлы')
+    can_modify = models.BooleanField(default=False, help_text='Может изменять файлы')
+    can_delete = models.BooleanField(default=False, help_text='Может удалять файлы')
+    
+    # Настройки для незарегистрированных пользователей (по ссылке)
+    allow_unregistered_view = models.BooleanField(default=True, 
+                                                  help_text='Незарегистрированные могут просматривать')
+    allow_unregistered_download = models.BooleanField(default=False,
+                                                      help_text='Незарегистрированные могут скачивать')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = [['folder', 'granted_to_user'], ['folder', 'share_token']]
+        verbose_name = 'Доступ к папке'
+        verbose_name_plural = 'Доступы к папкам'
+    
+    def save(self, *args, **kwargs):
+        if not self.share_token and self.access_type == 'link':
+            self.share_token = uuid.uuid4().hex
+        if not self.owner_id and self.folder:
+            self.owner = self.folder.user
+        super().save(*args, **kwargs)
+    
+    def get_shared_users_count(self):
+        """Возвращает количество пользователей, получивших доступ по ссылке"""
+        if self.access_type == 'link':
+            return SharedFolderLinkUser.objects.filter(share_access=self).count()
+        return 0
+    
+    def is_access_limit_reached(self):
+        """Проверяет, достигнут ли лимит доступа"""
+        if self.max_users == 0:
+            return False
+        return self.get_shared_users_count() >= self.max_users
+
+
+class SharedFolderLinkUser(models.Model):
+    """Пользователи, получившие доступ по ссылке"""
+    share_access = models.ForeignKey(SharedFolderAccess, on_delete=models.CASCADE, 
+                                      related_name='link_users')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='link_folder_accesses')
+    accessed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = [['share_access', 'user']]
+        verbose_name = 'Пользователь с доступом по ссылке'
+        verbose_name_plural = 'Пользователи с доступом по ссылке'
+
+
+class MountedFolder(models.Model):
+    """Примонтированные папки других пользователей"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mounted_folders')
+    shared_access = models.ForeignKey(SharedFolderAccess, on_delete=models.CASCADE, 
+                                       related_name='mounted_by')
+    mounted_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = [['user', 'shared_access']]
+        verbose_name = 'Примонтированная папка'
+        verbose_name_plural = 'Примонтированные папки'
+
 class UserFile(models.Model):
     FILE_TYPES = [
         ('image', 'Изображение'),
