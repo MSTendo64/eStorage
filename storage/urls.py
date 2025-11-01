@@ -28,4 +28,10 @@ urlpatterns = [
     path('metadata/<int:file_id>/', views.get_file_metadata, name='get_file_metadata'),
     path('video-quality/<int:file_id>/<int:quality>/', views.get_video_quality, name='get_video_quality'),
     path('public/video-quality/<str:token>/<int:quality>/', views.get_public_video_quality, name='get_public_video_quality'),
+    # Folder operations
+    path('folder/create/', views.create_folder, name='create_folder'),
+    path('folder/rename/<int:folder_id>/', views.rename_folder, name='rename_folder'),
+    path('folder/delete/<int:folder_id>/', views.delete_folder, name='delete_folder'),
+    path('folder/move-files/', views.move_files, name='move_files'),
+    path('file/rename/<int:file_id>/', views.rename_file, name='rename_file'),
 ] 

@@ -48,6 +48,13 @@ from .cleanup import (
     cleanup_downloads,
     cleanup_on_request
 )
+from .folder_operations import (
+    create_folder,
+    rename_folder,
+    delete_folder,
+    move_files,
+    rename_file
+)
 
 __all__ = [
     # File operations
@@ -87,5 +94,11 @@ __all__ = [
     'cleanup_temp_folders',
     'cleanup_downloads',
     'cleanup_on_request',
+    # Folder operations
+    'create_folder',
+    'rename_folder',
+    'delete_folder',
+    'move_files',
+    'rename_file',
 ]
 

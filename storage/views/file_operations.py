@@ -11,7 +11,7 @@ from django.http import Http404, JsonResponse, FileResponse, HttpResponse
 from django.urls import reverse
 from urllib.parse import quote
 
-from ..models import UserFile, DownloadToken
+from ..models import UserFile, DownloadToken, Folder
 from ..helpers import (
     ensure_user_folder_exists,
     generate_unique_filename,
@@ -55,12 +55,22 @@ def dashboard(request):
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
             
+            # Получаем текущую папку для загрузки
+            folder_id = request.POST.get('folder_id', None)
+            folder = None
+            if folder_id:
+                try:
+                    folder = Folder.objects.get(id=folder_id, user=request.user)
+                except Folder.DoesNotExist:
+                    pass
+            
             # Создание записи в БД
             UserFile.objects.create(
                 user=request.user,
                 file=f'{request.user.id}/{filename}',
                 filename=filename,
-                file_size=uploaded_file.size
+                file_size=uploaded_file.size,
+                folder=folder
             )
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -79,9 +89,37 @@ def dashboard(request):
             messages.error(request, error_msg)
             return redirect('dashboard')
         
-    # Получение списка файлов пользователя
-    user_files = UserFile.objects.filter(user=request.user)
-    return render(request, 'storage/dashboard.html', {'files': user_files})
+    # Получение текущей папки (из GET параметра)
+    folder_id = request.GET.get('folder', None)
+    current_folder = None
+    if folder_id:
+        try:
+            current_folder = Folder.objects.get(id=folder_id, user=request.user)
+        except Folder.DoesNotExist:
+            pass
+    
+    # Получение списка файлов пользователя в текущей папке
+    user_files = UserFile.objects.filter(user=request.user, folder=current_folder)
+    
+    # Получение списка папок в текущей папке
+    folders = Folder.objects.filter(user=request.user, parent=current_folder).order_by('name')
+    
+    # Получение пути навигации
+    breadcrumbs = []
+    if current_folder:
+        parent = current_folder.parent
+        breadcrumb_items = [current_folder]
+        while parent:
+            breadcrumb_items.insert(0, parent)
+            parent = parent.parent
+        breadcrumbs = breadcrumb_items
+    
+    return render(request, 'storage/dashboard.html', {
+        'files': user_files,
+        'folders': folders,
+        'current_folder': current_folder,
+        'breadcrumbs': breadcrumbs
+    })
 
 
 @login_required

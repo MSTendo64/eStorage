@@ -7,6 +7,67 @@ import os
 import zipfile
 import tarfile
 from django.urls import reverse
+from django.core.exceptions import ValidationError
+
+class Folder(models.Model):
+    """Модель для виртуальных папок пользователя"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='folders')
+    name = models.CharField(max_length=255)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+        unique_together = ['user', 'name', 'parent']
+        verbose_name = 'Папка'
+        verbose_name_plural = 'Папки'
+    
+    def __str__(self):
+        return self.get_full_path()
+    
+    def get_full_path(self):
+        """Возвращает полный путь папки"""
+        path = [self.name]
+        parent = self.parent
+        while parent:
+            path.insert(0, parent.name)
+            parent = parent.parent
+        return '/'.join(path)
+    
+    def get_depth(self):
+        """Возвращает глубину вложенности папки"""
+        depth = 0
+        parent = self.parent
+        while parent:
+            depth += 1
+            parent = parent.parent
+        return depth
+    
+    def clean(self):
+        """Валидация папки"""
+        if self.parent and self.parent.user != self.user:
+            raise ValidationError('Родительская папка должна принадлежать тому же пользователю')
+        if self.parent == self:
+            raise ValidationError('Папка не может быть родителем самой себя')
+        # Проверка на циклические ссылки
+        parent = self.parent
+        while parent:
+            if parent == self:
+                raise ValidationError('Обнаружена циклическая ссылка')
+            parent = parent.parent
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def get_files_count(self):
+        """Возвращает количество файлов в папке"""
+        return self.files.count()
+    
+    def get_total_size(self):
+        """Возвращает общий размер файлов в папке"""
+        return sum(f.file_size for f in self.files.all())
 
 class UserFile(models.Model):
     FILE_TYPES = [
@@ -28,6 +89,7 @@ class UserFile(models.Model):
     is_public = models.BooleanField(default=False)
     public_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
     file_size = models.BigIntegerField(default=0)
+    folder = models.ForeignKey(Folder, on_delete=models.SET_NULL, null=True, blank=True, related_name='files')
     
     # Добавляем поля для информации о видео
     title = models.CharField(max_length=255, null=True, blank=True)

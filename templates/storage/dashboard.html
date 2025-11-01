@@ -217,8 +217,36 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
+        <!-- Breadcrumbs навигация -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'dashboard' %}">
+                        <i class="fas fa-home"></i> Главная
+                    </a>
+                </li>
+                {% if current_folder %}
+                    {% for breadcrumb in breadcrumbs %}
+                        <li class="breadcrumb-item {% if forloop.last %}active{% endif %}">
+                            {% if not forloop.last %}
+                                <a href="{% url 'dashboard' %}?folder={{ breadcrumb.id }}">{{ breadcrumb.name }}</a>
+                            {% else %}
+                                {{ breadcrumb.name }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                {% endif %}
+            </ol>
+        </nav>
+        
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
+            <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
+                <i class="fas fa-folder-plus me-1"></i> Создать папку
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
+                <i class="fas fa-folder-open me-1"></i> Переместить в папку
+            </button>
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()">
                         <i class="fas fa-sort me-2"></i>
@@ -278,7 +306,7 @@
             </div>
         </div>
 
-        {% if files %}
+        {% if folders or files %}
             <!-- Десктопная в��сия (таблица) -->
             <div class="d-none d-md-block">
                 <div class="files-container">
@@ -297,6 +325,33 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- Папки -->
+                                {% for folder in folders %}
+                                    <tr class="folder-row" data-filename="{{ folder.name|lower }}">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input folder-checkbox" 
+                                                   value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'dashboard' %}?folder={{ folder.id }}" style="text-decoration: none; color: inherit;">
+                                                <i class="fas fa-folder text-warning me-2"></i>
+                                                <strong>{{ folder.name }}</strong>
+                                            </a>
+                                        </td>
+                                        <td>Папка</td>
+                                        <td>{{ folder.get_files_count }} файлов</td>
+                                        <td>{{ folder.created_at|date:"d.m.Y H:i" }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                                <i class="fas fa-edit"></i> Переименовать
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                                <i class="fas fa-trash"></i> Удалить
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                <!-- Файлы -->
                                 {% for file in files %}
                                     <tr class="file-row" 
                                         data-filename="{{ file.filename|lower }}"
@@ -1904,6 +1959,222 @@ function processUploadQueue(success) {
                 processUploadQueue(success);
             }, 100);
         });
+    }
+}
+
+// Функции для работы с папками
+function showCreateFolderModal() {
+    const name = prompt('Введите имя новой папки:');
+    if (!name || !name.trim()) {
+        return;
+    }
+    
+    createFolder(name.trim());
+}
+
+async function createFolder(name) {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    {% if current_folder %}
+    formData.append('parent_id', {{ current_folder.id }});
+    {% endif %}
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch('{% url "create_folder" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при создании папки: ' + error.message);
+    }
+}
+
+async function renameFolder(folderId, currentName) {
+    const newName = prompt('Введите новое имя папки:', currentName);
+    if (!newName || !newName.trim() || newName.trim() === currentName) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', newName.trim());
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch(`/storage/folder/rename/${folderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при переименовании папки: ' + error.message);
+    }
+}
+
+async function deleteFolder(folderId, folderName) {
+    if (!confirm(`Вы уверены, что хотите удалить папку "${folderName}"? Папка должна быть пустой.`)) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch(`/storage/folder/delete/${folderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при удалении папки: ' + error.message);
+    }
+}
+
+async function showMoveFilesModal() {
+    const selectedFiles = getSelectedFiles();
+    if (selectedFiles.length === 0) {
+        alert('Выберите файлы для перемещения');
+        return;
+    }
+    
+    const folderName = prompt('Введите ID папки (оставьте пустым для корневой):');
+    const folderId = folderName ? parseInt(folderName) : null;
+    
+    moveFilesToFolder(selectedFiles, folderId);
+}
+
+async function moveFilesToFolder(fileIds, folderId) {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    fileIds.forEach(fileId => {
+        formData.append('file_ids[]', fileId);
+    });
+    if (folderId) {
+        formData.append('folder_id', folderId);
+    }
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch('{% url "move_files" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при перемещении файлов: ' + error.message);
+    }
+}
+
+function getSelectedFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+// Обновляем обработчики для включения папок в выбор
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.file-checkbox, .folder-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkButtons();
+        });
+    }
+    
+    // Обновляем обработчики для чекбоксов
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('file-checkbox') || e.target.classList.contains('folder-checkbox')) {
+            updateBulkButtons();
+            updateSelectAll();
+        }
+    });
+});
+
+function updateBulkButtons() {
+    const selectedCount = document.querySelectorAll('.file-checkbox:checked, .folder-checkbox:checked').length;
+    const moveBtn = document.getElementById('moveFilesBtn');
+    if (moveBtn) {
+        moveBtn.disabled = selectedCount === 0;
+    }
+    // Обновляем другие кнопки массовых операций
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
+    const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
+    if (bulkDeleteBtn) bulkDeleteBtn.disabled = selectedCount === 0;
+    if (bulkDownloadBtn) bulkDownloadBtn.disabled = selectedCount === 0;
+    if (bulkArchiveBtn) bulkArchiveBtn.disabled = selectedCount === 0;
+}
+
+function updateSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        const checkboxes = document.querySelectorAll('.file-checkbox, .folder-checkbox');
+        const checked = document.querySelectorAll('.file-checkbox:checked, .folder-checkbox:checked');
+        selectAll.checked = checkboxes.length > 0 && checkboxes.length === checked.length;
     }
 }
 </script>
