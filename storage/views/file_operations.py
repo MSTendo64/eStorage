@@ -172,19 +172,53 @@ def save_text_file(request, file_id):
         if request.method != 'POST':
             return create_json_response(False, 'Неверный метод запроса', status=405)
         
-        content = request.POST.get('content', '')
+        # Получаем содержимое из POST или JSON
+        if request.content_type == 'application/json':
+            import json
+            data = json.loads(request.body)
+            content = data.get('content', '')
+        else:
+            content = request.POST.get('content', '')
         
-        # Получаем путь к файлу
-        file_path = get_file_path(file)
+        # Получаем путь к файлу - используем file.path для Django FileField
+        try:
+            # Пытаемся получить путь через Django FileField
+            if file.file:
+                file_path = file.file.path
+            else:
+                raise AttributeError("file.file is None")
+        except (ValueError, AttributeError, OSError) as e:
+            # Если file.path недоступен, используем get_file_path
+            logger.warning(f"Could not get file.path for file {file_id}, using get_file_path: {e}")
+            try:
+                file_path = get_file_path(file)
+            except Exception as e2:
+                logger.error(f"Error in get_file_path for file {file_id}: {e2}")
+                return create_json_response(False, f'Ошибка при получении пути к файлу: {str(e2)}', status=500)
+        
+        # Проверяем, что путь существует или создаем директорию
+        try:
+            dir_path = os.path.dirname(file_path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+                logger.info(f"Created directory: {dir_path}")
+        except OSError as e:
+            logger.error(f"Error creating directory for file {file_id}: {e}")
+            return create_json_response(False, f'Ошибка при создании директории: {str(e)}', status=500)
         
         # Сохраняем содержимое
         try:
+            logger.info(f"Saving text file {file_id} to path: {file_path}")
+            
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             
             # Обновляем размер файла
-            file.file_size = os.path.getsize(file_path)
-            file.save()
+            new_size = os.path.getsize(file_path)
+            file.file_size = new_size
+            file.save(update_fields=['file_size'])
+            
+            logger.info(f"Text file {file_id} saved successfully, new size: {new_size} bytes")
             
             return create_json_response(True, 'Файл успешно сохранен')
             

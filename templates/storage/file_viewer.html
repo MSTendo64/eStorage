@@ -292,24 +292,31 @@ function updateLineNumbers(textarea, lineNumbersDiv) {
     const paddingTop = parseFloat(window.getComputedStyle(textarea).paddingTop) || 10;
     const paddingBottom = parseFloat(window.getComputedStyle(textarea).paddingBottom) || 10;
     
+    // Сохраняем текущий scrollTop перед обновлением
+    const scrollTop = textarea.scrollTop;
+    
     // Обновляем номера строк
     let numbersHtml = '';
     for (let i = 1; i <= lines.length; i++) {
         numbersHtml += `<div style="height: ${lineHeight}px; line-height: ${lineHeight}px; min-height: ${lineHeight}px;">${i}</div>`;
     }
     
-    // Добавляем пустые строки для padding
+    // Обновляем HTML
     lineNumbersDiv.innerHTML = numbersHtml || '<div>1</div>';
+    
+    // Устанавливаем padding для соответствия textarea
     lineNumbersDiv.style.paddingTop = paddingTop + 'px';
     lineNumbersDiv.style.paddingBottom = paddingBottom + 'px';
     
-    // Синхронизируем прокрутку (без собственного скроллбара)
-    // Номера строк прокручиваются вместе с textarea через JS
-    lineNumbersDiv.style.overflow = 'hidden';
-    // Сохраняем scrollTop для синхронизации
-    const scrollTop = textarea.scrollTop;
-    // Устанавливаем transform для визуальной синхронизации
-    lineNumbersDiv.style.transform = `translateY(-${scrollTop}px)`;
+    // Устанавливаем высоту контейнера номеров строк равной высоте textarea
+    // Это гарантирует, что все номера строк будут видны при прокрутке
+    const textareaScrollHeight = textarea.scrollHeight;
+    lineNumbersDiv.style.height = textareaScrollHeight + 'px';
+    lineNumbersDiv.style.minHeight = textareaScrollHeight + 'px';
+    
+    // Восстанавливаем scrollTop для синхронизации прокрутки
+    // Используем scrollTop вместо transform для правильной прокрутки
+    lineNumbersDiv.scrollTop = scrollTop;
 }
 
 // Функция для сохранения текстового файла
@@ -466,15 +473,27 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                         editor.addEventListener('input', () => updateLineNumbers(editor, lineNumbers));
                         editor.addEventListener('scroll', () => {
                             if (lineNumbers) {
-                                // Синхронизируем прокрутку через transform вместо scrollTop
-                                const scrollTop = editor.scrollTop;
-                                lineNumbers.style.transform = `translateY(-${scrollTop}px)`;
+                                // Синхронизируем прокрутку через scrollTop
+                                lineNumbers.scrollTop = editor.scrollTop;
+                                // Обновляем высоту контейнера для соответствия scrollHeight
+                                const scrollHeight = editor.scrollHeight;
+                                lineNumbers.style.height = scrollHeight + 'px';
+                                lineNumbers.style.minHeight = scrollHeight + 'px';
                             }
                         });
                         editor.addEventListener('keyup', () => updateLineNumbers(editor, lineNumbers));
                         editor.addEventListener('paste', () => {
                             setTimeout(() => updateLineNumbers(editor, lineNumbers), 10);
                         });
+                        
+                        // Обработчик изменения размера textarea для обновления высоты номеров строк
+                        const resizeObserver = new ResizeObserver(() => {
+                            if (lineNumbers) {
+                                lineNumbers.style.height = editor.scrollHeight + 'px';
+                                updateLineNumbers(editor, lineNumbers);
+                            }
+                        });
+                        resizeObserver.observe(editor);
                     }
                 } catch(e) {
                     const editor = document.getElementById(pending.editorId);
