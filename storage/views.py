@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.http import HttpResponse, Http404, JsonResponse, FileResponse, StreamingHttpResponse
 from django.urls import reverse
 from .models import UserFile, DownloadToken, YouTubeVideo
-from .utils import get_video_metadata
+from .utils import get_video_metadata, get_available_qualities, get_video_quality_path
 import json
 import zipfile
 from io import BytesIO
@@ -834,6 +834,14 @@ def get_file_metadata(request, file_id):
         metadata = get_video_metadata(file_path)
         
         if metadata:
+            # Добавляем список доступных качеств
+            height = metadata.get('height')
+            if height and height > 144:
+                available_qualities = get_available_qualities(height)
+                metadata['available_qualities'] = available_qualities
+            else:
+                metadata['available_qualities'] = [height] if height else []
+            
             return JsonResponse({
                 'success': True,
                 'metadata': metadata
@@ -891,6 +899,14 @@ def get_public_file_metadata(request, token):
         metadata = get_video_metadata(file_path)
         
         if metadata:
+            # Добавляем список доступных качеств
+            height = metadata.get('height')
+            if height and height > 144:
+                available_qualities = get_available_qualities(height)
+                metadata['available_qualities'] = available_qualities
+            else:
+                metadata['available_qualities'] = [height] if height else []
+            
             return JsonResponse({
                 'success': True,
                 'metadata': metadata
@@ -914,3 +930,102 @@ def get_public_file_metadata(request, token):
             'success': False,
             'error': f'Ошибка: {str(e)}'
         }, status=500)
+
+@login_required
+def get_video_quality(request, file_id, quality):
+    """API endpoint для получения видео в указанном качестве."""
+    try:
+        try:
+            target_height = int(quality)
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Некорректное качество видео'}, status=400)
+        
+        file = UserFile.objects.get(id=file_id, user=request.user)
+        if not file.is_video:
+            return JsonResponse({'success': False, 'error': 'Файл не является видео'}, status=400)
+        
+        try:
+            file_path = file.file.path
+        except Exception as e:
+            logging.error(f"Error getting file path: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'Ошибка при получении пути к файлу: {str(e)}'}, status=500)
+        
+        if not os.path.exists(file_path):
+            return JsonResponse({'success': False, 'error': 'Файл не найден на диске'}, status=404)
+        
+        metadata = get_video_metadata(file_path)
+        if not metadata:
+            return JsonResponse({'success': False, 'error': 'Не удалось получить метаданные видео'}, status=500)
+        
+        original_height = metadata.get('height')
+        if not original_height:
+            return JsonResponse({'success': False, 'error': 'Не удалось определить исходное разрешение видео'}, status=500)
+        
+        if target_height >= original_height:
+            response = FileResponse(open(file_path, 'rb'), content_type='video/mp4')
+            response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+            return response
+        
+        quality_path = get_video_quality_path(file_path, target_height)
+        if not quality_path:
+            return JsonResponse({'success': False, 'error': 'Не удалось перекодировать видео. Убедитесь, что ffmpeg установлен.'}, status=500)
+        
+        response = FileResponse(open(quality_path, 'rb'), content_type='video/mp4')
+        response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+        return response
+    except UserFile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Файл не найден'}, status=404)
+    except Exception as e:
+        logging.error(f"Error in get_video_quality: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'Ошибка: {str(e)}'}, status=500)
+
+def get_public_video_quality(request, token, quality):
+    """API endpoint для получения публичного видео в указанном качестве."""
+    try:
+        try:
+            target_height = int(quality)
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Некорректное качество видео'}, status=400)
+        
+        file = UserFile.objects.get(public_token=token, is_public=True)
+        if not file.is_video:
+            return JsonResponse({'success': False, 'error': 'Файл не является видео'}, status=400)
+        
+        try:
+            file_path = file.file.path
+        except Exception as e:
+            logging.error(f"Error getting file path: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'Ошибка при получении пути к файлу: {str(e)}'}, status=500)
+        
+        if not os.path.exists(file_path):
+            return JsonResponse({'success': False, 'error': 'Файл не найден на диске'}, status=404)
+        
+        metadata = get_video_metadata(file_path)
+        if not metadata:
+            return JsonResponse({'success': False, 'error': 'Не удалось получить метаданные видео'}, status=500)
+        
+        original_height = metadata.get('height')
+        if not original_height:
+            return JsonResponse({'success': False, 'error': 'Не удалось определить исходное разрешение видео'}, status=500)
+        
+        if target_height >= original_height:
+            response = FileResponse(open(file_path, 'rb'), content_type='video/mp4')
+            response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+            return response
+        
+        quality_path = get_video_quality_path(file_path, target_height)
+        if not quality_path:
+            return JsonResponse({'success': False, 'error': 'Не удалось перекодировать видео. Убедитесь, что ffmpeg установлен.'}, status=500)
+        
+        response = FileResponse(open(quality_path, 'rb'), content_type='video/mp4')
+        response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+        return response
+    except UserFile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Файл не найден или недоступен'}, status=404)
+    except Exception as e:
+        logging.error(f"Error in get_public_video_quality: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'Ошибка: {str(e)}'}, status=500)

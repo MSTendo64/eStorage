@@ -3,5 +3,5 @@
 {% block title %}{{ file.filename }} | Eventshock Storage{% endblock %}
 
 {% block content %}
-{% include 'storage/file_viewer.html' with modal_mode=False file_type=file_type filename=file.filename file_url=file.file.url %}
+{% include 'storage/file_viewer.html' with modal_mode=False file_type=file_type filename=file.filename file_url=file.file.url file_token=file.public_token %}
 {% endblock %} 

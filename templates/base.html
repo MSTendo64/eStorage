@@ -1148,7 +1148,7 @@ function updatePlayerHeaderColor(headerSelector, titleSelector) {
 }
 
 // Создание HTML структуры единого плеера
-function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null) {
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, availableQualities = [], fileId = null, publicToken = null) {
     const closeBtn = closeAction 
         ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
         : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
@@ -1162,8 +1162,28 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
     
     switch(type) {
         case 'video':
+            // Создаем source элементы для разных качеств, если они доступны
+            let sourcesHtml = '';
+            if (availableQualities && availableQualities.length > 1) {
+                // Добавляем source для каждого качества с data-plyr-quality атрибутом
+                availableQualities.forEach((quality) => {
+                    let qualityUrl;
+                    if (fileId) {
+                        qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
+                    } else if (publicToken) {
+                        qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
+                    } else {
+                        qualityUrl = url;
+                    }
+                    sourcesHtml += `<source src="${qualityUrl}" type="video/mp4" data-plyr-quality="${quality}">`;
+                });
+            } else {
+                // Если качеств нет или только одно, используем оригинальный URL
+                sourcesHtml = `<source src="${url}" type="video/mp4">`;
+            }
+            
             content = `<video class="plyr-video" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
-                <source src="${url}" type="video/mp4">
+                ${sourcesHtml}
             </video>`;
             playerClass = 'plyr-video';
             break;
@@ -1194,6 +1214,49 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
         `,
         playerClass: playerClass
     };
+}
+
+// Функция для изменения качества видео (для авторизованных пользователей)
+function changeVideoQuality(videoElement, fileId, quality, originalUrl) {
+    if (!videoElement || !fileId) return;
+    
+    const qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
+    
+    // Обновляем src видео элемента
+    videoElement.src = qualityUrl;
+    
+    // Если используется Plyr, перезагружаем медиа
+    if (globalPlayer && globalPlayer.media) {
+        globalPlayer.source = {
+            type: 'video',
+            sources: [{
+                src: qualityUrl,
+                type: 'video/mp4'
+            }]
+        };
+    }
+}
+
+// Функция для изменения качества публичного видео
+function changePublicVideoQuality(videoElement, publicToken, quality, originalUrl) {
+    if (!videoElement || !publicToken) return;
+    
+    const qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
+    
+    // Обновляем src видео элемента
+    videoElement.src = qualityUrl;
+    
+    // Если используется Plyr, перезагружаем медиа
+    const player = Plyr.get(videoElement);
+    if (player && player.media) {
+        player.source = {
+            type: 'video',
+            sources: [{
+                src: qualityUrl,
+                type: 'video/mp4'
+            }]
+        };
+    }
 }
 </script>
 </body>

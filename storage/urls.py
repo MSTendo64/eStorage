@@ -25,4 +25,6 @@ urlpatterns = [
     path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
     path('api/yt-task/<int:task_id>/', youtube.task_status, name='api_task_status'),
     path('metadata/<int:file_id>/', views.get_file_metadata, name='get_file_metadata'),
+    path('video-quality/<int:file_id>/<int:quality>/', views.get_video_quality, name='get_video_quality'),
+    path('public/video-quality/<str:token>/<int:quality>/', views.get_public_video_quality, name='get_public_video_quality'),
 ] 

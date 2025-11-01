@@ -283,7 +283,7 @@ const modalResizeState = {
     activeResizeHandle: null
 };
 
-function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
+async function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     const modalDialog = document.getElementById('previewModalDialog');
     const modalContent = document.getElementById('previewModalContent');
@@ -299,15 +299,39 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
         globalPlayer = null;
     }
     
-    // Создаем единую структуру плеера
-    const playerData = createUnifiedPlayerHTML(type, url, filename);
+    // Получаем метаданные и доступные качества для видео
+    let availableQualities = [];
+    if (type === 'video' && fileId) {
+        try {
+            const metadataResponse = await fetch(`/storage/metadata/${fileId}/`);
+            const metadataData = await metadataResponse.json();
+            if (metadataData.success && metadataData.metadata.available_qualities) {
+                availableQualities = metadataData.metadata.available_qualities;
+            }
+        } catch(e) {
+            console.error('Error loading video metadata:', e);
+        }
+    }
+    
+    // Создаем единую структуру плеера с поддержкой качества
+    const playerData = createUnifiedPlayerHTML(type, url, filename, null, null, availableQualities, fileId);
     previewContent.innerHTML = playerData.html;
     
-    // Инициализируем Plyr для видео/аудио
+    // Инициализируем Plyr для видео/аудио с поддержкой качества
     if (playerData.playerClass) {
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
+            // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
             globalPlayer = initUnifiedPlayer(playerElement);
+            
+            // Слушаем событие изменения качества
+            if (type === 'video' && availableQualities.length > 1 && fileId) {
+                playerElement.addEventListener('qualitychange', (e) => {
+                    const quality = e.detail.quality;
+                    // Видео уже загружено через source, но можно добавить дополнительную логику
+                    console.log('Quality changed to:', quality);
+                });
+            }
         }
     }
     
@@ -462,6 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let playerType = null;
     let filename = '';
     let fileUrl = '';
+    let fileToken = null;
     
     // Определяем тип файла и создаем единую структуру плеера
     {% if file_type == 'video' %}
@@ -469,6 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
     playerType = 'video';
     filename = '{{ filename|escapejs }}';
     fileUrl = '{{ file_url }}';
+    fileToken = '{{ file_token|default:""|escapejs }}' || null;
     {% elif file_type == 'image' %}
     playerElement = document.getElementById('publicImagePlayer');
     playerType = 'image';
@@ -482,15 +508,38 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
     
     if (playerElement) {
-        // Создаем единую структуру плеера
-        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'');
+        // Получаем метаданные и доступные качества для видео
+        let availableQualities = [];
+        if (playerType === 'video' && fileToken) {
+            try {
+                const metadataResponse = await fetch(`/storage/public/metadata/${fileToken}/`);
+                const metadataData = await metadataResponse.json();
+                if (metadataData.success && metadataData.metadata.available_qualities) {
+                    availableQualities = metadataData.metadata.available_qualities;
+                }
+            } catch(e) {
+                console.error('Error loading video metadata:', e);
+            }
+        }
+        
+        // Создаем единую структуру плеера с поддержкой качества
+        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', availableQualities, null, fileToken);
         playerElement.innerHTML = playerData.html;
         
-        // Инициализируем Plyr для видео/аудио
+        // Инициализируем Plyr для видео/аудио с поддержкой качества
         if (playerData.playerClass) {
             const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
             if (mediaElement) {
-                initUnifiedPlayer(mediaElement);
+                // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
+                const player = initUnifiedPlayer(mediaElement);
+                
+                // Слушаем событие изменения качества
+                if (playerType === 'video' && availableQualities.length > 1 && fileToken) {
+                    mediaElement.addEventListener('qualitychange', (e) => {
+                        const quality = e.detail.quality;
+                        console.log('Quality changed to:', quality);
+                    });
+                }
             }
         }
         
