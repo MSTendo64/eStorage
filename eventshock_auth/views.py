@@ -413,7 +413,8 @@ def revoke_esid_token(request, token_id):
 
 @login_required
 def api_docs(request):
-    if not request.user.userprofile.developer_mode:
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if not profile.developer_mode:
         messages.error(request, 'Включите режим разработчика для доступа к документации API')
         return redirect('settings_general')
         

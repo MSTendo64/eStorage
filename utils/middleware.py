@@ -13,7 +13,13 @@ class LanguageMiddleware:
     def __call__(self, request):
         # Пытаемся получить язык из профиля пользователя
         if request.user.is_authenticated:
-            user_language = request.user.userprofile.language
+            try:
+                from eventshock_auth.models import UserProfile
+                profile, created = UserProfile.objects.get_or_create(user=request.user)
+                user_language = profile.language
+            except Exception:
+                # Если не удалось получить профиль, используем язык по умолчанию
+                user_language = request.COOKIES.get('django_language', 'ru')
         else:
             # Если пользователь не авторизован, пробуем получить язык из cookie
             user_language = request.COOKIES.get('django_language', 'ru')

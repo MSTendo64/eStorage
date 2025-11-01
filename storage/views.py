@@ -422,7 +422,8 @@ def cleanup_on_request(sender, **kwargs):
 
 @login_required
 def storage_stats(request):
-    profile = request.user.userprofile
+    from eventshock_auth.models import UserProfile
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
     return JsonResponse({
         'percent': profile.get_storage_percent(),
         'used_formatted': profile.get_used_storage_formatted(),
