@@ -3,10 +3,22 @@
 {% block title %}{{ file.filename }} | Eventshock Storage{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-0" style="position: relative; height: 100vh; overflow: hidden;">
+<style>
+/* Запрещаем прокрутку страницы при публичном просмотре */
+body {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+html {
+    overflow: hidden !important;
+}
+</style>
+<div class="container-fluid p-0" style="position: fixed; width: 100%; height: 100vh; overflow: hidden; top: 0; left: 0;">
     {% if file.is_video %}
     <!-- Видео плеер с улучшенным интерфейсом -->
-    <div id="publicVideoPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 450px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+    <div id="publicVideoPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 500px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
         <div class="draggable-header-public" style="cursor: default; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
             <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicVideoTitle">{{ file.filename }}</h5>
             <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
@@ -14,8 +26,8 @@
             </a>
             <button type="button" class="btn-close btn-close-sm" onclick="window.location.href='/';" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
         </div>
-        <div style="position: relative; background: #000;">
-            <video id="publicVideo" class="plyr-video" playsinline controls style="width: 100%; height: 100%;">
+        <div style="position: relative; background: #000; width: 100%; flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <video id="publicVideo" class="plyr-video" playsinline controls style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain;">
                 <source src="{{ file.file.url }}" type="video/mp4">
             </video>
             <div class="resize-handle-public resize-handle-se-public" style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; z-index: 1000;"></div>
@@ -171,8 +183,12 @@ function initPublicDragAndResize() {
         let newWidth = resizeStartPublic.width + deltaX;
         let newHeight = resizeStartPublic.height + deltaY;
         
-        const minWidth = 300;
-        const minHeight = 200;
+        // Минимальные размеры с учетом шапки и элементов управления плеера
+        const headerHeight = 24; // Высота шапки
+        const controlsHeight = 80; // Минимальная высота для элементов управления
+        const minWidth = 400; // Увеличено для корректного отображения элементов управления
+        const minHeight = headerHeight + controlsHeight + 200; // Минимум 304px (24 + 80 + 200)
+        
         // Максимальная ширина - 95% экрана, но центр окна остается на месте
         const maxWidth = window.innerWidth * 0.95;
         const maxHeight = window.innerHeight * 0.95;
@@ -188,6 +204,21 @@ function initPublicDragAndResize() {
         player.style.left = '50%';
         player.style.top = '50%';
         player.style.transform = 'translate(-50%, -50%)';
+        
+        // Обновляем размер контейнера видео, чтобы элементы управления были видны
+        const videoContainer = player.querySelector('div[style*="position: relative"]');
+        if (videoContainer) {
+            const videoHeight = newHeight - headerHeight;
+            videoContainer.style.height = videoHeight + 'px';
+            videoContainer.style.minHeight = videoHeight + 'px';
+            
+            // Обновляем размер видео элемента
+            const video = videoContainer.querySelector('video');
+            if (video) {
+                video.style.height = '100%';
+                video.style.maxHeight = '100%';
+            }
+        }
     }
     
     function stopResizePublic() {

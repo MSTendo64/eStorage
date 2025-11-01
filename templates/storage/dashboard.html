@@ -430,8 +430,8 @@
                 <h5 class="modal-title" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="previewModalTitle">Просмотр файла</h5>
                 <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem; margin-left: 0.5rem;"></button>
             </div>
-            <div class="modal-body text-center p-0" style="position: relative;">
-                <div id="previewContent"></div>
+            <div class="modal-body text-center p-0" style="position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 0;">
+                <div id="previewContent" style="flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;"></div>
                 <div class="resize-handle resize-handle-se" style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; z-index: 1000;"></div>
             </div>
         </div>
@@ -658,7 +658,7 @@
 </style>
 
 <script>
-let player = null;
+let globalPlayer = null;
 let zoom = null;
 
 let isDragging = false;
@@ -702,12 +702,27 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
             break;
             
         case 'video':
+            // Очищаем предыдущий плеер если он существует
+            if (globalPlayer) {
+                try {
+                    globalPlayer.destroy();
+                } catch(e) {
+                    console.error('Error destroying player:', e);
+                }
+                globalPlayer = null;
+            }
+            
             previewContent.innerHTML = `
-                <video id="player" playsinline controls>
+                <video id="player" playsinline controls style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain;">
                     <source src="${url}" type="video/mp4">
                 </video>
             `;
-            const player = new Plyr('#player');
+            globalPlayer = new Plyr('#player', {
+                controls: [
+                    'play-large', 'play', 'progress', 'current-time', 'duration',
+                    'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+                ]
+            });
             break;
             
         case 'audio':
@@ -732,6 +747,15 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
         previewContent.innerHTML = '';
         isDragging = false;
         isResizing = false;
+        // Уничтожаем плеер при закрытии
+        if (globalPlayer) {
+            try {
+                globalPlayer.destroy();
+                globalPlayer = null;
+            } catch(e) {
+                console.error('Error destroying player:', e);
+            }
+        }
     }, { once: true });
 }
 
@@ -903,9 +927,12 @@ function initDragAndResize() {
             newHeight = resizeStart.height + deltaY;
         }
         
-        // Минимальные и максимальные размеры
-        const minWidth = 300;
-        const minHeight = 200;
+        // Минимальные размеры с учетом шапки и элементов управления плеера
+        const headerHeight = 24; // Высота шапки
+        const controlsHeight = 80; // Минимальная высота для элементов управления
+        const minWidth = 400; // Увеличено для корректного отображения элементов управления
+        const minHeight = headerHeight + controlsHeight + 200; // Минимум 304px
+        
         // Максимальная ширина - больше растягиваем по ширине (до 95% экрана или от позиции до края)
         const maxWidth = Math.min(window.innerWidth - dialogLeft - 10, window.innerWidth * 0.95);
         const maxHeight = window.innerHeight - dialogTop - 10;
@@ -916,6 +943,27 @@ function initDragAndResize() {
         // Применяем новые размеры
         modalContent.style.width = newWidth + 'px';
         modalContent.style.height = newHeight + 'px';
+        
+        // Обновляем размер контента, чтобы элементы управления плеера были видны
+        const previewContentEl = document.getElementById('previewContent');
+        if (previewContentEl) {
+            // Убеждаемся, что контент не выходит за границы
+            previewContentEl.style.maxWidth = '100%';
+            previewContentEl.style.maxHeight = (newHeight - headerHeight - 10) + 'px';
+            previewContentEl.style.overflow = 'hidden';
+            
+            // Обновляем размер видео, если оно есть
+            const video = previewContentEl.querySelector('video');
+            if (video && globalPlayer) {
+                // Плеер автоматически адаптируется, но можем принудительно обновить
+                setTimeout(() => {
+                    if (globalPlayer && typeof globalPlayer.media !== 'undefined') {
+                        globalPlayer.media.style.maxWidth = '100%';
+                        globalPlayer.media.style.maxHeight = '100%';
+                    }
+                }, 10);
+            }
+        }
     }
     
     function stopResize() {
