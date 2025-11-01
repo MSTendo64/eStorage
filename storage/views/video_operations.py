@@ -166,8 +166,10 @@ def get_video_quality(request, file_id, quality):
         
         # Если запрошенное качество равно или выше исходного, возвращаем оригинал
         if target_height >= original_height:
-            response = FileResponse(open(file_path, 'rb'), content_type='video/mp4')
+            file_handle = open(file_path, 'rb')
+            response = FileResponse(file_handle, content_type='video/mp4')
             response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+            response['Accept-Ranges'] = 'bytes'
             return response
         
         # Получаем или создаем видео в нужном качестве
@@ -180,8 +182,10 @@ def get_video_quality(request, file_id, quality):
                 status=500
             )
         
-        response = FileResponse(open(quality_path, 'rb'), content_type='video/mp4')
+        file_handle = open(quality_path, 'rb')
+        response = FileResponse(file_handle, content_type='video/mp4')
         response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+        response['Accept-Ranges'] = 'bytes'
         return response
         
     except UserFile.DoesNotExist:
@@ -230,8 +234,10 @@ def get_public_video_quality(request, token, quality):
             )
         
         if target_height >= original_height:
-            response = FileResponse(open(file_path, 'rb'), content_type='video/mp4')
+            file_handle = open(file_path, 'rb')
+            response = FileResponse(file_handle, content_type='video/mp4')
             response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+            response['Accept-Ranges'] = 'bytes'
             return response
         
         quality_path = get_video_quality_path(file_path, target_height)
@@ -243,8 +249,10 @@ def get_public_video_quality(request, token, quality):
                 status=500
             )
         
-        response = FileResponse(open(quality_path, 'rb'), content_type='video/mp4')
+        file_handle = open(quality_path, 'rb')
+        response = FileResponse(file_handle, content_type='video/mp4')
         response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+        response['Accept-Ranges'] = 'bytes'
         return response
         
     except UserFile.DoesNotExist:

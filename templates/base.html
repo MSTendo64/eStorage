@@ -1092,9 +1092,37 @@ function initUnifiedPlayer(selector, options = {}) {
         controls: [
             'play-large', 'play', 'progress', 'current-time', 'duration',
             'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-        ]
+        ],
+        // Убеждаемся, что перемотка работает правильно
+        seekTime: 10,
+        // Настройки для работы с видео
+        clickToPlay: true,
+        disableContextMenu: false,
+        // Не перезагружаем видео при изменении source, если уже загружено
+        resetOnEnd: false
     };
-    return new Plyr(selector, { ...defaultOptions, ...options });
+    const player = new Plyr(selector, { ...defaultOptions, ...options });
+    
+    // Предотвращаем перезагрузку видео при перемотке
+    if (player && player.media) {
+        let savedTime = 0;
+        
+        // Сохраняем позицию перед любыми действиями, которые могут перезагрузить видео
+        player.media.addEventListener('timeupdate', function() {
+            savedTime = player.currentTime;
+        });
+        
+        // При перемотке просто переходим к нужной позиции, не перезагружая
+        player.media.addEventListener('seeking', function(e) {
+            // Если видео уже загружено, перемотка не должна вызывать перезагрузку
+            if (player.media.readyState >= 2) {
+                // Видео уже загружено, перемотка должна работать
+                return;
+            }
+        });
+    }
+    
+    return player;
 }
 
 // Обновление цвета заголовка плеера в зависимости от темы

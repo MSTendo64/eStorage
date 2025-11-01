@@ -324,12 +324,23 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
             globalPlayer = initUnifiedPlayer(playerElement);
             
-            // Слушаем событие изменения качества
+            // Слушаем событие изменения качества и сохраняем позицию воспроизведения
             if (type === 'video' && availableQualities.length > 1 && fileId) {
                 playerElement.addEventListener('qualitychange', (e) => {
                     const quality = e.detail.quality;
-                    // Видео уже загружено через source, но можно добавить дополнительную логику
-                    console.log('Quality changed to:', quality);
+                    // Сохраняем текущую позицию перед изменением качества
+                    const currentTime = globalPlayer.currentTime;
+                    console.log('Quality changed to:', quality, 'Current time:', currentTime);
+                    
+                    // Восстанавливаем позицию после загрузки нового источника
+                    if (globalPlayer && globalPlayer.media) {
+                        globalPlayer.media.addEventListener('loadedmetadata', function restoreTime() {
+                            if (globalPlayer && currentTime > 0) {
+                                globalPlayer.currentTime = currentTime;
+                                globalPlayer.media.removeEventListener('loadedmetadata', restoreTime);
+                            }
+                        }, { once: true });
+                    }
                 });
             }
         }
@@ -533,11 +544,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
                 const player = initUnifiedPlayer(mediaElement);
                 
-                // Слушаем событие изменения качества
+                // Слушаем событие изменения качества и сохраняем позицию воспроизведения
                 if (playerType === 'video' && availableQualities.length > 1 && fileToken) {
                     mediaElement.addEventListener('qualitychange', (e) => {
                         const quality = e.detail.quality;
-                        console.log('Quality changed to:', quality);
+                        // Сохраняем текущую позицию перед изменением качества
+                        const currentTime = player.currentTime;
+                        console.log('Quality changed to:', quality, 'Current time:', currentTime);
+                        
+                        // Восстанавливаем позицию после загрузки нового источника
+                        if (player && player.media) {
+                            player.media.addEventListener('loadedmetadata', function restoreTime() {
+                                if (player && currentTime > 0) {
+                                    player.currentTime = currentTime;
+                                    player.media.removeEventListener('loadedmetadata', restoreTime);
+                                }
+                            }, { once: true });
+                        }
                     });
                 }
             }
