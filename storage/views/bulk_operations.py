@@ -9,8 +9,8 @@ from django.conf import settings
 from django.http import JsonResponse, FileResponse
 from django.utils import timezone
 
-from ..models import UserFile
-from ..helpers import ensure_user_folder_exists, create_json_response
+from ..models import UserFile, Folder
+from ..helpers import ensure_user_folder_exists, create_json_response, get_file_path
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -44,7 +44,7 @@ def bulk_delete(request):
 
 @login_required
 def bulk_download(request):
-    """Массовое скачивание файлов в ZIP-архиве"""
+    """Массовое скачивание файлов в ZIP-архиве с сохранением структуры папок"""
     if request.method != 'POST':
         return create_json_response(False, 'Метод не поддерживается', status=405)
     
@@ -52,13 +52,40 @@ def bulk_download(request):
         file_ids = request.POST.getlist('file_ids[]')
         files = UserFile.objects.filter(id__in=file_ids, user=request.user)
         
+        # Получаем выбранные папки (если есть)
+        folder_ids = []
+        selected_items = request.POST.getlist('file_ids[]')
+        for item in selected_items:
+            if item.startswith('folder_'):
+                folder_ids.append(int(item.replace('folder_', '')))
+        
+        # Собираем все файлы из выбранных папок (рекурсивно)
+        folders_files = []
+        if folder_ids:
+            folders = Folder.objects.filter(id__in=folder_ids, user=request.user)
+            for folder in folders:
+                folders_files.extend(get_files_from_folder_recursive(folder))
+        
+        # Объединяем файлы из выбранных файлов и папок
+        all_files = list(files) + folders_files
+        # Убираем дубликаты по ID
+        seen_ids = set()
+        unique_files = []
+        for file in all_files:
+            if file.id not in seen_ids:
+                seen_ids.add(file.id)
+                unique_files.append(file)
+        all_files = unique_files
+        
         # Создаем временный ZIP-файл в памяти
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for file in files:
-                file_path = os.path.join(settings.MEDIA_ROOT, str(file.file))
+            for file in all_files:
+                file_path = get_file_path(file)
                 if os.path.exists(file_path):
-                    zip_file.write(file_path, file.filename)
+                    # Формируем путь в архиве с учетом папки
+                    archive_path = get_archive_path_for_file(file)
+                    zip_file.write(file_path, archive_path)
         
         # Возвращаем ZIP-файл
         zip_buffer.seek(0)
@@ -71,9 +98,31 @@ def bulk_download(request):
         return create_json_response(False, f'Ошибка при создании архива: {str(e)}', status=500)
 
 
+def get_archive_path_for_file(file):
+    """Формирует путь файла в архиве с учетом структуры папок"""
+    if not file.folder:
+        return file.filename
+    
+    # Получаем полный путь папки
+    folder_path = file.folder.get_full_path()
+    # Возвращаем путь с учетом папки
+    return f"{folder_path}/{file.filename}"
+
+
+def get_files_from_folder_recursive(folder):
+    """Рекурсивно получает все файлы из папки и подпапок"""
+    files = list(folder.files.all())
+    
+    # Рекурсивно получаем файлы из подпапок
+    for subfolder in folder.subfolders.all():
+        files.extend(get_files_from_folder_recursive(subfolder))
+    
+    return files
+
+
 @login_required
 def bulk_archive(request):
-    """Создание ZIP-архива из выбранных файлов"""
+    """Создание ZIP-архива из выбранных файлов и папок с сохранением структуры"""
     if request.method != 'POST':
         return create_json_response(False, 'Метод не поддерживается', status=405)
     
@@ -81,16 +130,42 @@ def bulk_archive(request):
         file_ids = request.POST.getlist('file_ids[]')
         files = UserFile.objects.filter(id__in=file_ids, user=request.user)
         
+        # Получаем выбранные папки (если есть)
+        folder_ids = []
+        selected_items = request.POST.getlist('file_ids[]')
+        for item in selected_items:
+            if item.startswith('folder_'):
+                folder_ids.append(int(item.replace('folder_', '')))
+        
+        # Собираем все файлы из выбранных папок (рекурсивно)
+        folders_files = []
+        if folder_ids:
+            folders = Folder.objects.filter(id__in=folder_ids, user=request.user)
+            for folder in folders:
+                folders_files.extend(get_files_from_folder_recursive(folder))
+        
+        # Объединяем файлы из выбранных файлов и папок
+        all_files = list(files) + folders_files
+        # Убираем дубликаты по ID
+        seen_ids = set()
+        unique_files = []
+        for file in all_files:
+            if file.id not in seen_ids:
+                seen_ids.add(file.id)
+                unique_files.append(file)
+        
         # Создаем ZIP-архив
         archive_name = f'archive_{timezone.now().strftime("%Y%m%d_%H%M%S")}.zip'
         user_folder = ensure_user_folder_exists(request.user.id)
         archive_path = os.path.join(user_folder, archive_name)
         
         with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for file in files:
-                file_path = os.path.join(settings.MEDIA_ROOT, str(file.file))
+            for file in unique_files:
+                file_path = get_file_path(file)
                 if os.path.exists(file_path):
-                    zip_file.write(file_path, file.filename)
+                    # Формируем путь в архиве с учетом папки
+                    archive_path_in_zip = get_archive_path_for_file(file)
+                    zip_file.write(file_path, archive_path_in_zip)
         
         # Получаем размер архива
         file_size = os.path.getsize(archive_path) if os.path.exists(archive_path) else 0

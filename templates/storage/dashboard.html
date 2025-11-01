@@ -1047,7 +1047,8 @@ function bulkDownload() {
     csrf.value = csrfToken;
     form.appendChild(csrf);
     
-    selectedFiles.forEach(id => {
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
+    selectedItems.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'file_ids[]';
@@ -1064,10 +1065,11 @@ function bulkDownload() {
 }
 
 function bulkArchive() {
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
     const formData = new FormData();
-    selectedFiles.forEach(id => formData.append('file_ids[]', id));
+    selectedItems.forEach(id => formData.append('file_ids[]', id));
     
-    showLoading('Создание ахива...');
+    showLoading('Создание архива...');
     
     const csrfToken = getCsrfToken();
     fetch('/storage/bulk-archive/', {
@@ -1083,12 +1085,12 @@ function bulkArchive() {
             location.reload();
         } else {
             hideLoading();
-            alert('Ошибка при создании архива');
+            alert('Ошибка при создании архива: ' + (data.error || data.message || 'Неизвестная ошибка'));
         }
     })
     .catch(error => {
         hideLoading();
-        alert('Ошибка при создании архива');
+        alert('Ошибка при создании архива: ' + error.message);
     });
 }
 
@@ -2329,6 +2331,18 @@ async function confirmMoveFiles(selectedCount) {
 function getSelectedFiles() {
     const checkboxes = document.querySelectorAll('.file-checkbox:checked');
     return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getSelectedItems() {
+    // Получаем все выбранные элементы (и файлы, и папки)
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+    const folderCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
+    
+    const items = [];
+    fileCheckboxes.forEach(cb => items.push(cb.value));
+    folderCheckboxes.forEach(cb => items.push(cb.value)); // Папки уже имеют префикс "folder_"
+    
+    return items;
 }
 
 // Обновляем обработчики для включения папок в выбор
