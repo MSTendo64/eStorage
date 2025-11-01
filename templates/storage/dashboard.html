@@ -426,8 +426,8 @@
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
         <div class="modal-content" id="previewModalContent">
-            <div class="modal-header draggable-header" style="cursor: move; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px;">
-                <h5 class="modal-title" style="font-size: 0.75rem; margin: 0;" id="previewModalTitle">Просмотр файла</h5>
+            <div class="modal-header draggable-header" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px;">
+                <h5 class="modal-title" style="font-size: 0.75rem; margin: 0; color: #000; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8); font-weight: 600;" id="previewModalTitle">Просмотр файла</h5>
                 <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>
             </div>
             <div class="modal-body text-center p-0" style="position: relative;">
@@ -598,12 +598,7 @@
 
 .resize-handle {
     background: transparent;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 50%;
-}
-
-.resize-handle:hover {
-    background: rgba(0, 0, 0, 0.1);
+    border: none;
 }
 
 .resize-handle-se::after {
@@ -681,7 +676,7 @@ let zoom = null;
 let isDragging = false;
 let isResizing = false;
 let dragOffset = { x: 0, y: 0 };
-let resizeStart = { x: 0, y: 0, width: 0, height: 0 };
+let resizeStart = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
 let activeResizeHandle = null;
 
 function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
@@ -780,12 +775,14 @@ function initDragAndResize() {
         let newX = e.clientX - dragOffset.x;
         let newY = e.clientY - dragOffset.y;
         
-        // Ограничиваем перемещение в пределах окна
+        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только определенная область (верхняя часть)
         const maxX = window.innerWidth - modalDialog.offsetWidth;
-        const maxY = window.innerHeight - modalDialog.offsetHeight;
+        // Разрешаем перемещение только в верхней половине экрана (по высоте)
+        const minY = 0;
+        const maxY = window.innerHeight / 2; // Максимум до середины экрана по высоте
         
         newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
+        newY = Math.max(minY, Math.min(newY, maxY));
         
         modalDialog.style.left = newX + 'px';
         modalDialog.style.top = newY + 'px';
@@ -804,11 +801,15 @@ function initDragAndResize() {
         handle.addEventListener('mousedown', (e) => {
             isResizing = true;
             activeResizeHandle = handle;
-            const rect = modalContent.getBoundingClientRect();
+            const contentRect = modalContent.getBoundingClientRect();
+            const dialogRect = modalDialog.getBoundingClientRect();
             resizeStart.x = e.clientX;
             resizeStart.y = e.clientY;
-            resizeStart.width = rect.width;
-            resizeStart.height = rect.height;
+            resizeStart.width = contentRect.width;
+            resizeStart.height = contentRect.height;
+            // Сохраняем начальную позицию modalDialog
+            resizeStart.left = dialogRect.left;
+            resizeStart.top = dialogRect.top;
             
             document.addEventListener('mousemove', handleResize);
             document.addEventListener('mouseup', stopResize);
@@ -823,27 +824,61 @@ function initDragAndResize() {
         const deltaX = e.clientX - resizeStart.x;
         const deltaY = e.clientY - resizeStart.y;
         
+        // Используем сохраненную начальную позицию
+        const dialogLeft = resizeStart.left;
+        const dialogTop = resizeStart.top;
+        
         let newWidth = resizeStart.width;
         let newHeight = resizeStart.height;
         
         if (activeResizeHandle.classList.contains('resize-handle-se')) {
-            // Правый нижний угол
+            // Правый нижний угол - изменяем только размер справа и снизу
+            // Верхний левый угол остается на месте (не двигаем modalDialog)
             newWidth = resizeStart.width + deltaX;
             newHeight = resizeStart.height + deltaY;
         } else if (activeResizeHandle.classList.contains('resize-handle-sw')) {
-            // Левый нижний угол
+            // Левый нижний угол - изменяем размер слева и снизу
+            // Верхний правый угол должен оставаться на месте, но верхний левый может двигаться только по X
             newWidth = resizeStart.width - deltaX;
             newHeight = resizeStart.height + deltaY;
             
-            // Корректируем позицию при изменении ширины слева
-            const rect = modalDialog.getBoundingClientRect();
-            modalDialog.style.left = (rect.left + deltaX) + 'px';
+            // Корректируем позицию modalDialog при изменении ширины слева
+            // Верхний угол по Y не двигается, двигаем только по X
+            const newDialogLeft = dialogLeft + deltaX;
+            
+            // Проверяем границы
+            const maxX = window.innerWidth - newWidth;
+            if (newDialogLeft >= 0 && newDialogLeft <= maxX) {
+                modalDialog.style.left = newDialogLeft + 'px';
+                // Top остается на начальной позиции - верхний угол не двигается по Y
+                modalDialog.style.top = dialogTop + 'px';
+            } else {
+                // Если вышли за границы, ограничиваем размер
+                if (newDialogLeft < 0) {
+                    newWidth = dialogLeft + resizeStart.width;
+                    modalDialog.style.left = '0px';
+                } else if (newDialogLeft > maxX) {
+                    newWidth = window.innerWidth - dialogLeft;
+                    modalDialog.style.left = maxX + 'px';
+                }
+                // Top всегда остается на начальной позиции
+                modalDialog.style.top = dialogTop + 'px';
+            }
         }
         
-        // Минимальные размеры
-        newWidth = Math.max(300, Math.min(newWidth, window.innerWidth - 20));
-        newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 20));
+        // Минимальные и максимальные размеры
+        const minWidth = 300;
+        const minHeight = 200;
+        // Максимальная ширина - от текущей позиции до края экрана
+        const maxWidth = (activeResizeHandle.classList.contains('resize-handle-se')) 
+            ? window.innerWidth - dialogLeft - 10 
+            : dialogLeft + resizeStart.width;
+        const maxHeight = window.innerHeight - dialogTop - 10;
         
+        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+        
+        // Применяем новые размеры
         modalContent.style.width = newWidth + 'px';
         modalContent.style.height = newHeight + 'px';
     }
