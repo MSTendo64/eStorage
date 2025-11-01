@@ -217,7 +217,55 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
-        <h2>{{ t.storage.file_list.title }}</h2>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()">
+                        <i class="fas fa-sort me-2"></i>
+                        <span id="sortLabel">Сортировка</span>
+                    </button>
+                    <ul class="dropdown-menu" id="dropdownMenu" aria-labelledby="sortDropdown">
+                    <!-- ваш список пунктов -->
+                    <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
+                        <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="date-asc" onclick="sortFiles('date', 'asc'); return false;">
+                        <i class="fas fa-calendar-alt me-2"></i>По дате (старые сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="name-asc" onclick="sortFiles('name', 'asc'); return false;">
+                        <i class="fas fa-sort-alpha-down me-2"></i>По алфавиту (А-Я)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="name-desc" onclick="sortFiles('name', 'desc'); return false;">
+                        <i class="fas fa-sort-alpha-up me-2"></i>По алфавиту (Я-А)
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" data-sort="size-desc" onclick="sortFiles('size', 'desc'); return false;">
+                        <i class="fas fa-sort-amount-down me-2"></i>По размеру (большие сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="size-asc" onclick="sortFiles('size', 'asc'); return false;">
+                        <i class="fas fa-sort-amount-up me-2"></i>По размеру (маленькие сначала)
+                    </a></li>
+                    </ul>
+                </div>
+            
+                <script>
+                function toggleDropdown() {
+                    const dropdownMenu = document.getElementById('dropdownMenu');
+                    dropdownMenu.classList.toggle('show');
+                }
+            
+            // Закрытие dropdown при клике вне его
+                document.addEventListener('click', function(event) {
+                    const dropdown = document.querySelector('.dropdown');
+                    const isClickInside = dropdown.contains(event.target);
+                
+                    if (!isClickInside) {
+                        document.getElementById('dropdownMenu').classList.remove('show');
+                    }
+                });
+                </script>
+            
+        </div>
         <div class="card mb-4">
             <div class="card-body">
                 <div class="input-group">
@@ -243,31 +291,36 @@
                                     </th>
                                     <th>{{ t.storage.file_list.table.filename }}</th>
                                     <th>{{ t.storage.file_list.table.type }}</th>
+                                    <th>Размер</th>
                                     <th>{{ t.storage.file_list.table.upload_date }}</th>
                                     <th>{{ t.storage.file_list.table.actions }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for file in files %}
-                                    <tr>
+                                    <tr class="file-row" 
+                                        data-filename="{{ file.filename|lower }}"
+                                        data-filesize="{{ file.file_size|default:0 }}"
+                                        data-uploaded="{{ file.uploaded_at|date:'U' }}">
                                         <td>
                                             <input type="checkbox" class="form-check-input file-checkbox" 
                                                    value="{{ file.id }}" data-filename="{{ file.filename }}">
                                         </td>
                                         <td>{{ file.filename }}</td>
                                         <td>{{ file.get_file_type_display }}</td>
-                                        <td>{{ file.uploaded_at }}</td>
+                                        <td class="file-size">{{ file.get_file_size_formatted|default:"—" }}</td>
+                                        <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
                                         <td>
                                             {% if file.is_image %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% elif file.is_video %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                                 </button>
                                             {% elif file.is_audio %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
                                                 </button>
                                             {% elif file.is_archive %}
@@ -304,9 +357,12 @@
             </div>
 
             <!-- Мобильная версия (карточки) -->
-            <div class="d-md-none">
+            <div class="d-md-none" id="mobileFilesContainer">
                 {% for file in files %}
-                    <div class="card mb-3">
+                    <div class="card mb-3 file-card" 
+                         data-filename="{{ file.filename|lower }}"
+                         data-filesize="{{ file.file_size|default:0 }}"
+                         data-uploaded="{{ file.uploaded_at|date:'U' }}">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-2">
                                 <input type="checkbox" class="form-check-input file-checkbox me-2" 
@@ -315,20 +371,20 @@
                             </div>
                             <p class="card-text">
                                 <small class="text-muted">
-                                    {{ file.get_file_type_display }} • {{ file.uploaded_at }}
+                                    {{ file.get_file_type_display }} • {{ file.get_file_size_formatted|default:"—" }} • {{ file.uploaded_at }}
                                 </small>
                             </p>
                             <div class="btn-group-vertical w-100">
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
                                     </button>
                                 {% elif file.is_archive %}
@@ -367,19 +423,7 @@
 </div>
 
 <!-- Модальное окно для предпросмотра -->
-<div class="modal fade" id="previewModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Просмотр файла</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center p-0">
-                <div id="previewContent"></div>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'storage/file_viewer.html' with modal_mode=True %}
 
 <!-- Обновленно одальное окно для просмотра содержимого архива -->
 <div class="modal fade" id="archiveContentsModal" tabindex="-1">
@@ -517,11 +561,13 @@
     align-items: center;
     min-height: calc(100vh - 60px);
     margin: 30px auto;
+    position: fixed;
 }
 
 #previewModal .modal-content {
     max-height: 90vh;
     overflow: hidden;
+    position: relative;
 }
 
 #previewModal .modal-body {
@@ -531,6 +577,13 @@
     justify-content: center;
     align-items: center;
 }
+
+.draggable-header {
+    user-select: none;
+}
+
+/* Стили для resize-handle находятся в file_viewer.html */
+
 
 #previewContent {
     max-width: 100%;
@@ -577,50 +630,8 @@
 </style>
 
 <script>
-let player = null;
+// Функции для работы с плеером (showPreview, globalPlayer, initDragAndResize) находятся в file_viewer.html
 let zoom = null;
-
-function showPreview(url, type) {
-    const previewContent = document.getElementById('previewContent');
-    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    
-    previewContent.innerHTML = '';
-    
-    switch(type) {
-        case 'image':
-            const img = new Image();
-            img.src = url;
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            previewContent.appendChild(img);
-            break;
-            
-        case 'video':
-            previewContent.innerHTML = `
-                <video id="player" playsinline controls>
-                    <source src="${url}" type="video/mp4">
-                </video>
-            `;
-            const player = new Plyr('#player');
-            break;
-            
-        case 'audio':
-            previewContent.innerHTML = `
-                <audio id="player" controls>
-                    <source src="${url}" type="audio/mpeg">
-                </audio>
-            `;
-            const audioPlayer = new Plyr('#player');
-            break;
-    }
-    
-    modal.show();
-    
-    // Очищаем плеер при закрытии модального окна
-    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
-        previewContent.innerHTML = '';
-    });
-}
 
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
@@ -732,10 +743,11 @@ function extractArchive(fileId) {
     
     showLoading('Распаковка архива...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/extract-archive/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -755,10 +767,11 @@ function extractArchive(fileId) {
 }
 
 function togglePublicity(fileId, btn) {
+    const csrfToken = getCsrfToken();
     fetch(`/storage/toggle-publicity/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -870,10 +883,11 @@ function bulkDelete() {
     
     showLoading('Удалени файлов...');
     
+    const csrfToken = getCsrfToken();
     fetch('/storage/bulk-delete/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
@@ -899,10 +913,11 @@ function bulkDownload() {
     form.method = 'POST';
     form.action = '/storage/bulk-download/';
     
+    const csrfToken = getCsrfToken();
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
     csrf.name = 'csrfmiddlewaretoken';
-    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    csrf.value = csrfToken;
     form.appendChild(csrf);
     
     selectedFiles.forEach(id => {
@@ -927,10 +942,11 @@ function bulkArchive() {
     
     showLoading('Создание ахива...');
     
+    const csrfToken = getCsrfToken();
     fetch('/storage/bulk-archive/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
@@ -1045,46 +1061,6 @@ function handleDrop(e) {
     handleFiles(files);
 }
 
-function handleFiles(files) {
-    if (files.length === 0) return;
-
-    showLoading('Загрузка файлов...', true);
-    let uploadedCount = 0;
-
-    files.forEach(file => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            uploadedCount++;
-            updateProgress((uploadedCount / files.length) * 100);
-            
-            if (uploadedCount === files.length) {
-                // Все файлы загружены
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideLoading();
-            alert('Ошибка при загрузке файла: ' + file.name);
-        });
-    });
-}
-
 function handleDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -1160,10 +1136,11 @@ function deleteFile(fileId, fileName) {
     
     showLoading('Удаление файла...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/delete/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => {
@@ -1184,10 +1161,11 @@ function deleteFile(fileId, fileName) {
 function downloadFile(fileId) {
     showLoading('Подготовка файла для скачивания...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/generate-link/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -1219,12 +1197,93 @@ function downloadFile(fileId) {
     });
 }
 
-// Добавим функцию поиска файлов
+// Функция сортировки файлов
+let currentSort = { type: 'date', order: 'desc' };
+
+function sortFiles(type, order) {
+    currentSort = { type: type, order: order };
+    
+    // Обновляем текст кнопки сортировки
+    const sortLabels = {
+        'date-desc': 'По дате (новые сначала)',
+        'date-asc': 'По дате (старые сначала)',
+        'name-asc': 'По алфавиту (А-Я)',
+        'name-desc': 'По алфавиту (Я-А)',
+        'size-desc': 'По размеру (большие сначала)',
+        'size-asc': 'По размеру (маленькие сначала)'
+    };
+    const sortLabel = document.getElementById('sortLabel');
+    if (sortLabel) {
+        sortLabel.textContent = sortLabels[`${type}-${order}`] || 'Сортировка';
+    }
+    
+    // Сортируем строки таблицы (десктопная версия)
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+        const rows = Array.from(tbody.querySelectorAll('tr.file-row'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (type === 'name') {
+                aValue = a.dataset.filename || '';
+                bValue = b.dataset.filename || '';
+                return order === 'asc' 
+                    ? aValue.localeCompare(bValue, 'ru', { numeric: true })
+                    : bValue.localeCompare(aValue, 'ru', { numeric: true });
+            } else if (type === 'size') {
+                aValue = parseInt(a.dataset.filesize || '0', 10);
+                bValue = parseInt(b.dataset.filesize || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            } else if (type === 'date') {
+                aValue = parseInt(a.dataset.uploaded || '0', 10);
+                bValue = parseInt(b.dataset.uploaded || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+            return 0;
+        });
+        
+        // Перемещаем отсортированные строки обратно в таблицу
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // Сортируем карточки (мобильная версия)
+    const mobileContainer = document.getElementById('mobileFilesContainer');
+    if (mobileContainer) {
+        const cards = Array.from(mobileContainer.querySelectorAll('.file-card'));
+        
+        cards.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (type === 'name') {
+                aValue = a.dataset.filename || '';
+                bValue = b.dataset.filename || '';
+                return order === 'asc' 
+                    ? aValue.localeCompare(bValue, 'ru', { numeric: true })
+                    : bValue.localeCompare(aValue, 'ru', { numeric: true });
+            } else if (type === 'size') {
+                aValue = parseInt(a.dataset.filesize || '0', 10);
+                bValue = parseInt(b.dataset.filesize || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            } else if (type === 'date') {
+                aValue = parseInt(a.dataset.uploaded || '0', 10);
+                bValue = parseInt(b.dataset.uploaded || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+            return 0;
+        });
+        
+        // Перемещаем отсортированные карточки обратно в контейнер
+        cards.forEach(card => mobileContainer.appendChild(card));
+    }
+}
+
+// Добавим функцию поиска файлов (обновленная с учетом сортировки)
 const fileSearch = document.getElementById('fileSearch');
 if (fileSearch) {
     fileSearch.addEventListener('input', function(e) {
         const searchText = e.target.value.toLowerCase();
-        const fileRows = document.querySelectorAll('tbody tr');
+        const fileRows = document.querySelectorAll('tbody tr.file-row');
         let visibleCount = 0;
         
         fileRows.forEach(row => {
@@ -1234,6 +1293,17 @@ if (fileSearch) {
                 visibleCount++;
             } else {
                 row.style.display = 'none';
+            }
+        });
+        
+        // Также скрываем/показываем карточки в мобильной версии
+        const fileCards = document.querySelectorAll('.file-card');
+        fileCards.forEach(card => {
+            const fileName = card.querySelector('.card-title').textContent.toLowerCase();
+            if (fileName.includes(searchText)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
             }
         });
         
@@ -1342,18 +1412,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 });
 
-// Добавьте эту функцию в секцию <script>
-function handleFiles(files) {
-    if (files.length > 0) {
-        Array.from(files).forEach(file => {
-            uploadFile(file);
-        });
-        
-        // Очищаем input после загрузки
-        document.getElementById('fileInput').value = '';
-    }
-}
-
 // Обновим инициализацию всех обработчиков событий
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализация поиска файлов
@@ -1433,19 +1491,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Функция для получения CSRF токена из cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Безопасное получение CSRF токена с проверкой на null
+function getCsrfToken() {
+    const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfElement && csrfElement.value) {
+        return csrfElement.value;
+    }
+    // Если не найден в форме, получаем из cookie
+    const cookieValue = getCookie('csrftoken');
+    if (cookieValue) {
+        return cookieValue;
+    }
+    console.error('CSRF token not found');
+    throw new Error('CSRF token not found');
+}
+
 function uploadFile(file) {
+    const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+    
+    // Если файл больше 10MB, используем chunked upload
+    if (file.size > LARGE_FILE_THRESHOLD) {
+        uploadFileChunked(file, CHUNK_SIZE);
+    } else {
+        uploadFileSimple(file);
+    }
+}
+
+function uploadFileSimple(file, callback) {
+    const csrfToken = getCsrfToken();
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('csrfmiddlewaretoken', csrfToken);
 
-    showLoading('Загрузка файла: ' + file.name, true);
-
-    // Добавляем обработку прогресса загрузки
     const xhr = new XMLHttpRequest();
     xhr.open('POST', window.location.href, true);
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
-    // Обработка прогресса загрузки
     xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
             const percentComplete = (e.loaded / e.total) * 100;
@@ -1453,53 +1551,330 @@ function uploadFile(file) {
         }
     };
 
-    // Обработка завершения загрузки
     xhr.onload = function() {
         if (xhr.status === 200) {
             try {
                 const response = JSON.parse(xhr.responseText);
                 if (response.error) {
-                    throw new Error(response.error);
+                    hideLoading();
+                    alert('Ошибка: ' + response.error);
+                    if (callback) callback(false);
+                    return;
                 }
-                updateStorageProgress();
+                updateProgress(100);
+                if (callback) callback(true);
+            } catch (error) {
+                // Если ответ не JSON, возможно это успешный HTML
+                updateProgress(100);
+                if (callback) callback(true);
+            }
+        } else {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                hideLoading();
+                alert('Ошибка: ' + (response.error || 'Неизвестная ошибка'));
+                if (callback) callback(false);
+            } catch (e) {
+                hideLoading();
+                alert('Ошибка при загрузке файла: ' + file.name);
+                if (callback) callback(false);
+            }
+        }
+    };
+
+    xhr.onerror = function() {
+        console.error('Error:', xhr.statusText);
+        hideLoading();
+        alert('Ошибка при загрузке файла: ' + file.name + '\n' + 
+              'Проверьте соединение с интернетом');
+        if (callback) callback(false);
+    };
+
+    xhr.send(formData);
+}
+
+function uploadFileChunked(file, chunkSize, callback) {
+    const encodedFilename = encodeURIComponent(file.name);
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    let currentChunk = 0;
+    let start = 0;
+    let uploadedBytes = 0;  // Счетчик загруженных байт для точного прогресса
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    
+    // Функция для загрузки чанка
+    function uploadChunk() {
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+        
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            hideLoading();
+            alert('Ошибка: не удалось получить CSRF токен. Перезагрузите страницу.');
+            if (callback) callback(false);
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', chunk);
+        formData.append('chunk', currentChunk);
+        formData.append('chunks', totalChunks);
+        formData.append('file_size', file.size);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/storage/upload-chunk/${encodedFilename}/`, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRFToken', csrfToken);
+        
+        // Устанавливаем таймаут (5 минут на чанк)
+        xhr.timeout = 300000;
+
+        // Обработка прогресса загрузки текущего чанка
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                // Вычисляем общий прогресс: загружено байт + текущий чанк
+                const currentChunkProgress = e.loaded / e.total;
+                const chunkSize = end - start;
+                const currentChunkLoaded = chunkSize * currentChunkProgress;
+                const totalLoaded = uploadedBytes + currentChunkLoaded;
+                const totalPercent = Math.round((totalLoaded / file.size) * 100);
+                
+                updateProgress(totalPercent);
+                showLoading(`Загрузка файла: ${file.name} (${totalPercent}%) - чанк ${currentChunk + 1}/${totalChunks}`, true);
+            }
+        };
+
+        xhr.ontimeout = function() {
+            console.error('Upload timeout for chunk', currentChunk);
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`Retrying chunk ${currentChunk}, attempt ${retryCount}`);
+                setTimeout(() => uploadChunk(), 1000); // Повтор через 1 секунду
+            } else {
+                hideLoading();
+                alert('Ошибка: превышено время ожидания при загрузке чанка. Проверьте соединение с интернетом.');
+                if (callback) callback(false);
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                retryCount = 0; // Сбрасываем счетчик повторов при успехе
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        hideLoading();
+                        alert('Ошибка: ' + response.error);
+                        if (callback) callback(false);
+                        return;
+                    }
+                    
+                    // Обновляем счетчик загруженных байт
+                    uploadedBytes += (end - start);
+                    
+                    if (response.status === 'complete') {
+                        // Загрузка завершена
+                        updateProgress(100);
+                        showLoading('Загрузка завершена!', true);
+                        setTimeout(() => {
+                            hideLoading();
+                            if (callback) callback(true);
+                            // Перезагружаем страницу для обновления списка файлов
+                            setTimeout(() => location.reload(), 500);
+                        }, 500);
+                    } else {
+                        // Продолжаем загрузку следующего чанка
+                        currentChunk++;
+                        start = end;
+                        const percent = Math.round((uploadedBytes / file.size) * 100);
+                        updateProgress(percent);
+                        showLoading(`Загрузка файла: ${file.name} (${percent}%) - чанк ${currentChunk}/${totalChunks}`, true);
+                        // Небольшая задержка перед следующим чанком для стабильности
+                        setTimeout(() => uploadChunk(), 100);
+                    }
+                } catch (error) {
+                    console.error('Parse error:', error);
+                    hideLoading();
+                    alert('Ошибка при обработке ответа сервера: ' + error.message);
+                    if (callback) callback(false);
+                }
+            } else if (xhr.status === 403) {
+                // Ошибка 403 - проблема с CSRF или доступом
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    // Обновляем CSRF токен и повторяем
+                    const newCsrfToken = getCsrfToken();
+                    if (newCsrfToken && newCsrfToken !== csrfToken) {
+                        console.log('Retrying with new CSRF token');
+                        setTimeout(() => uploadChunk(), 1000);
+                    } else {
+                        hideLoading();
+                        alert('Ошибка доступа (403): Возможно, проблема с CSRF токеном. Перезагрузите страницу.');
+                        if (callback) callback(false);
+                    }
+                } else {
+                    hideLoading();
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        alert('Ошибка доступа: ' + (response.error || 'Запрещено. Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.'));
+                    } catch (e) {
+                        alert('Ошибка доступа (403): Возможно, проблема с CSRF токеном. Попробуйте перезагрузить страницу.');
+                    }
+                    if (callback) callback(false);
+                }
+            } else {
+                if (retryCount < MAX_RETRIES && xhr.status >= 500) {
+                    // Повторяем при ошибках сервера
+                    retryCount++;
+                    console.log(`Retrying chunk ${currentChunk} after server error, attempt ${retryCount}`);
+                    setTimeout(() => uploadChunk(), 2000);
+                } else {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        hideLoading();
+                        alert('Ошибка: ' + (response.error || 'Неизвестная ошибка (код: ' + xhr.status + ')'));
+                        if (callback) callback(false);
+                    } catch (e) {
+                        hideLoading();
+                        alert('Ошибка при загрузке файла: ' + file.name + ' (код: ' + xhr.status + ')');
+                        if (callback) callback(false);
+                    }
+                }
+            }
+        };
+
+        xhr.onerror = function() {
+            console.error('Network error for chunk', currentChunk, xhr.statusText);
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`Retrying chunk ${currentChunk} after network error, attempt ${retryCount}`);
+                setTimeout(() => uploadChunk(), 2000);
+            } else {
+                hideLoading();
+                alert('Ошибка сети при загрузке файла: ' + file.name + '\nПроверьте соединение с интернетом.');
+                if (callback) callback(false);
+            }
+        };
+
+        xhr.send(formData);
+    }
+    
+    // Сначала проверяем файл перед загрузкой
+    fetch(`/storage/check-file/?filename=${encodeURIComponent(file.name)}&filesize=${file.size}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка проверки файла: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            hideLoading();
+            alert('Ошибка: ' + data.error);
+            if (callback) callback(false);
+            return;
+        }
+        // Начинаем загрузку после успешной проверки
+        showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
+        uploadChunk();
+    })
+    .catch(error => {
+        console.error('Check file error:', error);
+        hideLoading();
+        alert('Ошибка при проверке файла: ' + error.message + '\nНачинаем загрузку без проверки...');
+        // Все равно начинаем загрузку, если проверка не удалась
+        showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
+        uploadChunk();
+    });
+}
+
+// Обновим функцию handleFiles для последовательной загрузки
+let uploadQueue = [];
+let isUploading = false;
+let uploadStats = { success: 0, failed: 0, total: 0 };
+
+function handleFiles(files) {
+    if (files.length === 0) return;
+    
+    // Добавляем файлы в очередь
+    uploadQueue.push(...Array.from(files));
+    uploadStats.total = uploadQueue.length;
+    uploadStats.success = 0;
+    uploadStats.failed = 0;
+    
+    // Запускаем загрузку, если она еще не идет
+    if (!isUploading) {
+        processUploadQueue();
+    }
+}
+
+function processUploadQueue(success) {
+    // Если был передан параметр success, обновляем статистику
+    if (success !== undefined) {
+        if (success) {
+            uploadStats.success++;
+        } else {
+            uploadStats.failed++;
+        }
+    }
+    
+    if (uploadQueue.length === 0) {
+        isUploading = false;
+        updateStorageProgress();
+        
+        // Показываем итоговую статистику
+        const total = uploadStats.success + uploadStats.failed;
+        if (total > 0) {
+            if (uploadStats.failed === 0) {
+                // Все файлы загружены успешно
                 setTimeout(() => {
                     location.reload();
                 }, 500);
-            } catch (error) {
-                // Если ответ не JSON или успешный HTML
-                updateStorageProgress();
+            } else {
+                // Есть ошибки
+                hideLoading();
+                const message = `Загрузка завершена. Успешно: ${uploadStats.success}, Ошибок: ${uploadStats.failed}`;
+                alert(message);
                 setTimeout(() => {
                     location.reload();
                 }, 500);
             }
         } else {
-            throw new Error('Network response was not ok');
+            setTimeout(() => {
+                location.reload();
+            }, 500);
         }
-    };
-
-    // Обработка ошибок
-    xhr.onerror = function() {
-        console.error('Error:', xhr.statusText);
-        hideLoading();
-        alert('Ошибка при загрузке файла: ' + file.name + '\n' + 
-              'Возможно, файл слишком большой или произошла сетевая ошибка');
-    };
-
-    // Отправляем файл
-    xhr.send(formData);
-}
-
-// Обновим функцию handleFiles
-function handleFiles(files) {
-    if (files.length > 0) {
-        showLoading('Подготовка к загрузке...', true);
-        let uploadedCount = 0;
-        const totalFiles = files.length;
-        
-        Array.from(files).forEach(file => {
-            uploadFile(file);
-            uploadedCount++;
-            updateProgress((uploadedCount / totalFiles) * 100);
+        return;
+    }
+    
+    isUploading = true;
+    const file = uploadQueue.shift();
+    
+    showLoading('Загрузка файла: ' + file.name + ` (${uploadStats.success + uploadStats.failed + 1}/${uploadStats.total})`, true);
+    
+    // Определяем, какой метод загрузки использовать
+    if (file.size > 10 * 1024 * 1024) {
+        // Используем chunked upload для больших файлов
+        uploadFileChunked(file, 5 * 1024 * 1024, function(success) {
+            // После завершения загрузки одного файла, загружаем следующий
+            setTimeout(() => {
+                processUploadQueue(success);
+            }, 100);
+        });
+    } else {
+        // Используем обычную загрузку для маленьких файлов
+        uploadFileSimple(file, function(success) {
+            // После завершения загрузки одного файла, загружаем следующий
+            setTimeout(() => {
+                processUploadQueue(success);
+            }, 100);
         });
     }
 }

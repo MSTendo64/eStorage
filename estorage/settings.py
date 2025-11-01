@@ -14,7 +14,7 @@ SECRET_KEY = 'ih2201fopweuhOHB@@DOQ}IUWGBDIOWdwq@#@#id!843109)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['s.eventshock-soft.ru', '127.0.0.1', 'localhost', '147.45.48.56']
+ALLOWED_HOSTS = ['storage.eventshock.ru', '127.0.0.1', 'localhost', 's.eventshock.ru']
 
 # Application definition
 INSTALLED_APPS = [
@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'utils.middleware.SessionValidationMiddleware',  # Проверка валидности сессии
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.middleware.LanguageMiddleware',
@@ -179,37 +180,72 @@ VIDEO_QUALITY_REQUIREMENTS = {
 }
 
 # File upload settings
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
+# Максимальный размер файла в памяти перед сохранением на диск (100MB)
+# Файлы больше этого размера автоматически сохраняются во временный файл
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
+# Максимальный размер всех данных POST-запроса (1GB)
+# Это критически важно для загрузки больших файлов
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB
 CHUNKED_UPLOAD_MAX_BYTES = 2147483648  # 2GB
 CHUNKED_UPLOAD_CHUNK_SIZE = 5242880  # 5MB
+
+# Avatar upload settings
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Create temp directory if it doesn't exist
 if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
     os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 # Large file settings
-LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB
-MAX_FILE_SIZE = 2147483648  # 2GB
+LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB (10485760 bytes = 10 * 1024 * 1024)
+MAX_FILE_SIZE = 1073741824  # 1GB (было 2GB, уменьшено до 1GB согласно требованиям)
+MAX_UPLOAD_SIZE = 1073741824  # 1GB
+
+# Настройки для больших файлов
+CHUNK_SIZE = 2097152  # 2MB
 
 # Login URL
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 
-# Увеличиваем лимиты загрузки файлов
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
-MAX_UPLOAD_SIZE = 2147483648  # 2GB
-
-# Настройки для больших файлов
-LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB
-CHUNK_SIZE = 2097152  # 2MB
-
 # Настройки безопасности
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Настройки сессий
+# Время жизни сессии в секундах (по умолчанию 2 недели)
+SESSION_COOKIE_AGE = 1209600  # 14 дней (60 * 60 * 24 * 14)
+# Обновлять время жизни сессии при каждом запросе
+SESSION_SAVE_EVERY_REQUEST = True
+# Истекает ли сессия при закрытии браузера (False = использует SESSION_COOKIE_AGE)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+# Хранить сессии в базе данных (надежнее, чем cookies)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# Имя cookie для сессии
+SESSION_COOKIE_NAME = 'sessionid'
+# SameSite настройка для сессионных cookie
+SESSION_COOKIE_SAMESITE = 'Lax'
+# HTTPOnly для безопасности (предотвращает доступ JavaScript к cookie сессии)
+SESSION_COOKIE_HTTPONLY = True
+# Настройки CSRF для работы с большими файлами и обычными формами
+# Разрешаем JavaScript читать CSRF токен из cookie для AJAX запросов
+CSRF_COOKIE_HTTPONLY = False
+# Используем cookie вместо сессии для CSRF
+CSRF_USE_SESSIONS = False
+# SameSite настройка: 'Lax' работает для обычных форм и AJAX
+# При необходимости можно изменить на 'None' если есть проблемы с cross-site запросами
+CSRF_COOKIE_SAMESITE = 'Lax'
+# Доверенные источники
+CSRF_TRUSTED_ORIGINS = [
+    'https://storage.eventshock.ru',
+    'https://s.eventshock.ru',
+    'http://127.0.0.1',
+    'http://localhost',
+    'https://127.0.0.1',
+    'https://localhost',
+]
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

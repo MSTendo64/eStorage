@@ -2,19 +2,23 @@
 
 {% block settings_content %}
 <h3>Профиль</h3>
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="profileForm">
     {% csrf_token %}
     <div class="mb-3">
         <label class="form-label">Аватар</label>
         <div class="d-flex align-items-center">
             {% if user.userprofile.avatar %}
-                <img src="{{ user.userprofile.avatar.url }}" alt="Avatar" class="rounded-circle me-3" style="width: 64px; height: 64px;">
+                <img src="{{ user.userprofile.avatar.url }}" alt="Avatar" id="avatarPreview" class="rounded-circle me-3" style="width: 64px; height: 64px; object-fit: cover;">
             {% else %}
-                <div class="rounded-circle bg-light me-3 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                <div class="rounded-circle bg-light me-3 d-flex align-items-center justify-content-center" id="avatarPreview" style="width: 64px; height: 64px;">
                     <i class="fas fa-user fa-2x text-muted"></i>
                 </div>
             {% endif %}
-            <input type="file" name="avatar" class="form-control" accept="image/*">
+            <div class="flex-grow-1">
+                <input type="file" name="avatar" id="avatarInput" class="form-control" accept="image/*">
+                <small class="form-text text-muted">Максимальный размер: 5MB. Поддерживаемые форматы: JPG, PNG, GIF, WEBP</small>
+                <div id="avatarError" class="text-danger mt-1" style="display: none;"></div>
+            </div>
         </div>
     </div>
     <div class="mb-3">
@@ -35,4 +39,79 @@
     </div>
     <button type="submit" class="btn btn-primary">Сохранить</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarInput = document.getElementById('avatarInput');
+    let avatarPreview = document.getElementById('avatarPreview');
+    const avatarError = document.getElementById('avatarError');
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    
+    avatarInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Очищаем предыдущие ошибки
+        avatarError.style.display = 'none';
+        avatarError.textContent = '';
+        
+        // Проверяем размер файла
+        if (file.size > MAX_SIZE) {
+            avatarError.textContent = 'Размер файла превышает 5MB. Пожалуйста, выберите файл меньше.';
+            avatarError.style.display = 'block';
+            avatarInput.value = '';
+            return;
+        }
+        
+        // Проверяем тип файла
+        if (!allowedTypes.includes(file.type)) {
+            avatarError.textContent = 'Неподдерживаемый формат файла. Используйте JPG, PNG, GIF или WEBP.';
+            avatarError.style.display = 'block';
+            avatarInput.value = '';
+            return;
+        }
+        
+        // Показываем превью
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (avatarPreview.tagName === 'IMG') {
+                avatarPreview.src = e.target.result;
+            } else {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'rounded-circle me-3';
+                img.style.width = '64px';
+                img.style.height = '64px';
+                img.style.objectFit = 'cover';
+                img.alt = 'Avatar';
+                img.id = 'avatarPreview';
+                avatarPreview.parentNode.replaceChild(img, avatarPreview);
+                // Обновляем ссылку на элемент
+                avatarPreview = document.getElementById('avatarPreview');
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    // Предотвращаем отправку формы если есть ошибки
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        const file = avatarInput.files[0];
+        if (file) {
+            if (file.size > MAX_SIZE) {
+                e.preventDefault();
+                avatarError.textContent = 'Размер файла превышает 5MB.';
+                avatarError.style.display = 'block';
+                return false;
+            }
+            if (!allowedTypes.includes(file.type)) {
+                e.preventDefault();
+                avatarError.textContent = 'Неподдерживаемый формат файла.';
+                avatarError.style.display = 'block';
+                return false;
+            }
+        }
+    });
+});
+</script>
 {% endblock %} 

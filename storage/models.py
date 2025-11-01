@@ -113,6 +113,21 @@ class UserFile(models.Model):
         if self.is_public and self.public_token:
             return reverse('public_file', args=[self.public_token])
         return None
+    
+    def get_file_size_formatted(self):
+        """Возвращает отформатированный размер файла"""
+        size = self.file_size if self.file_size else 0
+        if not size and self.file:
+            try:
+                size = self.file.size
+            except:
+                size = 0
+        
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024.0:
+                return f"{size:.2f} {unit}".rstrip('0').rstrip('.')
+            size /= 1024.0
+        return f"{size:.2f} PB"
 
 class DownloadToken(models.Model):
     token = models.CharField(max_length=64, unique=True)

@@ -282,76 +282,46 @@ function adjustColor(color, percent) {
     ).toString(16).slice(1);
 }
 
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    updateAccentColor('{{ profile.accent_color }}');
-});
-
-// Обновим обработчик формы
-document.querySelector('form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    fetch(this.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Обновляем настройки на странице
-            document.documentElement.setAttribute('data-bs-theme', data.theme);
-            updateAccentColor(data.accent_color);
-            
-            // Создаем и показываем уведомление
-            const toastContainer = document.querySelector('.toast-container') || 
-                                 document.createElement('div');
-            toastContainer.className = 'toast-container';
-            
-            const toast = document.createElement('div');
-            toast.className = 'toast show';
-            toast.innerHTML = `
-                <div class="toast-body">
-                    Настройки успешно сохранены
-                </div>
-            `;
-            
-            if (!document.querySelector('.toast-container')) {
-                document.body.appendChild(toastContainer);
+// Функция для получения CSRF токена
+function getCsrfToken() {
+    // Сначала пытаемся получить из скрытого поля формы
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
+    // Если не найден в форме, получаем из cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
-            toastContainer.appendChild(toast);
-            
-            // Удаляем уведомление через 3 екунды
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.remove();
-                    if (toastContainer.children.length === 0) {
-                        toastContainer.remove();
-                    }
-                }, 300);
-            }, 3000);
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Ошибка при сохранении настроек');
-    });
-});
+        return cookieValue;
+    }
+    return getCookie('csrftoken');
+}
 
 function changeLanguage(select) {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = window.location.href;
     
+    const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfElement) {
+        console.error('CSRF token not found');
+        return;
+    }
+    
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
     csrf.name = 'csrfmiddlewaretoken';
-    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    csrf.value = csrfElement.value;
     
     const lang = document.createElement('input');
     lang.type = 'hidden';
@@ -366,39 +336,121 @@ function changeLanguage(select) {
     form.submit();
 }
 
-// Обновляем остальные функции для работы с формой
+// Инициализация при загрузке - один обработчик DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация цвета акцента
+    updateAccentColor('{{ profile.accent_color }}');
+    
+    // Обработчик формы настроек
     const form = document.querySelector('form');
+    if (!form) return;
+    
+    // Проверяем, не был ли уже добавлен обработчик
+    if (form.dataset.submitHandlerAttached) return;
+    form.dataset.submitHandlerAttached = 'true';
+    
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
+        const csrfToken = getCsrfToken();
+        
+        if (!csrfToken) {
+            alert('Ошибка: не удалось получить CSRF токен. Перезагрузите страницу.');
+            return;
+        }
         
         // Показываем индикатор загрузки
         const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
-        submitBtn.disabled = true;
+        const originalText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) {
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
+            submitBtn.disabled = true;
+        }
         
         // Отправляем форму
-        fetch(window.location.href, {
+        fetch(this.action || window.location.href, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'  // Добавляем заголовок для AJAX
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            window.location.reload();  // Перезагружаем страницу после успешного сохранения
+            // Проверяем тип ответа
+            const contentType = response.headers.get('content-type');
+            
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Ошибка CSRF. Попробуйте перезагрузить страницу.');
+                }
+                throw new Error('Network response was not ok');
+            }
+            
+            // Если ответ JSON, обрабатываем как AJAX запрос
+            if (contentType && contentType.includes('application/json')) {
+                return response.json().then(data => {
+                    if (data.success) {
+                        // Обновляем настройки на странице
+                        if (data.theme) {
+                            document.documentElement.setAttribute('data-bs-theme', data.theme);
+                        }
+                        if (data.accent_color) {
+                            updateAccentColor(data.accent_color);
+                        }
+                        
+                        // Создаем и показываем уведомление
+                        const toastContainer = document.querySelector('.toast-container') || 
+                                             document.createElement('div');
+                        toastContainer.className = 'toast-container';
+                        
+                        const toast = document.createElement('div');
+                        toast.className = 'toast show';
+                        toast.innerHTML = `
+                            <div class="toast-body">
+                                Настройки успешно сохранены
+                            </div>
+                        `;
+                        
+                        if (!document.querySelector('.toast-container')) {
+                            document.body.appendChild(toastContainer);
+                        }
+                        toastContainer.appendChild(toast);
+                        
+                        // Удаляем уведомление через 3 секунды
+                        setTimeout(() => {
+                            toast.classList.remove('show');
+                            setTimeout(() => {
+                                toast.remove();
+                                if (toastContainer.children.length === 0) {
+                                    toastContainer.remove();
+                                }
+                            }, 300);
+                        }, 3000);
+                        
+                        // Восстанавливаем кнопку
+                        if (submitBtn) {
+                            submitBtn.innerHTML = originalText;
+                            submitBtn.disabled = false;
+                        }
+                    } else {
+                        throw new Error(data.error || 'Ошибка при сохранении настроек');
+                    }
+                });
+            } else {
+                // Если не JSON, перезагружаем страницу
+                window.location.reload();
+            }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Произошла ошибка при сохранении настроек');
-        })
-        .finally(() => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
+            alert('Произошла ошибка при сохранении настроек: ' + error.message);
+            // Восстанавливаем кнопку
+            if (submitBtn) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
         });
     });
 });

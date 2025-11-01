@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from oauth2_provider.views.generic import ProtectedResourceView
 from oauth2_provider.models import AccessToken
 from .models import UserProfile, LinkedAccount, OAuthApplication, APIKey, ESIDToken
@@ -19,6 +20,10 @@ def generate_client_secret():
     return uuid.uuid4().hex
 
 def login_view(request):
+    # Проверяем, была ли сессия истекшей
+    if request.GET.get('session_expired') == '1':
+        messages.warning(request, 'Ваша сессия истекла. Пожалуйста, войдите снова.')
+    
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -162,6 +167,7 @@ def link_github(request):
     return redirect('manage_accounts')
 
 @login_required
+@ensure_csrf_cookie
 def settings_profile(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     
@@ -172,19 +178,51 @@ def settings_profile(request):
         user.first_name = request.POST.get('first_name')
         user.last_name = request.POST.get('last_name')
         
-        if request.FILES.get('avatar'):
-            profile.avatar = request.FILES['avatar']
-            profile.save()
-            
+        # Сначала сохраняем изменения пользователя
         user.save()
-        messages.success(request, 'Профиль успешно обновлен')
+        
+        # Затем обрабатываем аватар, если он был загружен
+        if request.FILES.get('avatar'):
+            avatar_file = request.FILES['avatar']
+            
+            # Проверяем размер файла (максимум 5MB для аватара)
+            from django.conf import settings
+            MAX_AVATAR_SIZE = getattr(settings, 'MAX_AVATAR_SIZE', 5 * 1024 * 1024)
+            if avatar_file.size > MAX_AVATAR_SIZE:
+                messages.error(request, f'Размер аватара не должен превышать {MAX_AVATAR_SIZE / (1024*1024):.0f}MB. Данные профиля обновлены, но аватар не был сохранен.')
+                return redirect('settings_profile')
+            
+            # Проверяем формат файла
+            allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+            if avatar_file.content_type not in allowed_formats:
+                messages.error(request, 'Неподдерживаемый формат изображения. Используйте JPG, PNG, GIF или WEBP. Данные профиля обновлены, но аватар не был сохранен.')
+                return redirect('settings_profile')
+            
+            # Удаляем старый аватар если он существует
+            if profile.avatar:
+                try:
+                    old_avatar_path = profile.avatar.path
+                    if os.path.exists(old_avatar_path):
+                        os.remove(old_avatar_path)
+                except:
+                    pass
+            
+            # Сохраняем новый аватар
+            profile.avatar = avatar_file
+            profile.save(update_fields=['avatar'])
+            
+            messages.success(request, 'Профиль и аватар успешно обновлены')
+        else:
+            messages.success(request, 'Профиль успешно обновлен')
+        
         return redirect('settings_profile')
         
     return render(request, 'eventshock_auth/settings/profile.html', {'active_tab': 'profile'})
 
 @login_required
+@ensure_csrf_cookie
 def settings_appearance(request):
-    profile = request.user.userprofile
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
         # Если меняется только язык
@@ -197,7 +235,7 @@ def settings_appearance(request):
             
             # Если это AJAX запрос, возвращаем JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'status': 'success'})
+                return JsonResponse({'success': True, 'status': 'success'})
             
             # Для обычного запроса - редирект с cookie
             response = redirect('settings_appearance')
@@ -280,6 +318,7 @@ def settings_appearance(request):
         # Если это AJAX запрос, возвращаем JSON
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
+                'success': True,
                 'status': 'success',
                 'theme': profile.theme,
                 'accent_color': profile.accent_color,
@@ -315,7 +354,8 @@ def settings_general(request):
 
 @login_required
 def settings_api(request):
-    if not request.user.userprofile.developer_mode:
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if not profile.developer_mode:
         messages.error(request, 'Включите режим разработчика для доступа к API')
         return redirect('settings_general')
         
@@ -374,7 +414,8 @@ def revoke_esid_token(request, token_id):
 
 @login_required
 def api_docs(request):
-    if not request.user.userprofile.developer_mode:
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if not profile.developer_mode:
         messages.error(request, 'Включите режим разработчика для доступа к документации API')
         return redirect('settings_general')
         

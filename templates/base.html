@@ -9,7 +9,6 @@
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         /* Базовые стили */
         :root {
@@ -266,27 +265,7 @@
     }
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
-
-    <script>
-    // Обработка открытия/закрытия модальных окон без backdrop
-    document.addEventListener('DOMContentLoaded', function() {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.addEventListener('show.bs.modal', function() {
-                document.body.style.overflow = 'hidden';
-            });
-            
-            modal.addEventListener('hidden.bs.modal', function() {
-                document.body.style.overflow = '';
-            });
-        });
-    });
-    </script>
-
+    <!-- Bootstrap и другие библиотеки -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
@@ -294,24 +273,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
 
     <script>
+    // Инициализация модальных окон
     document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация всех модальных окон
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modalEl => {
             const modal = new bootstrap.Modal(modalEl, {
-                backdrop: false,  // Отключаем стандартный backdrop
+                backdrop: false,
                 keyboard: true
             });
             
-            // Добавляем обработчики для анимации фона
             modalEl.addEventListener('show.bs.modal', function() {
+                document.body.style.overflow = 'hidden';
                 modalEl.style.display = 'block';
                 setTimeout(() => modalEl.classList.add('show'), 10);
             });
             
             modalEl.addEventListener('hide.bs.modal', function() {
                 modalEl.classList.remove('show');
-                setTimeout(() => modalEl.style.display = 'none', 300);
+                setTimeout(() => {
+                    modalEl.style.display = 'none';
+                    document.body.style.overflow = '';
+                }, 300);
             });
         });
     });
@@ -379,6 +361,93 @@
     }
 
     /* Плееры */
+    /* Единые стили для плеера */
+    .unified-player {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #000;
+        border-radius: 8px;
+    }
+    
+    .unified-player-header {
+        backdrop-filter: blur(10px);
+        padding: 0.25rem 1rem;
+        height: 24px;
+        min-height: 24px;
+        max-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        user-select: none;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .unified-player-title {
+        font-size: 0.75rem;
+        margin: 0;
+        font-weight: 600;
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    .unified-player-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .unified-player-content {
+        position: relative;
+        background: #000;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .unified-player-content video,
+    .unified-player-content audio {
+        width: auto;
+        height: auto;
+        max-width: none;
+        max-height: none;
+        min-width: 100%;
+        min-height: 100%;
+        object-fit: fill;
+    }
+    
+    .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        cursor: se-resize;
+        z-index: 1000;
+        background: transparent;
+        border: none;
+    }
+    
+    .resize-handle::after {
+        content: '';
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 0 10px 10px;
+        border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+    }
+    
     .plyr {
         --plyr-color-main: var(--bs-primary) !important;
         --plyr-range-fill-background: var(--bs-primary) !important;
@@ -1013,5 +1082,277 @@
         border-color: var(--bs-gray-700) !important;
     }
     </style>
+
+<script>
+// ========== ЕДИНЫЙ ПЛЕЕР - ОБЩИЕ ФУНКЦИИ ==========
+
+// Инициализация единого Plyr плеера
+function initUnifiedPlayer(selector, options = {}) {
+    // Получаем элемент медиа
+    const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    
+    // Проверяем наличие source элементов с data-plyr-quality для автоматического определения качеств
+    let qualityOptions = [];
+    let qualityMapping = {}; // Определяем в правильном scope
+    
+    if (mediaElement) {
+        const qualitySources = mediaElement.querySelectorAll('source[data-plyr-quality]');
+        if (qualitySources.length > 0) {
+            qualitySources.forEach(source => {
+                const quality = source.getAttribute('data-plyr-quality');
+                if (quality && !qualityOptions.includes(quality)) {
+                    qualityOptions.push(quality);
+                }
+                // Создаем mapping между качествами и source элементами
+                qualityMapping[quality] = source.src;
+            });
+        }
+    }
+    
+    const defaultOptions = {
+        controls: [
+            'play-large', 'play', 'progress', 'current-time', 'duration',
+            'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+        ],
+        // Убеждаемся, что перемотка работает правильно
+        seekTime: 10,
+        // Настройки для работы с видео
+        clickToPlay: true,
+        disableContextMenu: false,
+        // Не перезагружаем видео при изменении source, если уже загружено
+        resetOnEnd: false
+    };
+    
+    // Явно передаем настройки качества, если найдены source элементы с data-plyr-quality
+    if (qualityOptions.length > 1) {
+        // Сортируем качества в порядке убывания для правильного отображения
+        qualityOptions.sort((a, b) => parseInt(b) - parseInt(a));
+        
+        defaultOptions.quality = {
+            default: qualityOptions[0], // Самое высокое качество по умолчанию
+            options: qualityOptions,
+            forced: false,
+            onChange: null // Будет установлено после создания player
+        };
+        console.log('Setting up quality menu with options:', qualityOptions, 'mapping:', qualityMapping);
+    } else {
+        console.log('No quality options found or only one quality available');
+    }
+    
+    const player = new Plyr(selector, { ...defaultOptions, ...options });
+    
+    // Устанавливаем onChange для качества после создания player
+    if (qualityOptions.length > 1 && qualityMapping && player && player.quality) {
+        // Обновляем onChange с правильным контекстом
+        player.quality.onChange = function(newQuality) {
+            const currentTime = player.currentTime;
+            const wasPlaying = !player.paused;
+            const videoElement = player.media;
+            
+            console.log('Quality changing to:', newQuality, 'at time:', currentTime);
+            
+            // Находим соответствующий source элемент
+            if (mediaElement && qualityMapping[newQuality]) {
+                const newSourceUrl = qualityMapping[newQuality];
+                
+                // Сохраняем позицию перед переключением
+                const restorePosition = function() {
+                    if (currentTime > 0 && currentTime < videoElement.duration) {
+                        videoElement.currentTime = currentTime;
+                        console.log('Position restored to:', currentTime);
+                    }
+                    if (wasPlaying) {
+                        videoElement.play().catch(e => console.error('Play error:', e));
+                    }
+                    videoElement.removeEventListener('canplay', restorePosition);
+                };
+                
+                videoElement.addEventListener('canplay', restorePosition, { once: true });
+                
+                // Переключаем источник через Plyr API
+                const currentSrc = videoElement.currentSrc || videoElement.src;
+                if (currentSrc !== newSourceUrl) {
+                    console.log('Switching source from', currentSrc, 'to', newSourceUrl);
+                    
+                    // Используем Plyr API для переключения источника
+                    player.source = {
+                        type: 'video',
+                        sources: [{
+                            src: newSourceUrl,
+                            type: 'video/mp4'
+                        }]
+                    };
+                }
+            }
+        };
+    }
+    
+    // Предотвращаем перезагрузку видео при перемотке
+    if (player && player.media) {
+        let savedTime = 0;
+        
+        // Сохраняем позицию перед любыми действиями, которые могут перезагрузить видео
+        player.media.addEventListener('timeupdate', function() {
+            savedTime = player.currentTime;
+        });
+        
+        // При перемотке просто переходим к нужной позиции, не перезагружая
+        player.media.addEventListener('seeking', function(e) {
+            // Если видео уже загружено, перемотка не должна вызывать перезагрузку
+            if (player.media.readyState >= 2) {
+                // Видео уже загружено, перемотка должна работать
+                return;
+            }
+        });
+    }
+    
+    return player;
+}
+
+// Обновление цвета заголовка плеера в зависимости от темы
+function updatePlayerHeaderColor(headerSelector, titleSelector) {
+    const header = typeof headerSelector === 'string' ? document.querySelector(headerSelector) : headerSelector;
+    const title = typeof titleSelector === 'string' ? document.querySelector(titleSelector) : titleSelector;
+    
+    if (!header || !title) return;
+    
+    // Определяем тему страницы
+    let theme = document.documentElement.getAttribute('data-bs-theme');
+    if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    // Устанавливаем цвет фона шапки в зависимости от темы
+    const headerBgColor = isDark ? 'rgba(37, 37, 37, 0.7)' : 'rgba(255, 255, 255, 0.7)';
+    header.style.background = headerBgColor;
+    
+    // Вычисляем яркость фона для определения цвета текста
+    const bgMatch = headerBgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (bgMatch) {
+        const r = parseInt(bgMatch[1]);
+        const g = parseInt(bgMatch[2]);
+        const b = parseInt(bgMatch[3]);
+        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+        
+        // Устанавливаем цвет текста в зависимости от яркости фона
+        title.style.color = brightness < 128 ? '#ffffff' : '#000000';
+        title.style.textShadow = 'none';
+    }
+}
+
+// Создание HTML структуры единого плеера
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, availableQualities = [], fileId = null, publicToken = null) {
+    const closeBtn = closeAction 
+        ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
+        : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
+    
+    const downloadBtn = downloadUrl
+        ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;"><i class="fas fa-download"></i></a>`
+        : '';
+    
+    let content = '';
+    let playerClass = '';
+    
+    switch(type) {
+        case 'video':
+            // Создаем source элементы для разных качеств, если они доступны
+            let sourcesHtml = '';
+            if (availableQualities && availableQualities.length > 1) {
+                // Добавляем source для каждого качества с data-plyr-quality атрибутом
+                availableQualities.forEach((quality) => {
+                    let qualityUrl;
+                    if (fileId) {
+                        qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
+                    } else if (publicToken) {
+                        qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
+                    } else {
+                        qualityUrl = url;
+                    }
+                    // Используем числовое значение для data-plyr-quality (Plyr автоматически добавит "p" при отображении)
+                    sourcesHtml += `<source src="${qualityUrl}" type="video/mp4" data-plyr-quality="${quality}" size="${quality}">`;
+                });
+            } else {
+                // Если качеств нет или только одно, используем оригинальный URL
+                sourcesHtml = `<source src="${url}" type="video/mp4">`;
+            }
+            
+            content = `<video class="plyr-video" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
+${sourcesHtml}
+            </video>`;
+            playerClass = 'plyr-video';
+            break;
+        case 'audio':
+            content = `<audio class="plyr-audio" controls style="width: 100%;">
+                <source src="${url}" type="audio/mpeg">
+            </audio>`;
+            playerClass = 'plyr-audio';
+            break;
+        case 'image':
+            content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
+            break;
+    }
+    
+    return {
+        html: `
+            <div class="unified-player-header">
+                <h5 class="unified-player-title">${filename || 'Просмотр файла'}</h5>
+                <div class="unified-player-actions">
+                    ${downloadBtn}
+                    ${closeBtn}
+                </div>
+            </div>
+            <div class="unified-player-content">
+                ${content}
+                <div class="resize-handle"></div>
+            </div>
+        `,
+        playerClass: playerClass
+    };
+}
+
+// Функция для изменения качества видео (для авторизованных пользователей)
+function changeVideoQuality(videoElement, fileId, quality, originalUrl) {
+    if (!videoElement || !fileId) return;
+    
+    const qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
+    
+    // Обновляем src видео элемента
+    videoElement.src = qualityUrl;
+    
+    // Если используется Plyr, перезагружаем медиа
+    if (globalPlayer && globalPlayer.media) {
+        globalPlayer.source = {
+            type: 'video',
+            sources: [{
+                src: qualityUrl,
+                type: 'video/mp4'
+            }]
+        };
+    }
+}
+
+// Функция для изменения качества публичного видео
+function changePublicVideoQuality(videoElement, publicToken, quality, originalUrl) {
+    if (!videoElement || !publicToken) return;
+    
+    const qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
+    
+    // Обновляем src видео элемента
+    videoElement.src = qualityUrl;
+    
+    // Если используется Plyr, перезагружаем медиа
+    const player = Plyr.get(videoElement);
+    if (player && player.media) {
+        player.source = {
+            type: 'video',
+            sources: [{
+                src: qualityUrl,
+                type: 'video/mp4'
+            }]
+        };
+    }
+}
+</script>
 </body>
 </html> 

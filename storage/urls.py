@@ -10,6 +10,7 @@ urlpatterns = [
     path('archive-contents/<int:file_id>/', views.get_archive_contents, name='archive_contents'),
     path('extract-archive/<int:file_id>/', views.extract_archive, name='extract_archive'),
     path('toggle-publicity/<int:file_id>/', views.toggle_file_publicity, name='toggle_file_publicity'),
+    path('public/metadata/<str:token>/', views.get_public_file_metadata, name='get_public_file_metadata'),
     path('public/<str:token>/', views.public_file, name='public_file'),
     path('bulk-delete/', views.bulk_delete, name='bulk_delete'),
     path('bulk-download/', views.bulk_download, name='bulk_download'),
@@ -23,4 +24,7 @@ urlpatterns = [
     path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
     path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
     path('api/yt-task/<int:task_id>/', youtube.task_status, name='api_task_status'),
+    path('metadata/<int:file_id>/', views.get_file_metadata, name='get_file_metadata'),
+    path('video-quality/<int:file_id>/<int:quality>/', views.get_video_quality, name='get_video_quality'),
+    path('public/video-quality/<str:token>/<int:quality>/', views.get_public_video_quality, name='get_public_video_quality'),
 ] 
