@@ -14,7 +14,7 @@ SECRET_KEY = 'ih2201fopweuhOHB@@DOQ}IUWGBDIOWdwq@#@#id!843109)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['s.eventshock-soft.ru', '127.0.0.1', 'localhost', '147.45.48.56']
+ALLOWED_HOSTS = ['storage.eventshock.ru', '127.0.0.1', 'localhost', 's.eventshock.ru']
 
 # Application definition
 INSTALLED_APPS = [
@@ -193,7 +193,7 @@ if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
     os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 # Large file settings
-LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB
+LARGE_FILE_SIZE_THRESHOLD = 10485760 * 10  # 10MB
 MAX_FILE_SIZE = 2147483648  # 2GB
 
 # Login URL
@@ -206,7 +206,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
 MAX_UPLOAD_SIZE = 2147483648  # 2GB
 
 # Настройки для больших файлов
-LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB
+LARGE_FILE_SIZE_THRESHOLD = 10485760 * 10  # 10MB
 CHUNK_SIZE = 2097152  # 2MB
 
 # Настройки безопасности
