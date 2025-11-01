@@ -561,6 +561,23 @@
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
         border-bottom: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
     }
+    
+    /* Исключение для заголовков с bg-primary */
+    .card-header.bg-primary {
+        background-color: var(--bs-primary) !important;
+        color: #ffffff !important;
+    }
+    
+    .card-header.bg-primary h3,
+    .card-header.bg-primary h4,
+    .card-header.bg-primary h5,
+    .card-header.bg-primary p,
+    .card-header.bg-primary span,
+    .card-header.bg-primary i,
+    .card-header.bg-primary .fas,
+    .card-header.bg-primary .fa {
+        color: #ffffff !important;
+    }
 
     .modal-content {
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
@@ -831,8 +848,12 @@
         font-weight: 600;
     }
     
-    [data-bs-theme="light"] .card-title,
-    [data-bs-theme="light"] .card-header {
+    [data-bs-theme="light"] .card-title {
+        color: #0d1117 !important;
+    }
+    
+    /* Исключение для заголовков с bg-primary - они должны быть белыми */
+    [data-bs-theme="light"] .card-header:not(.bg-primary) {
         color: #0d1117 !important;
     }
 
