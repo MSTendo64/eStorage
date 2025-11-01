@@ -3,9 +3,9 @@
 """
 import os
 import uuid
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 from django.conf import settings
-from django.http import JsonResponse, HttpRequest
+from django.http import JsonResponse, HttpRequest, HttpResponseRedirect
 from django.contrib import messages
 from django.shortcuts import redirect
 from eventshock_auth.models import UserProfile
@@ -42,10 +42,10 @@ def generate_unique_filename(user_folder: str, original_filename: str) -> str:
     return filename
 
 
-def validate_file_size(uploaded_file, request: HttpRequest) -> Optional[JsonResponse]:
+def validate_file_size(uploaded_file, request: HttpRequest) -> Optional[Union[JsonResponse, HttpResponseRedirect]]:
     """
-    Проверяет размер файла. Возвращает JsonResponse с ошибкой, если файл слишком большой.
-    Иначе возвращает None.
+    Проверяет размер файла. Возвращает JsonResponse или HttpResponseRedirect с ошибкой, 
+    если файл слишком большой. Иначе возвращает None.
     """
     if uploaded_file.size > settings.MAX_FILE_SIZE:
         max_size_mb = settings.MAX_FILE_SIZE / (1024 * 1024)
@@ -60,10 +60,10 @@ def validate_file_size(uploaded_file, request: HttpRequest) -> Optional[JsonResp
     return None
 
 
-def validate_storage_quota(user, file_size: int, request: HttpRequest) -> Optional[JsonResponse]:
+def validate_storage_quota(user, file_size: int, request: HttpRequest) -> Optional[Union[JsonResponse, HttpResponseRedirect]]:
     """
-    Проверяет доступность места в хранилище. Возвращает JsonResponse с ошибкой, 
-    если места недостаточно. Иначе возвращает None.
+    Проверяет доступность места в хранилище. Возвращает JsonResponse или HttpResponseRedirect 
+    с ошибкой, если места недостаточно. Иначе возвращает None.
     """
     profile, _ = UserProfile.objects.get_or_create(user=user)
     

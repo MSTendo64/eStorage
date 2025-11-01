@@ -312,10 +312,16 @@ function changeLanguage(select) {
     form.method = 'POST';
     form.action = window.location.href;
     
+    const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfElement) {
+        console.error('CSRF token not found');
+        return;
+    }
+    
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
     csrf.name = 'csrfmiddlewaretoken';
-    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    csrf.value = csrfElement.value;
     
     const lang = document.createElement('input');
     lang.type = 'hidden';

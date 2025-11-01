@@ -743,10 +743,11 @@ function extractArchive(fileId) {
     
     showLoading('Распаковка архива...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/extract-archive/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -766,10 +767,11 @@ function extractArchive(fileId) {
 }
 
 function togglePublicity(fileId, btn) {
+    const csrfToken = getCsrfToken();
     fetch(`/storage/toggle-publicity/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -881,10 +883,11 @@ function bulkDelete() {
     
     showLoading('Удалени файлов...');
     
+    const csrfToken = getCsrfToken();
     fetch('/storage/bulk-delete/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
@@ -910,10 +913,11 @@ function bulkDownload() {
     form.method = 'POST';
     form.action = '/storage/bulk-download/';
     
+    const csrfToken = getCsrfToken();
     const csrf = document.createElement('input');
     csrf.type = 'hidden';
     csrf.name = 'csrfmiddlewaretoken';
-    csrf.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    csrf.value = csrfToken;
     form.appendChild(csrf);
     
     selectedFiles.forEach(id => {
@@ -938,10 +942,11 @@ function bulkArchive() {
     
     showLoading('Создание ахива...');
     
+    const csrfToken = getCsrfToken();
     fetch('/storage/bulk-archive/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
@@ -1131,10 +1136,11 @@ function deleteFile(fileId, fileName) {
     
     showLoading('Удаление файла...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/delete/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => {
@@ -1155,10 +1161,11 @@ function deleteFile(fileId, fileName) {
 function downloadFile(fileId) {
     showLoading('Подготовка файла для скачивания...');
     
+    const csrfToken = getCsrfToken();
     fetch(`/storage/generate-link/${fileId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            'X-CSRFToken': csrfToken
         }
     })
     .then(response => response.json())
@@ -1500,15 +1507,19 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Функция для получения CSRF токена
+// Безопасное получение CSRF токена с проверкой на null
 function getCsrfToken() {
-    // Сначала пытаемся получить из скрытого поля формы
-    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (csrfInput && csrfInput.value) {
-        return csrfInput.value;
+    const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfElement && csrfElement.value) {
+        return csrfElement.value;
     }
     // Если не найден в форме, получаем из cookie
-    return getCookie('csrftoken');
+    const cookieValue = getCookie('csrftoken');
+    if (cookieValue) {
+        return cookieValue;
+    }
+    console.error('CSRF token not found');
+    throw new Error('CSRF token not found');
 }
 
 function uploadFile(file) {
@@ -1524,9 +1535,10 @@ function uploadFile(file) {
 }
 
 function uploadFileSimple(file, callback) {
+    const csrfToken = getCsrfToken();
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('csrfmiddlewaretoken', csrfToken);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', window.location.href, true);
