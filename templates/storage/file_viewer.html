@@ -1,0 +1,569 @@
+{% comment %}
+Единый шаблон для просмотра файлов
+Поддерживает два режима:
+1. modal_mode=true - модальное окно (для dashboard)
+2. modal_mode=false - статичное окно (для публичного просмотра)
+{% endcomment %}
+
+{% if modal_mode %}
+<!-- Модальное окно для предпросмотра (дашборд) -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
+        <div class="modal-content unified-player" id="previewModalContent" style="cursor: move;">
+            <div id="previewContent" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;"></div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Статичное окно для публичного просмотра -->
+<style>
+/* Запрещаем прокрутку страницы при публичном просмотре */
+body {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+html {
+    overflow: hidden !important;
+}
+</style>
+<div class="container-fluid p-0" style="position: fixed; width: 100%; height: 100vh; overflow: hidden; top: 0; left: 0;">
+    {% if file_type == 'video' %}
+    <div id="publicVideoPlayer" class="unified-player" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);"></div>
+    {% elif file_type == 'image' %}
+    <div id="publicImagePlayer" class="unified-player" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; max-height: 90vh; z-index: 1000; pointer-events: auto;"></div>
+    {% elif file_type == 'audio' %}
+    <div id="publicAudioPlayer" class="unified-player" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); pointer-events: auto;"></div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+{% if modal_mode %}
+/* Стили для модального окна просмотра */
+#previewModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 60px);
+    margin: 30px auto;
+    position: fixed;
+}
+
+#previewModal .modal-content {
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+}
+
+#previewModal .modal-body {
+    overflow: auto;
+    max-height: calc(90vh - 120px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.draggable-header {
+    user-select: none;
+}
+
+#previewContent {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#previewContent img {
+    max-width: 100%;
+    max-height: calc(90vh - 120px);
+    object-fit: contain;
+}
+
+#previewContent video,
+#previewContent audio {
+    max-width: 100%;
+}
+
+/* Стили для плеера */
+.plyr {
+    width: 100%;
+    max-height: calc(90vh - 120px);
+}
+
+/* Анимация появления */
+.modal.fade .modal-dialog {
+    transform: translate(0, -50px);
+    transition: transform 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+{% endif %}
+
+.resize-handle {
+    background: transparent;
+    border: none;
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 10px 10px;
+    border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+}
+</style>
+
+<script>
+{% if modal_mode %}
+// ========== МОДАЛЬНЫЙ РЕЖИМ (DASHBOARD) ==========
+let globalPlayer = null;
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let resizeStart = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
+let activeResizeHandle = null;
+
+function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const modalDialog = document.getElementById('previewModalDialog');
+    const modalContent = document.getElementById('previewModalContent');
+    const previewContent = document.getElementById('previewContent');
+    
+    // Очищаем предыдущий плеер если он существует
+    if (globalPlayer) {
+        try {
+            globalPlayer.destroy();
+        } catch(e) {
+            console.error('Error destroying player:', e);
+        }
+        globalPlayer = null;
+    }
+    
+    // Создаем единую структуру плеера
+    const playerData = createUnifiedPlayerHTML(type, url, filename);
+    previewContent.innerHTML = playerData.html;
+    
+    // Инициализируем Plyr для видео/аудио
+    if (playerData.playerClass) {
+        const playerElement = previewContent.querySelector('.' + playerData.playerClass);
+        if (playerElement) {
+            globalPlayer = initUnifiedPlayer(playerElement);
+        }
+    }
+    
+    // Обновляем цвет заголовка
+    const header = previewContent.querySelector('.unified-player-header');
+    const title = previewContent.querySelector('.unified-player-title');
+    if (header && title) {
+        updatePlayerHeaderColor(header, title);
+    }
+    
+    // Сбрасываем позицию и размер модального окна
+    if (modalDialog) {
+        modalDialog.style.position = 'fixed';
+        modalDialog.style.left = '50%';
+        modalDialog.style.top = '50%';
+        modalDialog.style.transform = 'translate(-50%, -50%)';
+        modalDialog.style.margin = '0';
+        modalContent.style.width = '';
+        modalContent.style.height = '';
+    }
+    
+    modal.show();
+    
+    // Инициализируем drag and drop после показа модального окна
+    setTimeout(() => {
+        initDragAndResize();
+        // Обновляем цвет заголовка после показа
+        if (header && title) {
+            updatePlayerHeaderColor(header, title);
+        }
+    }, 100);
+    
+    // Очищаем при закрытии модального окна
+    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        previewContent.innerHTML = '';
+        isDragging = false;
+        isResizing = false;
+        // Уничтожаем плеер при закрытии
+        if (globalPlayer) {
+            try {
+                globalPlayer.destroy();
+                globalPlayer = null;
+            } catch(e) {
+                console.error('Error destroying player:', e);
+            }
+        }
+    }, { once: true });
+}
+
+function updateTitleColor() {
+    const header = document.querySelector('#previewModal .unified-player-header');
+    const title = document.querySelector('#previewModal .unified-player-title');
+    if (header && title) {
+        updatePlayerHeaderColor(header, title);
+    }
+}
+
+function initDragAndResize() {
+    const modalDialog = document.getElementById('previewModalDialog');
+    const modalContent = document.getElementById('previewModalContent');
+    const header = document.querySelector('#previewModal .unified-player-header');
+    const resizeHandles = document.querySelectorAll('#previewModal .resize-handle');
+    
+    if (!modalDialog || !modalContent || !header) return;
+    
+    // Обновляем цвет текста периодически и при изменениях
+    updateTitleColor();
+    
+    // Обновляем цвет при перемещении модального окна и изменении темы
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'data-bs-theme' || mutation.attributeName === 'style') {
+                setTimeout(updateTitleColor, 50);
+            }
+        });
+    });
+    
+    // Наблюдаем за изменениями стилей modalDialog и header
+    if (modalDialog) {
+        observer.observe(modalDialog, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+    }
+    observer.observe(header, {
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+    
+    // Drag and drop для шапки
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('btn-close')) return;
+        
+        isDragging = true;
+        const rect = modalDialog.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', stopDrag);
+        e.preventDefault();
+    });
+    
+    function handleDrag(e) {
+        if (!isDragging) return;
+        
+        let newX = e.clientX - dragOffset.x;
+        let newY = e.clientY - dragOffset.y;
+        
+        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только до середины экрана (не выше)
+        const maxX = window.innerWidth - modalDialog.offsetWidth;
+        const minY = window.innerHeight / 2; // Минимум - середина экрана (нельзя поднять выше)
+        const maxY = window.innerHeight - modalDialog.offsetHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(minY, Math.min(newY, maxY));
+        
+        modalDialog.style.left = newX + 'px';
+        modalDialog.style.top = newY + 'px';
+        modalDialog.style.transform = 'none';
+        modalDialog.style.margin = '0';
+        
+        // Обновляем цвет текста при перемещении (на случай изменения фона)
+        updateTitleColor();
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', handleDrag);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+    
+    // Resize для нижних углов
+    resizeHandles.forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            activeResizeHandle = handle;
+            const contentRect = modalContent.getBoundingClientRect();
+            const dialogRect = modalDialog.getBoundingClientRect();
+            resizeStart.x = e.clientX;
+            resizeStart.y = e.clientY;
+            resizeStart.width = contentRect.width;
+            resizeStart.height = contentRect.height;
+            resizeStart.left = dialogRect.left;
+            resizeStart.top = dialogRect.top;
+            
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', stopResize);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    function handleResize(e) {
+        if (!isResizing || !activeResizeHandle) return;
+        
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
+        
+        const dialogLeft = resizeStart.left;
+        const dialogTop = resizeStart.top;
+        
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        
+        if (activeResizeHandle.classList.contains('resize-handle')) {
+            newWidth = resizeStart.width + deltaX;
+            newHeight = resizeStart.height + deltaY;
+        }
+        
+        // Минимальные размеры с учетом шапки и элементов управления плеера
+        const headerHeight = 24;
+        const controlsHeight = 80;
+        const minWidth = 400;
+        const minHeight = headerHeight + controlsHeight + 200;
+        
+        const maxWidth = Math.min(window.innerWidth - dialogLeft - 10, window.innerWidth * 0.95);
+        const maxHeight = window.innerHeight - dialogTop - 10;
+        
+        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+        
+        // Получаем реальную высоту шапки
+        const header = document.querySelector('#previewModal .unified-player-header');
+        const actualHeaderHeight = header ? header.offsetHeight : headerHeight;
+        
+        // Применяем новые размеры
+        modalContent.style.width = newWidth + 'px';
+        modalContent.style.height = newHeight + 'px';
+        
+        // Обновляем размер modal-body, чтобы он занимал оставшееся пространство
+        const modalBody = modalContent.querySelector('.modal-body');
+        if (modalBody) {
+            modalBody.style.height = (newHeight - actualHeaderHeight) + 'px';
+            modalBody.style.minHeight = (newHeight - actualHeaderHeight) + 'px';
+            modalBody.style.maxHeight = (newHeight - actualHeaderHeight) + 'px';
+        }
+        
+        // Обновляем размер контента, чтобы элементы управления плеера были видны
+        const previewContentEl = document.getElementById('previewContent');
+        if (previewContentEl) {
+            previewContentEl.style.maxWidth = '100%';
+            previewContentEl.style.height = '100%';
+            previewContentEl.style.overflow = 'hidden';
+            
+            const video = previewContentEl.querySelector('video');
+            if (video && globalPlayer) {
+                setTimeout(() => {
+                    if (globalPlayer && typeof globalPlayer.media !== 'undefined') {
+                        globalPlayer.media.style.maxWidth = '100%';
+                        globalPlayer.media.style.maxHeight = '100%';
+                    }
+                }, 10);
+            }
+        }
+    }
+    
+    function stopResize() {
+        isResizing = false;
+        activeResizeHandle = null;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+    }
+}
+{% else %}
+// ========== СТАТИЧНЫЙ РЕЖИМ (ПУБЛИЧНЫЙ ПРОСМОТР) ==========
+let isResizingPublic = false;
+let resizeStartPublic = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
+let activeResizeHandlePublic = null;
+
+function updatePublicTitleColor() {
+    const headers = document.querySelectorAll('.unified-player-header');
+    const titles = document.querySelectorAll('.unified-player-title');
+    
+    headers.forEach((header, index) => {
+        if (titles[index]) {
+            updatePlayerHeaderColor(header, titles[index]);
+        }
+    });
+}
+
+function initPublicDragAndResize() {
+    const player = document.getElementById('publicVideoPlayer');
+    if (!player) return;
+    
+    const header = player.querySelector('.unified-player-header');
+    const resizeHandle = player.querySelector('.resize-handle');
+    
+    if (!header) return;
+    
+    updatePublicTitleColor();
+    
+    // Убираем возможность перетаскивания - делаем окно статичным
+    header.style.cursor = 'default';
+    
+    // Закрепляем позицию окна - фиксируем в центре экрана
+    player.style.position = 'fixed';
+    player.style.left = '50%';
+    player.style.top = '50%';
+    player.style.transform = 'translate(-50%, -50%)';
+    
+    // Resize только для видео
+    if (resizeHandle) {
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizingPublic = true;
+            activeResizeHandlePublic = resizeHandle;
+            const rect = player.getBoundingClientRect();
+            resizeStartPublic.x = e.clientX;
+            resizeStartPublic.y = e.clientY;
+            resizeStartPublic.width = rect.width;
+            resizeStartPublic.height = rect.height;
+            resizeStartPublic.left = rect.left;
+            resizeStartPublic.top = rect.top;
+            
+            document.addEventListener('mousemove', handleResizePublic);
+            document.addEventListener('mouseup', stopResizePublic);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    }
+    
+    function handleResizePublic(e) {
+        if (!isResizingPublic || !activeResizeHandlePublic) return;
+        
+        const deltaX = e.clientX - resizeStartPublic.x;
+        const deltaY = e.clientY - resizeStartPublic.y;
+        
+        let newWidth = resizeStartPublic.width + deltaX;
+        let newHeight = resizeStartPublic.height + deltaY;
+        
+        // Минимальные размеры с учетом шапки и элементов управления плеера
+        const headerHeight = 24;
+        const controlsHeight = 80;
+        const minWidth = 400;
+        const minHeight = headerHeight + controlsHeight + 200;
+        
+        const maxWidth = window.innerWidth * 0.95;
+        const maxHeight = window.innerHeight * 0.95;
+        
+        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+        
+        // Изменяем только размер, позиция остается зафиксированной в центре
+        player.style.width = newWidth + 'px';
+        player.style.height = newHeight + 'px';
+        
+        player.style.left = '50%';
+        player.style.top = '50%';
+        player.style.transform = 'translate(-50%, -50%)';
+        
+        // Получаем реальную высоту шапки
+        const header = player.querySelector('.unified-player-header');
+        const actualHeaderHeight = header ? header.offsetHeight : headerHeight;
+        
+        // Обновляем размер контейнера видео, чтобы элементы управления были видны
+        const videoContainer = player.querySelector('.unified-player-content');
+        if (videoContainer) {
+            const videoHeight = newHeight - actualHeaderHeight;
+            videoContainer.style.height = videoHeight + 'px';
+            videoContainer.style.minHeight = videoHeight + 'px';
+            videoContainer.style.maxHeight = videoHeight + 'px';
+        }
+    }
+    
+    function stopResizePublic() {
+        isResizingPublic = false;
+        activeResizeHandlePublic = null;
+        document.removeEventListener('mousemove', handleResizePublic);
+        document.removeEventListener('mouseup', stopResizePublic);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    let playerElement = null;
+    let playerType = null;
+    let filename = '';
+    let fileUrl = '';
+    
+    // Определяем тип файла и создаем единую структуру плеера
+    {% if file_type == 'video' %}
+    playerElement = document.getElementById('publicVideoPlayer');
+    playerType = 'video';
+    filename = '{{ filename|escapejs }}';
+    fileUrl = '{{ file_url }}';
+    {% elif file_type == 'image' %}
+    playerElement = document.getElementById('publicImagePlayer');
+    playerType = 'image';
+    filename = '{{ filename|escapejs }}';
+    fileUrl = '{{ file_url }}';
+    {% elif file_type == 'audio' %}
+    playerElement = document.getElementById('publicAudioPlayer');
+    playerType = 'audio';
+    filename = '{{ filename|escapejs }}';
+    fileUrl = '{{ file_url }}';
+    {% endif %}
+    
+    if (playerElement) {
+        // Создаем единую структуру плеера
+        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'');
+        playerElement.innerHTML = playerData.html;
+        
+        // Инициализируем Plyr для видео/аудио
+        if (playerData.playerClass) {
+            const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
+            if (mediaElement) {
+                initUnifiedPlayer(mediaElement);
+            }
+        }
+        
+        // Обновляем цвет заголовка
+        const header = playerElement.querySelector('.unified-player-header');
+        const title = playerElement.querySelector('.unified-player-title');
+        if (header && title) {
+            updatePlayerHeaderColor(header, title);
+        }
+    }
+    
+    // Инициализируем drag and resize для публичного просмотра (только для видео)
+    if (playerType === 'video') {
+        setTimeout(() => {
+            initPublicDragAndResize();
+        }, 100);
+    }
+    
+    // Обновляем цвет при изменении темы
+    const observer = new MutationObserver(() => {
+        if (playerElement) {
+            const header = playerElement.querySelector('.unified-player-header');
+            const title = playerElement.querySelector('.unified-player-title');
+            if (header && title) {
+                updatePlayerHeaderColor(header, title);
+            }
+        }
+    });
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-bs-theme']
+    });
+    
+    // Обновляем при изменении системной темы (если используется auto)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (playerElement) {
+            const header = playerElement.querySelector('.unified-player-header');
+            const title = playerElement.querySelector('.unified-player-title');
+            if (header && title) {
+                updatePlayerHeaderColor(header, title);
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+

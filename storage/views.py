@@ -301,7 +301,20 @@ def public_file(request, token):
         
         # Для медиафайлов показываем страницу просмотра
         if file.is_image or file.is_video or file.is_audio:
-            return render(request, 'storage/public_file.html', {'file': file})
+            # Определяем тип файла для шаблона
+            if file.is_video:
+                file_type = 'video'
+            elif file.is_image:
+                file_type = 'image'
+            elif file.is_audio:
+                file_type = 'audio'
+            else:
+                file_type = None
+            
+            return render(request, 'storage/public_file.html', {
+                'file': file,
+                'file_type': file_type
+            })
             
         # Для остальных файлов - скачивание
         response = HttpResponse(file.file, content_type='application/octet-stream')

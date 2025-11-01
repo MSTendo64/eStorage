@@ -423,13 +423,7 @@
 </div>
 
 <!-- Модальное окно для предпросмотра -->
-<div class="modal fade" id="previewModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
-        <div class="modal-content unified-player" id="previewModalContent" style="cursor: move;">
-            <div id="previewContent" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;"></div>
-        </div>
-    </div>
-</div>
+{% include 'storage/file_viewer.html' with modal_mode=True %}
 
 <!-- Обновленно одальное окно для просмотра содержимого архива -->
 <div class="modal fade" id="archiveContentsModal" tabindex="-1">
@@ -651,14 +645,10 @@
 </style>
 
 <script>
+// Функции для работы с плеером находятся в file_viewer.html
+// Переопределяем глобальные переменные для совместимости
 let globalPlayer = null;
 let zoom = null;
-
-let isDragging = false;
-let isResizing = false;
-let dragOffset = { x: 0, y: 0 };
-let resizeStart = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
-let activeResizeHandle = null;
 
 function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
@@ -734,191 +724,7 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
     }, { once: true });
 }
 
-function updateTitleColor() {
-    const header = document.querySelector('#previewModal .unified-player-header');
-    const title = document.querySelector('#previewModal .unified-player-title');
-    if (header && title) {
-        updatePlayerHeaderColor(header, title);
-    }
-}
-
-function initDragAndResize() {
-    const modalDialog = document.getElementById('previewModalDialog');
-    const modalContent = document.getElementById('previewModalContent');
-    const header = document.querySelector('#previewModal .unified-player-header');
-    const resizeHandles = document.querySelectorAll('#previewModal .resize-handle');
-    
-    if (!modalDialog || !modalContent || !header) return;
-    
-    // Обновляем цвет текста периодически и при изменениях
-    updateTitleColor();
-    
-    // Обновляем цвет при перемещении модального окна и изменении темы
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'data-bs-theme' || mutation.attributeName === 'style') {
-                setTimeout(updateTitleColor, 50);
-            }
-        });
-    });
-    
-    // Наблюдаем за изменениями стилей modalDialog и header
-    if (modalDialog) {
-        observer.observe(modalDialog, {
-            attributes: true,
-            attributeFilter: ['style']
-        });
-    }
-    observer.observe(header, {
-        attributes: true,
-        attributeFilter: ['style', 'class']
-    });
-    
-    // Drag and drop для шапки
-    header.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('btn-close')) return;
-        
-        isDragging = true;
-        const rect = modalDialog.getBoundingClientRect();
-        dragOffset.x = e.clientX - rect.left;
-        dragOffset.y = e.clientY - rect.top;
-        
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-        e.preventDefault();
-    });
-    
-    function handleDrag(e) {
-        if (!isDragging) return;
-        
-        let newX = e.clientX - dragOffset.x;
-        let newY = e.clientY - dragOffset.y;
-        
-        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только до середины экрана (не выше)
-        const maxX = window.innerWidth - modalDialog.offsetWidth;
-        // Разрешаем перемещение только до середины экрана (не выше середины)
-        const minY = window.innerHeight / 2; // Минимум - середина экрана (нельзя поднять выше)
-        const maxY = window.innerHeight - modalDialog.offsetHeight;
-        
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(minY, Math.min(newY, maxY));
-        
-        modalDialog.style.left = newX + 'px';
-        modalDialog.style.top = newY + 'px';
-        modalDialog.style.transform = 'none';
-        modalDialog.style.margin = '0';
-        
-        // Обновляем цвет текста при перемещении (на случай изменения фона)
-        updateTitleColor();
-    }
-    
-    function stopDrag() {
-        isDragging = false;
-        document.removeEventListener('mousemove', handleDrag);
-        document.removeEventListener('mouseup', stopDrag);
-    }
-    
-    // Resize для нижних углов
-    resizeHandles.forEach(handle => {
-        handle.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            activeResizeHandle = handle;
-            const contentRect = modalContent.getBoundingClientRect();
-            const dialogRect = modalDialog.getBoundingClientRect();
-            resizeStart.x = e.clientX;
-            resizeStart.y = e.clientY;
-            resizeStart.width = contentRect.width;
-            resizeStart.height = contentRect.height;
-            // Сохраняем начальную позицию modalDialog
-            resizeStart.left = dialogRect.left;
-            resizeStart.top = dialogRect.top;
-            
-            document.addEventListener('mousemove', handleResize);
-            document.addEventListener('mouseup', stopResize);
-            e.preventDefault();
-            e.stopPropagation();
-        });
-    });
-    
-    function handleResize(e) {
-        if (!isResizing || !activeResizeHandle) return;
-        
-        const deltaX = e.clientX - resizeStart.x;
-        const deltaY = e.clientY - resizeStart.y;
-        
-        // Используем сохраненную начальную позицию
-        const dialogLeft = resizeStart.left;
-        const dialogTop = resizeStart.top;
-        
-        let newWidth = resizeStart.width;
-        let newHeight = resizeStart.height;
-        
-        // Работаем только с правым нижним углом
-        if (activeResizeHandle.classList.contains('resize-handle-se')) {
-            // Правый нижний угол - изменяем только размер справа и снизу
-            // Верхний левый угол остается на месте (не двигаем modalDialog)
-            newWidth = resizeStart.width + deltaX;
-            newHeight = resizeStart.height + deltaY;
-        }
-        
-        // Минимальные размеры с учетом шапки и элементов управления плеера
-        const headerHeight = 24; // Высота шапки
-        const controlsHeight = 80; // Минимальная высота для элементов управления
-        const minWidth = 400; // Увеличено для корректного отображения элементов управления
-        const minHeight = headerHeight + controlsHeight + 200; // Минимум 304px
-        
-        // Максимальная ширина - больше растягиваем по ширине (до 95% экрана или от позиции до края)
-        const maxWidth = Math.min(window.innerWidth - dialogLeft - 10, window.innerWidth * 0.95);
-        const maxHeight = window.innerHeight - dialogTop - 10;
-        
-        newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
-        newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
-        
-        // Получаем реальную высоту шапки
-        const header = document.querySelector('#previewModal .unified-player-header');
-        const actualHeaderHeight = header ? header.offsetHeight : headerHeight;
-        
-        // Применяем новые размеры
-        modalContent.style.width = newWidth + 'px';
-        modalContent.style.height = newHeight + 'px';
-        
-        // Обновляем размер modal-body, чтобы он занимал оставшееся пространство
-        const modalBody = modalContent.querySelector('.modal-body');
-        if (modalBody) {
-            modalBody.style.height = (newHeight - actualHeaderHeight) + 'px';
-            modalBody.style.minHeight = (newHeight - actualHeaderHeight) + 'px';
-            modalBody.style.maxHeight = (newHeight - actualHeaderHeight) + 'px';
-        }
-        
-        // Обновляем размер контента, чтобы элементы управления плеера были видны
-        const previewContentEl = document.getElementById('previewContent');
-        if (previewContentEl) {
-            // Убеждаемся, что контент не выходит за границы
-            previewContentEl.style.maxWidth = '100%';
-            previewContentEl.style.height = '100%';
-            previewContentEl.style.overflow = 'hidden';
-            
-            // Обновляем размер видео, если оно есть
-            const video = previewContentEl.querySelector('video');
-            if (video && globalPlayer) {
-                // Плеер автоматически адаптируется, но можем принудительно обновить
-                setTimeout(() => {
-                    if (globalPlayer && typeof globalPlayer.media !== 'undefined') {
-                        globalPlayer.media.style.maxWidth = '100%';
-                        globalPlayer.media.style.maxHeight = '100%';
-                    }
-                }, 10);
-            }
-        }
-    }
-    
-    function stopResize() {
-        isResizing = false;
-        activeResizeHandle = null;
-        document.removeEventListener('mousemove', handleResize);
-        document.removeEventListener('mouseup', stopResize);
-    }
-}
+// Функции updateTitleColor и initDragAndResize находятся в file_viewer.html
 
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
