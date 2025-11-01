@@ -116,6 +116,50 @@
         width: 100% !important;
     }
 }
+
+/* Стили для дерева папок */
+.folders-tree-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 10px;
+    background-color: var(--bs-body-bg, #ffffff);
+}
+
+.folders-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.folders-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.folder-row {
+    transition: background-color 0.2s, color 0.2s;
+    border-radius: 0.25rem;
+}
+
+.folder-row:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.folder-row.bg-primary {
+    background-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+.folder-item {
+    margin-bottom: 2px;
+}
+
+.folder-name {
+    font-weight: 500;
+}
 </style>
 
 <div class="loading-overlay" id="loadingOverlay">
@@ -2086,21 +2130,162 @@ async function showMoveFilesModal() {
         return;
     }
     
-    const folderName = prompt('Введите ID папки (оставьте пустым для корневой):');
-    const folderId = folderName ? parseInt(folderName) : null;
-    
-    moveFilesToFolder(selectedFiles, folderId);
-}
-
-async function moveFilesToFolder(fileIds, folderId) {
+    // Загружаем дерево папок
     const csrfToken = getCsrfToken();
     if (!csrfToken) {
         alert('Ошибка: не удалось получить CSRF токен');
         return;
     }
     
+    try {
+        const response = await fetch('{% url "get_folders_tree" %}', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('Ошибка при загрузке папок: ' + (data.error || data.message || 'Неизвестная ошибка'));
+            return;
+        }
+        
+        // Создаем модальное окно
+        const modalHtml = `
+            <div class="modal fade" id="moveFilesModal" tabindex="-1" aria-labelledby="moveFilesModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="moveFilesModalLabel">
+                                <i class="fas fa-folder-open me-2"></i>Выберите папку для перемещения
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <button class="btn btn-outline-primary btn-sm" onclick="selectFolderForMove(null)">
+                                    <i class="fas fa-home me-1"></i>Корневая папка
+                                </button>
+                            </div>
+                            <div id="foldersTree" class="folders-tree-container">
+                                ${renderFoldersTreeHTML(data.folders, 0)}
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">Выбрано файлов: <strong>${selectedFiles.length}</strong></small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmMoveFiles(${selectedFiles.length})" id="confirmMoveBtn" disabled>
+                                <i class="fas fa-arrow-right me-1"></i>Переместить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Удаляем существующий модал, если есть
+        const existingModal = document.getElementById('moveFilesModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        window.selectedFolderId = null;
+        const modal = new bootstrap.Modal(document.getElementById('moveFilesModal'));
+        modal.show();
+        
+    } catch (error) {
+        alert('Ошибка при загрузке папок: ' + error.message);
+    }
+}
+
+function renderFoldersTreeHTML(folders, depth) {
+    if (!folders || folders.length === 0) {
+        return '<p class="text-muted mb-0"><small>Папки не найдены</small></p>';
+    }
+    
+    let html = '<ul class="folders-tree" style="margin-left: ' + (depth * 20) + 'px;">';
+    
+    folders.forEach(folder => {
+        const hasChildren = folder.children && folder.children.length > 0;
+        html += `
+            <li class="folder-item" data-folder-id="${folder.id}">
+                <div class="folder-row d-flex align-items-center p-2 mb-1 rounded" 
+                     onclick="selectFolderForMove(${folder.id}, this)" 
+                     style="cursor: pointer; transition: background-color 0.2s;">
+                    <i class="fas ${hasChildren ? 'fa-folder' : 'fa-folder'} text-warning me-2"></i>
+                    <span class="folder-name flex-grow-1">${escapeHtml(folder.name)}</span>
+                    ${hasChildren ? '<i class="fas fa-chevron-down text-muted"></i>' : ''}
+                </div>
+                ${hasChildren ? renderFoldersTreeHTML(folder.children, depth + 1) : ''}
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    return html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function selectFolderForMove(folderId, element) {
+    window.selectedFolderId = folderId;
+    
+    // Обновляем визуальное выделение
+    document.querySelectorAll('.folder-row').forEach(row => {
+        row.classList.remove('bg-primary', 'text-white');
+        row.style.backgroundColor = '';
+        row.style.color = '';
+    });
+    
+    if (element) {
+        element.classList.add('bg-primary', 'text-white');
+    } else {
+        // Выделяем кнопку "Корневая папка"
+        const rootBtn = document.querySelector('[onclick*="selectFolderForMove(null)"]');
+        if (rootBtn) {
+            rootBtn.classList.add('active');
+        }
+    }
+    
+    // Активируем кнопку "Переместить"
+    const confirmBtn = document.getElementById('confirmMoveBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+    }
+}
+
+async function confirmMoveFiles(selectedCount) {
+    const selectedFiles = getSelectedFiles();
+    if (selectedFiles.length === 0) {
+        alert('Выберите файлы для перемещения');
+        return;
+    }
+    
+    const folderId = window.selectedFolderId;
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirmMoveBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Перемещение...';
+    }
+    
     const formData = new FormData();
-    fileIds.forEach(fileId => {
+    selectedFiles.forEach(fileId => {
         formData.append('file_ids[]', fileId);
     });
     if (folderId) {
@@ -2120,14 +2305,26 @@ async function moveFilesToFolder(fileIds, folderId) {
         const data = await response.json();
         
         if (data.success) {
-            location.reload();
+            bootstrap.Modal.getInstance(document.getElementById('moveFilesModal')).hide();
+            setTimeout(() => {
+                location.reload();
+            }, 300);
         } else {
             alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Переместить';
+            }
         }
     } catch (error) {
         alert('Ошибка при перемещении файлов: ' + error.message);
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Переместить';
+        }
     }
 }
+
 
 function getSelectedFiles() {
     const checkboxes = document.querySelectorAll('.file-checkbox:checked');

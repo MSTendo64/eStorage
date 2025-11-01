@@ -53,7 +53,8 @@ from .folder_operations import (
     rename_folder,
     delete_folder,
     move_files,
-    rename_file
+    rename_file,
+    get_folders_tree
 )
 
 __all__ = [
@@ -100,5 +101,6 @@ __all__ = [
     'delete_folder',
     'move_files',
     'rename_file',
+    'get_folders_tree',
 ]
 

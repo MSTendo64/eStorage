@@ -189,3 +189,33 @@ def rename_file(request, file_id):
         logger.error(f"Error renaming file {file_id}: {e}")
         return create_json_response(False, f'Ошибка при переименовании файла: {str(e)}', status=500)
 
+
+@login_required
+@require_http_methods(["GET"])
+def get_folders_tree(request):
+    """Получение дерева папок пользователя"""
+    try:
+        def build_folder_tree(parent_id=None):
+            """Рекурсивно строит дерево папок"""
+            folders = Folder.objects.filter(user=request.user, parent=parent_id).order_by('name')
+            result = []
+            for folder in folders:
+                result.append({
+                    'id': folder.id,
+                    'name': folder.name,
+                    'path': folder.get_full_path(),
+                    'children': build_folder_tree(folder.id)
+                })
+            return result
+        
+        tree = build_folder_tree()
+        
+        return JsonResponse({
+            'success': True,
+            'folders': tree
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting folders tree: {e}")
+        return create_json_response(False, f'Ошибка при получении дерева папок: {str(e)}', status=500)
+

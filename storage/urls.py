@@ -33,5 +33,6 @@ urlpatterns = [
     path('folder/rename/<int:folder_id>/', views.rename_folder, name='rename_folder'),
     path('folder/delete/<int:folder_id>/', views.delete_folder, name='delete_folder'),
     path('folder/move-files/', views.move_files, name='move_files'),
+    path('folder/tree/', views.get_folders_tree, name='get_folders_tree'),
     path('file/rename/<int:file_id>/', views.rename_file, name='rename_file'),
 ] 
