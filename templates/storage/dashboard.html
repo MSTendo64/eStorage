@@ -826,6 +826,87 @@
 // Функции для работы с плеером (showPreview, globalPlayer, initDragAndResize) находятся в file_viewer.html
 let zoom = null;
 
+// Функции для работы с общим доступом к папкам
+async function showShareFolderModal(folderId) {
+    window.location.href = `{% url 'share_folder_wizard' 0 %}`.replace('0', folderId);
+}
+
+async function unmountFolder(mountedId) {
+    if (!confirm('Вы уверены, что хотите отмонтировать эту папку?')) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'unmount_folder' 0 %}`.replace('0', mountedId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отмонтировании папки: ' + error.message);
+    }
+}
+
+async function revokeAccess(folderId) {
+    if (!confirm('Вы уверены, что хотите отозвать доступ к этой папке у всех пользователей?')) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'revoke_folder_access' 0 %}`.replace('0', folderId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Доступ успешно отозван!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отзыве доступа: ' + error.message);
+    }
+}
+
+function showAccessSettings(accessId) {
+    // Можно создать модальное окно или перенаправить на страницу настроек
+    alert('Функция настройки модификаторов доступа будет добавлена в следующем обновлении');
+}
+
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
@@ -2469,45 +2550,5 @@ function updateSelectAll() {
     }
 }
 
-async function revokeAccess(folderId) {
-    if (!confirm('Вы уверены, что хотите отозвать доступ к этой папке у всех пользователей?')) {
-        return;
-    }
-    
-    const csrfToken = getCsrfToken();
-    if (!csrfToken) {
-        alert('Ошибка: не удалось получить CSRF токен');
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('csrfmiddlewaretoken', csrfToken);
-        
-        const response = await fetch(`{% url 'revoke_folder_access' 0 %}`.replace('0', folderId), {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': csrfToken
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('Доступ успешно отозван!');
-            location.reload();
-        } else {
-            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
-        }
-    } catch (error) {
-        alert('Ошибка при отзыве доступа: ' + error.message);
-    }
-}
-
-function showAccessSettings(accessId) {
-    // Можно создать модальное окно или перенаправить на страницу настроек
-    alert('Функция настройки модификаторов доступа будет добавлена в следующем обновлении');
-}
 </script>
 {% endblock %} 
