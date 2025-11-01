@@ -56,6 +56,15 @@ class UserProfile(models.Model):
         blank=True,
         help_text='Формат шрифта для CSS (truetype, opentype, woff, woff2)'
     )
+    video_player = models.CharField(
+        max_length=20,
+        choices=[
+            ('plyr', 'Plyr'),
+            ('native', 'HTML5 (Нативный)')
+        ],
+        default='plyr',
+        help_text='Выбор видео проигрывателя'
+    )
     
     def __str__(self):
         return self.user.username

@@ -27,6 +27,7 @@
          data-background-image="{% if user.userprofile.background_image %}{{ user.userprofile.background_image.url }}{% endif %}"
          data-navbar-opacity="{{ user.userprofile.navbar_opacity }}"
          data-container-opacity="{{ user.userprofile.container_opacity }}"
+         data-video-player="{% if user.is_authenticated %}{{ user.userprofile.video_player|default:'plyr' }}{% else %}plyr{% endif %}"
          style="display: none;">
     </div>
 
@@ -1086,11 +1087,63 @@
 <script>
 // ========== ЕДИНЫЙ ПЛЕЕР - ОБЩИЕ ФУНКЦИИ ==========
 
-// Инициализация единого Plyr плеера
-function initUnifiedPlayer(selector, options = {}) {
-    // Получаем элемент медиа
+// Получаем выбранный проигрыватель из настроек пользователя
+function getVideoPlayerType() {
+    const playerType = document.getElementById('django-data')?.getAttribute('data-video-player');
+    return playerType || 'plyr';
+}
+
+// Инициализация нативного HTML5 проигрывателя
+function initNativePlayer(selector, options = {}) {
     const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
     
+    if (!mediaElement) return null;
+    
+    // Добавляем стандартные атрибуты для HTML5 видео
+    if (mediaElement.tagName === 'VIDEO') {
+        mediaElement.setAttribute('controls', '');
+        mediaElement.setAttribute('preload', 'auto');
+        mediaElement.style.width = '100%';
+        mediaElement.style.height = '100%';
+        mediaElement.style.objectFit = 'fill';
+    }
+    
+    // Добавляем обработчики для предотвращения перезагрузки при перемотке
+    if (mediaElement.tagName === 'VIDEO' || mediaElement.tagName === 'AUDIO') {
+        let savedTime = 0;
+        
+        mediaElement.addEventListener('timeupdate', function() {
+            savedTime = mediaElement.currentTime;
+        });
+        
+        mediaElement.addEventListener('seeking', function(e) {
+            if (mediaElement.readyState >= 2) {
+                return;
+            }
+        });
+    }
+    
+    return {
+        media: mediaElement,
+        currentTime: 0,
+        paused: true,
+        play: () => mediaElement.play(),
+        pause: () => mediaElement.pause(),
+        destroy: () => {} // Пустая функция для совместимости
+    };
+}
+
+// Инициализация единого плеера (Plyr или Native)
+function initUnifiedPlayer(selector, options = {}) {
+    const playerType = getVideoPlayerType();
+    const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    
+    // Если выбран нативный проигрыватель, используем его
+    if (playerType === 'native') {
+        return initNativePlayer(selector, options);
+    }
+    
+    // По умолчанию используем Plyr
     const defaultOptions = {
         controls: [
             'play-large', 'play', 'progress', 'current-time', 'duration',
@@ -1171,16 +1224,21 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
         ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;"><i class="fas fa-download"></i></a>`
         : '';
     
+    // Определяем тип проигрывателя
+    const playerType = getVideoPlayerType();
+    
     let content = '';
     let playerClass = '';
     
     switch(type) {
         case 'video':
             // Используем оригинальное качество видео
-            content = `<video class="plyr-video" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
+            // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Plyr
+            const videoClass = playerType === 'native' ? 'native-video' : 'plyr-video';
+            content = `<video class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
                 <source src="${url}" type="video/mp4">
             </video>`;
-            playerClass = 'plyr-video';
+            playerClass = videoClass;
             break;
         case 'audio':
             content = `<audio class="plyr-audio" controls style="width: 100%;">

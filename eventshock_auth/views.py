@@ -346,6 +346,9 @@ def settings_general(request):
     
     if request.method == 'POST':
         profile.developer_mode = request.POST.get('developer_mode') == 'on'
+        video_player = request.POST.get('video_player', 'plyr')
+        if video_player in ['plyr', 'native']:
+            profile.video_player = video_player
         profile.save()
         messages.success(request, 'Настройки успешно обновлены')
         return redirect('settings_general')
