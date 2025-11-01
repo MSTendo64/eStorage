@@ -9,7 +9,7 @@
 <!-- Модальное окно для предпросмотра (дашборд) -->
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
-        <div class="modal-content unified-player" id="previewModalContent" style="cursor: move;">
+        <div class="modal-content unified-player" id="previewModalContent" style="cursor: default;">
             <div id="previewContent" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;"></div>
         </div>
     </div>
@@ -123,9 +123,7 @@ html {
 {% if modal_mode %}
 // ========== МОДАЛЬНЫЙ РЕЖИМ (DASHBOARD) ==========
 let globalPlayer = null;
-let isDragging = false;
 let isResizing = false;
-let dragOffset = { x: 0, y: 0 };
 let resizeStart = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
 let activeResizeHandle = null;
 
@@ -164,7 +162,7 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
         updatePlayerHeaderColor(header, title);
     }
     
-    // Сбрасываем позицию и размер модального окна
+    // Фиксируем позицию и размер модального окна (статичное окно в центре)
     if (modalDialog) {
         modalDialog.style.position = 'fixed';
         modalDialog.style.left = '50%';
@@ -177,7 +175,7 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
     
     modal.show();
     
-    // Инициализируем drag and drop после показа модального окна
+    // Инициализируем resize после показа модального окна (без drag and drop)
     setTimeout(() => {
         initDragAndResize();
         // Обновляем цвет заголовка после показа
@@ -189,7 +187,6 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
     // Очищаем при закрытии модального окна
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
         previewContent.innerHTML = '';
-        isDragging = false;
         isResizing = false;
         // Уничтожаем плеер при закрытии
         if (globalPlayer) {
@@ -243,48 +240,15 @@ function initDragAndResize() {
         attributeFilter: ['style', 'class']
     });
     
-    // Drag and drop для шапки
-    header.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('btn-close')) return;
-        
-        isDragging = true;
-        const rect = modalDialog.getBoundingClientRect();
-        dragOffset.x = e.clientX - rect.left;
-        dragOffset.y = e.clientY - rect.top;
-        
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-        e.preventDefault();
-    });
+    // Окно статичное - перетаскивание отключено
+    header.style.cursor = 'default';
     
-    function handleDrag(e) {
-        if (!isDragging) return;
-        
-        let newX = e.clientX - dragOffset.x;
-        let newY = e.clientY - dragOffset.y;
-        
-        // Ограничиваем перемещение: по ширине - вся страница, по высоте - только до середины экрана (не выше)
-        const maxX = window.innerWidth - modalDialog.offsetWidth;
-        const minY = window.innerHeight / 2; // Минимум - середина экрана (нельзя поднять выше)
-        const maxY = window.innerHeight - modalDialog.offsetHeight;
-        
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(minY, Math.min(newY, maxY));
-        
-        modalDialog.style.left = newX + 'px';
-        modalDialog.style.top = newY + 'px';
-        modalDialog.style.transform = 'none';
-        modalDialog.style.margin = '0';
-        
-        // Обновляем цвет текста при перемещении (на случай изменения фона)
-        updateTitleColor();
-    }
-    
-    function stopDrag() {
-        isDragging = false;
-        document.removeEventListener('mousemove', handleDrag);
-        document.removeEventListener('mouseup', stopDrag);
-    }
+    // Фиксируем позицию окна в центре экрана
+    modalDialog.style.position = 'fixed';
+    modalDialog.style.left = '50%';
+    modalDialog.style.top = '50%';
+    modalDialog.style.transform = 'translate(-50%, -50%)';
+    modalDialog.style.margin = '0';
     
     // Resize для нижних углов
     resizeHandles.forEach(handle => {
@@ -343,6 +307,12 @@ function initDragAndResize() {
         // Применяем новые размеры
         modalContent.style.width = newWidth + 'px';
         modalContent.style.height = newHeight + 'px';
+        
+        // Убеждаемся, что окно остается в центре экрана при изменении размера
+        modalDialog.style.left = '50%';
+        modalDialog.style.top = '50%';
+        modalDialog.style.transform = 'translate(-50%, -50%)';
+        modalDialog.style.margin = '0';
         
         // Обновляем размер modal-body, чтобы он занимал оставшееся пространство
         const modalBody = modalContent.querySelector('.modal-body');
