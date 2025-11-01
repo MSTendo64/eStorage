@@ -316,7 +316,7 @@
                                                     <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% elif file.is_video %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }})">
                                                     <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                                 </button>
                                             {% elif file.is_audio %}
@@ -380,7 +380,7 @@
                                         <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }})">
                                         <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                     </button>
                                 {% elif file.is_audio %}
@@ -432,6 +432,19 @@
             </div>
             <div class="modal-body text-center p-0">
                 <div id="previewContent"></div>
+                <div id="videoInfoModal" style="display: none;" class="mt-3 p-3 bg-light">
+                    <div class="row text-start">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Качество:</strong> <span id="videoQualityModal">-</span></p>
+                            <p class="mb-1"><strong>Разрешение:</strong> <span id="videoResolutionModal">-</span></p>
+                            <p class="mb-1"><strong>Частота кадров (FPS):</strong> <span id="videoFPSModal">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Кодек:</strong> <span id="videoCodecModal">-</span></p>
+                            <p class="mb-1"><strong>Битрейт:</strong> <span id="videoBitrateModal">-</span></p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -636,11 +649,15 @@
 let player = null;
 let zoom = null;
 
-function showPreview(url, type) {
+function showPreview(url, type, fileId = null) {
     const previewContent = document.getElementById('previewContent');
+    const videoInfoModal = document.getElementById('videoInfoModal');
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     
     previewContent.innerHTML = '';
+    if (videoInfoModal) {
+        videoInfoModal.style.display = 'none';
+    }
     
     switch(type) {
         case 'image':
@@ -658,6 +675,50 @@ function showPreview(url, type) {
                 </video>
             `;
             const player = new Plyr('#player');
+            
+            // Получаем метаданные видео, если передан file_id
+            if (fileId && videoInfoModal) {
+                fetch(`/storage/metadata/${fileId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.metadata) {
+                            const metadata = data.metadata;
+                            videoInfoModal.style.display = 'block';
+                            
+                            // Качество
+                            if (metadata.quality) {
+                                document.getElementById('videoQualityModal').textContent = metadata.quality;
+                            }
+                            
+                            // Разрешение
+                            if (metadata.width && metadata.height) {
+                                document.getElementById('videoResolutionModal').textContent = 
+                                    metadata.width + 'x' + metadata.height;
+                            }
+                            
+                            // FPS
+                            if (metadata.fps) {
+                                document.getElementById('videoFPSModal').textContent = 
+                                    metadata.fps + ' fps';
+                            }
+                            
+                            // Кодек
+                            if (metadata.codec) {
+                                document.getElementById('videoCodecModal').textContent = metadata.codec;
+                            }
+                            
+                            // Битрейт
+                            if (metadata.bitrate) {
+                                const bitrateMbps = (metadata.bitrate / 1000 / 1000).toFixed(2);
+                                document.getElementById('videoBitrateModal').textContent = 
+                                    bitrateMbps + ' Mbps';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при получении метаданных:', error);
+                    });
+            }
             break;
             
         case 'audio':
@@ -675,7 +736,10 @@ function showPreview(url, type) {
     // Очищаем плеер при закрытии модального окна
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
         previewContent.innerHTML = '';
-    });
+        if (videoInfoModal) {
+            videoInfoModal.style.display = 'none';
+        }
+    }, { once: true });
 }
 
 function getFileIcon(filename) {

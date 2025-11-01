@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.http import HttpResponse, Http404, JsonResponse, FileResponse, StreamingHttpResponse
 from django.urls import reverse
 from .models import UserFile, DownloadToken, YouTubeVideo
+from .utils import get_video_metadata
 import json
 import zipfile
 from io import BytesIO
@@ -786,3 +787,80 @@ def check_file(request):
         'chunked': filesize > settings.LARGE_FILE_SIZE_THRESHOLD,
         'chunk_size': settings.CHUNKED_UPLOAD_CHUNK_SIZE
     })
+
+@login_required
+def get_file_metadata(request, file_id):
+    """
+    API endpoint для получения метаданных видео файла, включая FPS
+    """
+    try:
+        file = UserFile.objects.get(id=file_id, user=request.user)
+        
+        if not file.is_video:
+            return JsonResponse({
+                'success': False,
+                'error': 'Файл не является видео'
+            }, status=400)
+        
+        file_path = file.file.path
+        metadata = get_video_metadata(file_path)
+        
+        if metadata:
+            return JsonResponse({
+                'success': True,
+                'metadata': metadata
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не удалось получить метаданные видео'
+            }, status=500)
+            
+    except UserFile.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Файл не найден'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Ошибка: {str(e)}'
+        }, status=500)
+
+def get_public_file_metadata(request, token):
+    """
+    API endpoint для получения метаданных публичного видео файла
+    """
+    try:
+        file = UserFile.objects.get(public_token=token, is_public=True)
+        
+        if not file.is_video:
+            return JsonResponse({
+                'success': False,
+                'error': 'Файл не является видео'
+            }, status=400)
+        
+        file_path = file.file.path
+        metadata = get_video_metadata(file_path)
+        
+        if metadata:
+            return JsonResponse({
+                'success': True,
+                'metadata': metadata
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не удалось получить метаданные видео'
+            }, status=500)
+            
+    except UserFile.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Файл не найден'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Ошибка: {str(e)}'
+        }, status=500)

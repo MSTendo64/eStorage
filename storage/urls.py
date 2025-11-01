@@ -23,4 +23,6 @@ urlpatterns = [
     path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
     path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
     path('api/yt-task/<int:task_id>/', youtube.task_status, name='api_task_status'),
+    path('metadata/<int:file_id>/', views.get_file_metadata, name='get_file_metadata'),
+    path('public/metadata/<str:token>/', views.get_public_file_metadata, name='get_public_file_metadata'),
 ] 

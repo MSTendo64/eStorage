@@ -23,6 +23,27 @@
                 {% endif %}
             </div>
             
+            {% if file.is_video %}
+            <div class="mt-3" id="videoInfo" style="display: none;">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">Информация о видео</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Качество:</strong> <span id="videoQuality">-</span></p>
+                                <p class="mb-1"><strong>Разрешение:</strong> <span id="videoResolution">-</span></p>
+                                <p class="mb-1"><strong>Частота кадров (FPS):</strong> <span id="videoFPS">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Кодек:</strong> <span id="videoCodec">-</span></p>
+                                <p class="mb-1"><strong>Битрейт:</strong> <span id="videoBitrate">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <div class="mt-3">
                 <a href="{{ file.file.url }}" class="btn btn-primary" download>
                     <i class="fas fa-download me-2"></i>Скачать файл
@@ -35,12 +56,60 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.plyr-video')) {
-        new Plyr('.plyr-video', {
+        const player = new Plyr('.plyr-video', {
             controls: [
                 'play-large', 'play', 'progress', 'current-time', 'duration',
                 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
             ]
         });
+        
+        // Получаем метаданные видео
+        {% if file.public_token %}
+        const metadataUrl = '/storage/public/metadata/{{ file.public_token }}/';
+        fetch(metadataUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.metadata) {
+                    const metadata = data.metadata;
+                    const infoDiv = document.getElementById('videoInfo');
+                    if (infoDiv) {
+                        infoDiv.style.display = 'block';
+                        
+                        // Качество
+                        if (metadata.quality) {
+                            document.getElementById('videoQuality').textContent = metadata.quality;
+                        }
+                        
+                        // Разрешение
+                        if (metadata.width && metadata.height) {
+                            document.getElementById('videoResolution').textContent = 
+                                metadata.width + 'x' + metadata.height;
+                        }
+                        
+                        // FPS
+                        if (metadata.fps) {
+                            document.getElementById('videoFPS').textContent = 
+                                metadata.fps + ' fps';
+                        }
+                        
+                        // Кодек
+                        if (metadata.codec) {
+                            document.getElementById('videoCodec').textContent = metadata.codec;
+                        }
+                        
+                        // Битрейт
+                        if (metadata.bitrate) {
+                            const bitrateMbps = (metadata.bitrate / 1000 / 1000).toFixed(2);
+                            document.getElementById('videoBitrate').textContent = 
+                                bitrateMbps + ' Mbps';
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при получении метаданных:', error);
+            });
+        {% endif %}
     }
     if (document.querySelector('.plyr-audio')) {
         new Plyr('.plyr-audio');
