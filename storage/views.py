@@ -263,10 +263,11 @@ def cleanup_temp_folders():
                     except Exception as e:
                         print(f"Error cleaning up temp folder {item}: {e}")
 
-# Запускаем очистку при каждом запросе к extract_archive
+# Запускаем очистку при каждом запросе (объединяем обе функции очистки)
 @receiver(request_finished)
 def cleanup_on_request(sender, **kwargs):
     cleanup_temp_folders()
+    cleanup_downloads()
 
 @login_required
 def toggle_file_publicity(request, file_id):
@@ -415,10 +416,7 @@ def cleanup_downloads():
             except Exception as e:
                 print(f"Error deleting {file_path}: {e}")
 
-# Запускаем очистку при каждом запросе к download_file
-@receiver(request_finished)
-def cleanup_on_request(sender, **kwargs):
-    cleanup_downloads()
+# Функция cleanup_on_request объединена выше, чтобы вызывать обе функции очистки
 
 @login_required
 def storage_stats(request):

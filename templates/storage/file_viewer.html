@@ -154,14 +154,19 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
         const header = document.querySelector('#previewModal .unified-player-header');
         const actualHeaderHeight = header ? header.offsetHeight : headerHeight;
         
-        // Применяем новые размеры
+        // Применяем новые размеры с !important, чтобы переопределить Bootstrap стили
         if (modalContent) {
-            modalContent.style.width = newWidth + 'px';
-            modalContent.style.height = newHeight + 'px';
+            modalContent.style.setProperty('width', newWidth + 'px', 'important');
+            modalContent.style.setProperty('height', newHeight + 'px', 'important');
+            modalContent.style.setProperty('max-width', newWidth + 'px', 'important');
         }
         
-        // Убеждаемся, что окно остается в центре экрана при изменении размера
+        // Также устанавливаем ширину на modalDialog для корректной работы
+        // Важно: устанавливаем конкретную ширину на modalDialog, чтобы переопределить Bootstrap класс modal-lg
         if (modalDialog) {
+            modalDialog.style.setProperty('width', newWidth + 'px', 'important');
+            modalDialog.style.setProperty('max-width', newWidth + 'px', 'important');
+            modalDialog.style.setProperty('min-width', newWidth + 'px', 'important');
             modalDialog.style.left = '50%';
             modalDialog.style.top = '50%';
             modalDialog.style.transform = 'translate(-50%, -50%)';
@@ -303,8 +308,11 @@ function showPreview(url, type, fileId = null, filename = 'Просмотр фа
         modalDialog.style.top = '50%';
         modalDialog.style.transform = 'translate(-50%, -50%)';
         modalDialog.style.margin = '0';
+        modalDialog.style.width = 'auto';
+        modalDialog.style.maxWidth = 'none';
         modalContent.style.width = '';
         modalContent.style.height = '';
+        modalContent.style.maxWidth = '';
     }
     
     modal.show();
