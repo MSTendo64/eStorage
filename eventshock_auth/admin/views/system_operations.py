@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
-from ..models import SystemSettings
+from ...models import SystemSettings
 from .dashboard_views import is_superuser
 
 

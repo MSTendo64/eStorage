@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User
 from django.contrib import messages
-from ..models import UserProfile
+from ...models import UserProfile
 from ..helpers import get_user_storage_stats, validate_storage_quota
 from .dashboard_views import is_superuser
 
