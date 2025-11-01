@@ -379,6 +379,91 @@
     }
 
     /* Плееры */
+    /* Единые стили для плеера */
+    .unified-player {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #000;
+        border-radius: 8px;
+    }
+    
+    .unified-player-header {
+        backdrop-filter: blur(10px);
+        padding: 0.25rem 1rem;
+        height: 24px;
+        min-height: 24px;
+        max-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        user-select: none;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .unified-player-title {
+        font-size: 0.75rem;
+        margin: 0;
+        font-weight: 600;
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    .unified-player-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .unified-player-content {
+        position: relative;
+        background: #000;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .unified-player-content video,
+    .unified-player-content audio {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        cursor: se-resize;
+        z-index: 1000;
+        background: transparent;
+        border: none;
+    }
+    
+    .resize-handle::after {
+        content: '';
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 0 10px 10px;
+        border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+    }
+    
     .plyr {
         --plyr-color-main: var(--bs-primary) !important;
         --plyr-range-fill-background: var(--bs-primary) !important;
@@ -1013,5 +1098,101 @@
         border-color: var(--bs-gray-700) !important;
     }
     </style>
+
+<script>
+// ========== ЕДИНЫЙ ПЛЕЕР - ОБЩИЕ ФУНКЦИИ ==========
+
+// Инициализация единого Plyr плеера
+function initUnifiedPlayer(selector, options = {}) {
+    const defaultOptions = {
+        controls: [
+            'play-large', 'play', 'progress', 'current-time', 'duration',
+            'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+        ]
+    };
+    return new Plyr(selector, { ...defaultOptions, ...options });
+}
+
+// Обновление цвета заголовка плеера в зависимости от темы
+function updatePlayerHeaderColor(headerSelector, titleSelector) {
+    const header = typeof headerSelector === 'string' ? document.querySelector(headerSelector) : headerSelector;
+    const title = typeof titleSelector === 'string' ? document.querySelector(titleSelector) : titleSelector;
+    
+    if (!header || !title) return;
+    
+    // Определяем тему страницы
+    let theme = document.documentElement.getAttribute('data-bs-theme');
+    if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    // Устанавливаем цвет фона шапки в зависимости от темы
+    const headerBgColor = isDark ? 'rgba(37, 37, 37, 0.7)' : 'rgba(255, 255, 255, 0.7)';
+    header.style.background = headerBgColor;
+    
+    // Вычисляем яркость фона для определения цвета текста
+    const bgMatch = headerBgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (bgMatch) {
+        const r = parseInt(bgMatch[1]);
+        const g = parseInt(bgMatch[2]);
+        const b = parseInt(bgMatch[3]);
+        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+        
+        // Устанавливаем цвет текста в зависимости от яркости фона
+        title.style.color = brightness < 128 ? '#ffffff' : '#000000';
+        title.style.textShadow = 'none';
+    }
+}
+
+// Создание HTML структуры единого плеера
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null) {
+    const closeBtn = closeAction 
+        ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
+        : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
+    
+    const downloadBtn = downloadUrl
+        ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;"><i class="fas fa-download"></i></a>`
+        : '';
+    
+    let content = '';
+    let playerClass = '';
+    
+    switch(type) {
+        case 'video':
+            content = `<video class="plyr-video" playsinline controls style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain;">
+                <source src="${url}" type="video/mp4">
+            </video>`;
+            playerClass = 'plyr-video';
+            break;
+        case 'audio':
+            content = `<audio class="plyr-audio" controls style="width: 100%;">
+                <source src="${url}" type="audio/mpeg">
+            </audio>`;
+            playerClass = 'plyr-audio';
+            break;
+        case 'image':
+            content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
+            break;
+    }
+    
+    return {
+        html: `
+            <div class="unified-player-header">
+                <h5 class="unified-player-title">${filename || 'Просмотр файла'}</h5>
+                <div class="unified-player-actions">
+                    ${downloadBtn}
+                    ${closeBtn}
+                </div>
+            </div>
+            <div class="unified-player-content">
+                ${content}
+                <div class="resize-handle"></div>
+            </div>
+        `,
+        playerClass: playerClass
+    };
+}
+</script>
 </body>
 </html> 
