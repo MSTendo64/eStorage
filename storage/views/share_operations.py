@@ -227,15 +227,20 @@ def shared_folders_list(request):
         access_type='email'
     ).select_related('folder', 'owner')
     
-    # Доступы по ссылке
-    link_accesses = SharedFolderLinkUser.objects.filter(
-        user=request.user
-    ).select_related('share_access', 'share_access__folder', 'share_access__owner')
-    
     # Примонтированные папки
     mounted_objects = MountedFolder.objects.filter(
         user=request.user
     ).select_related('shared_access', 'shared_access__folder', 'shared_access__owner')
+    
+    # Получаем ID примонтированных доступов, чтобы исключить их из списка доступов по ссылке
+    mounted_access_ids = [mount.shared_access.id for mount in mounted_objects]
+    
+    # Доступы по ссылке (исключаем примонтированные)
+    link_accesses = SharedFolderLinkUser.objects.filter(
+        user=request.user
+    ).exclude(
+        share_access__id__in=mounted_access_ids
+    ).select_related('share_access', 'share_access__folder', 'share_access__owner')
     
     mounted_folders = []
     for mount in mounted_objects:
@@ -269,16 +274,21 @@ def mount_folder(request, access_id):
         
         # Проверяем, есть ли доступ
         has_access = False
+        is_owner = access.owner == request.user
         
-        if access.access_type == 'email' and access.granted_to_user == request.user:
+        if is_owner:
+            # Владелец всегда имеет доступ
+            has_access = True
+        elif access.access_type == 'email' and access.granted_to_user == request.user:
             has_access = True
         elif access.access_type == 'link':
-            # Проверяем, зарегистрирован ли пользователь и есть ли у него доступ по ссылке
-            link_user = SharedFolderLinkUser.objects.filter(
-                share_access=access,
-                user=request.user
-            ).exists()
-            if link_user:
+            # Для доступа по ссылке - если есть can_view или пользователь уже получил доступ
+            if access.can_view:
+                # Регистрируем доступ, если еще не зарегистрирован
+                SharedFolderLinkUser.objects.get_or_create(
+                    share_access=access,
+                    user=request.user
+                )
                 has_access = True
         
         if not has_access:
@@ -361,20 +371,23 @@ def shared_folder_view(request, token):
     try:
         access = get_object_or_404(SharedFolderAccess, share_token=token, access_type='link')
         
-        # Проверяем лимит пользователей (только для зарегистрированных)
-        if request.user.is_authenticated:
+        # Проверяем, является ли пользователь владельцем
+        is_owner = request.user.is_authenticated and access.owner == request.user
+        
+        # Проверяем лимит пользователей (только для зарегистрированных, не владельцев)
+        if request.user.is_authenticated and not is_owner:
             # Регистрируем доступ для зарегистрированного пользователя
             SharedFolderLinkUser.objects.get_or_create(
                 share_access=access,
                 user=request.user
             )
             
-            # Проверяем лимит
+            # Проверяем лимит (если не владелец)
             if access.is_access_limit_reached():
-                # Для зарегистрированных показываем сообщение
+                # Для зарегистрированных показываем сообщение, но не блокируем доступ
                 from django.contrib import messages
-                messages.warning(request, 'Достигнут лимит пользователей для этой папки')
-        else:
+                messages.warning(request, 'Достигнут лимит пользователей для этой папки, но доступ сохранен')
+        elif not request.user.is_authenticated:
             # Для незарегистрированных - проверяем настройки
             if not access.allow_unregistered_view:
                 from django.shortcuts import redirect

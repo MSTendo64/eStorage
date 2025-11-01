@@ -395,7 +395,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Примонтированные папки (ярлыки) -->
+                                <!-- Примонтированные папки (отображаются как обычные папки, но зеленые) -->
                                 {% for mounted in mounted_folders %}
                                     <tr class="folder-row mounted-folder" data-filename="{{ mounted.folder.name|lower }}">
                                         <td>
@@ -403,13 +403,14 @@
                                                    value="mounted_{{ mounted.mounted.id }}" disabled>
                                         </td>
                                         <td>
-                                            <span style="color: #28a745;">
-                                                <i class="fas fa-link text-success me-2"></i>
+                                            <a href="{% if mounted.access.access_type == 'link' %}{% url 'shared_folder_view' mounted.access.share_token %}{% else %}{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}{% endif %}" 
+                                               style="text-decoration: none; color: inherit;">
+                                                <i class="fas fa-folder text-success me-2"></i>
                                                 <strong style="color: #28a745;">{{ mounted.folder.name }}</strong>
-                                                <small class="text-muted ms-2 d-block">Владелец: {{ mounted.owner.username }}</small>
-                                            </span>
+                                                <small class="text-muted ms-2">(от {{ mounted.owner.username }})</small>
+                                            </a>
                                         </td>
-                                        <td><span class="badge bg-success">Ярлык папки</span></td>
+                                        <td>Папка</td>
                                         <td>{{ mounted.folder.get_files_count }} файлов</td>
                                         <td>{{ mounted.mounted_at|date:"d.m.Y H:i" }}</td>
                                         <td>

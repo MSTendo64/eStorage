@@ -111,9 +111,10 @@ def dashboard(request):
             'shared_access', 'shared_access__folder', 'shared_access__owner'
         )
         for mount in mounted:
-            # Проверяем доступ
+            # Проверяем доступ (владелец всегда имеет доступ)
             access = mount.shared_access
-            if access.can_view:
+            is_owner = access.owner == request.user
+            if access.can_view or is_owner:
                 mounted_folders.append({
                     'folder': access.folder,
                     'owner': access.owner,
