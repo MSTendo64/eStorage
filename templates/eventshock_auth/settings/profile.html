@@ -43,7 +43,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const avatarInput = document.getElementById('avatarInput');
-    const avatarPreview = document.getElementById('avatarPreview');
+    let avatarPreview = document.getElementById('avatarPreview');
     const avatarError = document.getElementById('avatarError');
     const MAX_SIZE = 5 * 1024 * 1024; // 5MB
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];

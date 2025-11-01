@@ -172,6 +172,10 @@ def settings_profile(request):
         user.first_name = request.POST.get('first_name')
         user.last_name = request.POST.get('last_name')
         
+        # Сначала сохраняем изменения пользователя
+        user.save()
+        
+        # Затем обрабатываем аватар, если он был загружен
         if request.FILES.get('avatar'):
             avatar_file = request.FILES['avatar']
             
@@ -180,12 +184,14 @@ def settings_profile(request):
             MAX_AVATAR_SIZE = getattr(settings, 'MAX_AVATAR_SIZE', 5 * 1024 * 1024)
             if avatar_file.size > MAX_AVATAR_SIZE:
                 messages.error(request, f'Размер аватара не должен превышать {MAX_AVATAR_SIZE / (1024*1024):.0f}MB')
+                messages.success(request, 'Данные профиля успешно обновлены')
                 return redirect('settings_profile')
             
             # Проверяем формат файла
             allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
             if avatar_file.content_type not in allowed_formats:
                 messages.error(request, 'Неподдерживаемый формат изображения. Используйте JPG, PNG, GIF или WEBP')
+                messages.success(request, 'Данные профиля успешно обновлены')
                 return redirect('settings_profile')
             
             # Удаляем старый аватар если он существует
@@ -201,17 +207,17 @@ def settings_profile(request):
             profile.avatar = avatar_file
             profile.save(update_fields=['avatar'])
             
-            messages.success(request, 'Аватар успешно обновлен')
+            messages.success(request, 'Профиль и аватар успешно обновлены')
+        else:
+            messages.success(request, 'Профиль успешно обновлен')
         
-        user.save()
-        messages.success(request, 'Профиль успешно обновлен')
         return redirect('settings_profile')
         
     return render(request, 'eventshock_auth/settings/profile.html', {'active_tab': 'profile'})
 
 @login_required
 def settings_appearance(request):
-    profile = request.user.userprofile
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
         # Если меняется только язык
@@ -342,7 +348,8 @@ def settings_general(request):
 
 @login_required
 def settings_api(request):
-    if not request.user.userprofile.developer_mode:
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if not profile.developer_mode:
         messages.error(request, 'Включите режим разработчика для доступа к API')
         return redirect('settings_general')
         

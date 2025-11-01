@@ -41,8 +41,11 @@ def dashboard(request):
             messages.error(request, f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024*1024):.0f}MB')
             return redirect('dashboard')
         
+        # Получаем или создаем профиль пользователя
+        from eventshock_auth.models import UserProfile
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
         # Проверяем квоту
-        profile = request.user.userprofile
         if profile.get_used_storage() + uploaded_file.size > profile.storage_quota:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'error': 'Недостаточно места в хранилище'}, status=400)
@@ -651,8 +654,11 @@ def upload_chunk(request, filename):
                     'max_size': settings.MAX_FILE_SIZE
                 }, status=400)
             
+            # Получаем или создаем профиль пользователя
+            from eventshock_auth.models import UserProfile
+            profile, created = UserProfile.objects.get_or_create(user=request.user)
+            
             # Проверяем квоту
-            profile = request.user.userprofile
             if profile.get_used_storage() + file_size > profile.storage_quota:
                 return JsonResponse({
                     'error': 'Not enough storage space',
@@ -722,8 +728,9 @@ def upload_chunk(request, filename):
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-@csrf_exempt
+@login_required
 def check_file(request):
+    # @login_required гарантирует аутентификацию, поэтому request.user всегда аутентифицирован
     filename = request.GET.get('filename')
     filesize = int(request.GET.get('filesize', 0))
     
@@ -734,12 +741,16 @@ def check_file(request):
             'max_size': settings.MAX_FILE_SIZE
         }, status=400)
     
+    # Получаем или создаем профиль пользователя
+    from eventshock_auth.models import UserProfile
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
     # Проверяем доступное место
-    user_storage = request.user.userprofile.get_used_storage()
-    if user_storage + filesize > request.user.userprofile.storage_quota:
+    user_storage = profile.get_used_storage()
+    if user_storage + filesize > profile.storage_quota:
         return JsonResponse({
             'error': 'Not enough storage space',
-            'available': request.user.userprofile.storage_quota - user_storage
+            'available': profile.storage_quota - user_storage
         }, status=400)
     
     return JsonResponse({

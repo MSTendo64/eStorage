@@ -1045,46 +1045,6 @@ function handleDrop(e) {
     handleFiles(files);
 }
 
-function handleFiles(files) {
-    if (files.length === 0) return;
-
-    showLoading('Загрузка файлов...', true);
-    let uploadedCount = 0;
-
-    files.forEach(file => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            uploadedCount++;
-            updateProgress((uploadedCount / files.length) * 100);
-            
-            if (uploadedCount === files.length) {
-                // Все файлы загружены
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideLoading();
-            alert('Ошибка при загрузке файла: ' + file.name);
-        });
-    });
-}
-
 function handleDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -1342,18 +1302,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 });
 
-// Добавьте эту функцию в секцию <script>
-function handleFiles(files) {
-    if (files.length > 0) {
-        Array.from(files).forEach(file => {
-            uploadFile(file);
-        });
-        
-        // Очищаем input после загрузки
-        document.getElementById('fileInput').value = '';
-    }
-}
-
 // Обновим инициализацию всех обработчиков событий
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализация поиска файлов
@@ -1585,12 +1533,16 @@ function uploadFileChunked(file, chunkSize, callback) {
 // Обновим функцию handleFiles для последовательной загрузки
 let uploadQueue = [];
 let isUploading = false;
+let uploadStats = { success: 0, failed: 0, total: 0 };
 
 function handleFiles(files) {
     if (files.length === 0) return;
     
     // Добавляем файлы в очередь
     uploadQueue.push(...Array.from(files));
+    uploadStats.total = uploadQueue.length;
+    uploadStats.success = 0;
+    uploadStats.failed = 0;
     
     // Запускаем загрузку, если она еще не идет
     if (!isUploading) {
@@ -1598,36 +1550,65 @@ function handleFiles(files) {
     }
 }
 
-function processUploadQueue() {
+function processUploadQueue(success) {
+    // Если был передан параметр success, обновляем статистику
+    if (success !== undefined) {
+        if (success) {
+            uploadStats.success++;
+        } else {
+            uploadStats.failed++;
+        }
+    }
+    
     if (uploadQueue.length === 0) {
         isUploading = false;
         updateStorageProgress();
-        setTimeout(() => {
-            location.reload();
-        }, 500);
+        
+        // Показываем итоговую статистику
+        const total = uploadStats.success + uploadStats.failed;
+        if (total > 0) {
+            if (uploadStats.failed === 0) {
+                // Все файлы загружены успешно
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else {
+                // Есть ошибки
+                hideLoading();
+                const message = `Загрузка завершена. Успешно: ${uploadStats.success}, Ошибок: ${uploadStats.failed}`;
+                alert(message);
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            }
+        } else {
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        }
         return;
     }
     
     isUploading = true;
     const file = uploadQueue.shift();
     
-    showLoading('Загрузка файла: ' + file.name, true);
+    showLoading('Загрузка файла: ' + file.name + ` (${uploadStats.success + uploadStats.failed + 1}/${uploadStats.total})`, true);
     
     // Определяем, какой метод загрузки использовать
     if (file.size > 10 * 1024 * 1024) {
         // Используем chunked upload для больших файлов
-        uploadFileChunked(file, 5 * 1024 * 1024, function() {
+        uploadFileChunked(file, 5 * 1024 * 1024, function(success) {
             // После завершения загрузки одного файла, загружаем следующий
             setTimeout(() => {
-                processUploadQueue();
+                processUploadQueue(success);
             }, 100);
         });
     } else {
         // Используем обычную загрузку для маленьких файлов
-        uploadFileSimple(file, function() {
+        uploadFileSimple(file, function(success) {
             // После завершения загрузки одного файла, загружаем следующий
             setTimeout(() => {
-                processUploadQueue();
+                processUploadQueue(success);
             }, 100);
         });
     }
