@@ -219,32 +219,34 @@
     <div class="col-md-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-sort me-2"></i>
-                    <span id="sortLabel">Сортировка</span>
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                    <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
-                        <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" data-sort="date-asc" onclick="sortFiles('date', 'asc'); return false;">
-                        <i class="fas fa-calendar-alt me-2"></i>По дате (старые сначала)
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" data-sort="name-asc" onclick="sortFiles('name', 'asc'); return false;">
-                        <i class="fas fa-sort-alpha-down me-2"></i>По алфавиту (А-Я)
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" data-sort="name-desc" onclick="sortFiles('name', 'desc'); return false;">
-                        <i class="fas fa-sort-alpha-up me-2"></i>По алфавиту (Я-А)
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" data-sort="size-desc" onclick="sortFiles('size', 'desc'); return false;">
-                        <i class="fas fa-sort-amount-down me-2"></i>По размеру (большие сначала)
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" data-sort="size-asc" onclick="sortFiles('size', 'asc'); return false;">
-                        <i class="fas fa-sort-amount-up me-2"></i>По размеру (маленькие сначала)
-                    </a></li>
-                </ul>
+            <div class="container mt-4">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-sort me-2"></i>
+                        <span id="sortLabel">Сортировка</span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                        <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
+                            <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="date-asc" onclick="sortFiles('date', 'asc'); return false;">
+                            <i class="fas fa-calendar-alt me-2"></i>По дате (старые сначала)
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="name-asc" onclick="sortFiles('name', 'asc'); return false;">
+                            <i class="fas fa-sort-alpha-down me-2"></i>По алфавиту (А-Я)
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="name-desc" onclick="sortFiles('name', 'desc'); return false;">
+                            <i class="fas fa-sort-alpha-up me-2"></i>По алфавиту (Я-А)
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-sort="size-desc" onclick="sortFiles('size', 'desc'); return false;">
+                            <i class="fas fa-sort-amount-down me-2"></i>По размеру (большие сначала)
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="size-asc" onclick="sortFiles('size', 'asc'); return false;">
+                            <i class="fas fa-sort-amount-up me-2"></i>По размеру (маленькие сначала)
+                        </a></li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="card mb-4">
