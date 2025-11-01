@@ -1434,18 +1434,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function uploadFile(file) {
+    const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+    
+    // Если файл больше 10MB, используем chunked upload
+    if (file.size > LARGE_FILE_THRESHOLD) {
+        uploadFileChunked(file, CHUNK_SIZE);
+    } else {
+        uploadFileSimple(file);
+    }
+}
+
+function uploadFileSimple(file, callback) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
-    showLoading('Загрузка файла: ' + file.name, true);
-
-    // Добавляем обработку прогресса загрузки
     const xhr = new XMLHttpRequest();
     xhr.open('POST', window.location.href, true);
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
-    // Обработка прогресса загрузки
     xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
             const percentComplete = (e.loaded / e.total) * 100;
@@ -1453,53 +1461,174 @@ function uploadFile(file) {
         }
     };
 
-    // Обработка завершения загрузки
     xhr.onload = function() {
         if (xhr.status === 200) {
             try {
                 const response = JSON.parse(xhr.responseText);
                 if (response.error) {
-                    throw new Error(response.error);
+                    hideLoading();
+                    alert('Ошибка: ' + response.error);
+                    if (callback) callback(false);
+                    return;
                 }
-                updateStorageProgress();
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
+                updateProgress(100);
+                if (callback) callback(true);
             } catch (error) {
-                // Если ответ не JSON или успешный HTML
-                updateStorageProgress();
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
+                // Если ответ не JSON, возможно это успешный HTML
+                updateProgress(100);
+                if (callback) callback(true);
             }
         } else {
-            throw new Error('Network response was not ok');
+            try {
+                const response = JSON.parse(xhr.responseText);
+                hideLoading();
+                alert('Ошибка: ' + (response.error || 'Неизвестная ошибка'));
+                if (callback) callback(false);
+            } catch (e) {
+                hideLoading();
+                alert('Ошибка при загрузке файла: ' + file.name);
+                if (callback) callback(false);
+            }
         }
     };
 
-    // Обработка ошибок
     xhr.onerror = function() {
         console.error('Error:', xhr.statusText);
         hideLoading();
         alert('Ошибка при загрузке файла: ' + file.name + '\n' + 
-              'Возможно, файл слишком большой или произошла сетевая ошибка');
+              'Проверьте соединение с интернетом');
+        if (callback) callback(false);
     };
 
-    // Отправляем файл
     xhr.send(formData);
 }
 
-// Обновим функцию handleFiles
-function handleFiles(files) {
-    if (files.length > 0) {
-        showLoading('Подготовка к загрузке...', true);
-        let uploadedCount = 0;
-        const totalFiles = files.length;
+function uploadFileChunked(file, chunkSize, callback) {
+    const encodedFilename = encodeURIComponent(file.name);
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    let currentChunk = 0;
+    let start = 0;
+    
+    showLoading('Загрузка файла: ' + file.name + ' (0%)', true);
+
+    function uploadChunk() {
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
         
-        Array.from(files).forEach(file => {
-            uploadFile(file);
-            uploadedCount++;
-            updateProgress((uploadedCount / totalFiles) * 100);
+        const formData = new FormData();
+        formData.append('file', chunk);
+        formData.append('chunk', currentChunk);
+        formData.append('chunks', totalChunks);
+        formData.append('file_size', file.size);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/storage/upload-chunk/${encodedFilename}/`, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        hideLoading();
+                        alert('Ошибка: ' + response.error);
+                        if (callback) callback(false);
+                        return;
+                    }
+                    
+                    if (response.status === 'complete') {
+                        // Загрузка завершена
+                        updateProgress(100);
+                        if (callback) callback(true);
+                    } else {
+                        // Продолжаем загрузку следующего чанка
+                        currentChunk++;
+                        start = end;
+                        const percent = Math.round((currentChunk / totalChunks) * 100);
+                        updateProgress(percent);
+                        showLoading('Загрузка файла: ' + file.name + ' (' + percent + '%)', true);
+                        uploadChunk();
+                    }
+                } catch (error) {
+                    hideLoading();
+                    alert('Ошибка при обработке ответа сервера');
+                    if (callback) callback(false);
+                }
+            } else {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    hideLoading();
+                    alert('Ошибка: ' + (response.error || 'Неизвестная ошибка'));
+                    if (callback) callback(false);
+                } catch (e) {
+                    hideLoading();
+                    alert('Ошибка при загрузке файла: ' + file.name);
+                    if (callback) callback(false);
+                }
+            }
+        };
+
+        xhr.onerror = function() {
+            console.error('Error:', xhr.statusText);
+            hideLoading();
+            alert('Ошибка сети при загрузке файла: ' + file.name);
+            if (callback) callback(false);
+        };
+
+        xhr.send(formData);
+    }
+
+    uploadChunk();
+}
+
+// Обновим функцию handleFiles для последовательной загрузки
+let uploadQueue = [];
+let isUploading = false;
+
+function handleFiles(files) {
+    if (files.length === 0) return;
+    
+    // Добавляем файлы в очередь
+    uploadQueue.push(...Array.from(files));
+    
+    // Запускаем загрузку, если она еще не идет
+    if (!isUploading) {
+        processUploadQueue();
+    }
+}
+
+function processUploadQueue() {
+    if (uploadQueue.length === 0) {
+        isUploading = false;
+        updateStorageProgress();
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+        return;
+    }
+    
+    isUploading = true;
+    const file = uploadQueue.shift();
+    
+    showLoading('Загрузка файла: ' + file.name, true);
+    
+    // Определяем, какой метод загрузки использовать
+    if (file.size > 10 * 1024 * 1024) {
+        // Используем chunked upload для больших файлов
+        uploadFileChunked(file, 5 * 1024 * 1024, function() {
+            // После завершения загрузки одного файла, загружаем следующий
+            setTimeout(() => {
+                processUploadQueue();
+            }, 100);
+        });
+    } else {
+        // Используем обычную загрузку для маленьких файлов
+        uploadFileSimple(file, function() {
+            // После завершения загрузки одного файла, загружаем следующий
+            setTimeout(() => {
+                processUploadQueue();
+            }, 100);
         });
     }
 }

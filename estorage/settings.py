@@ -105,7 +105,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'staticfiles'),
 ]
@@ -184,6 +184,9 @@ FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
 CHUNKED_UPLOAD_MAX_BYTES = 2147483648  # 2GB
 CHUNKED_UPLOAD_CHUNK_SIZE = 5242880  # 5MB
+
+# Avatar upload settings
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Create temp directory if it doesn't exist
 if not os.path.exists(FILE_UPLOAD_TEMP_DIR):

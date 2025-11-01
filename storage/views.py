@@ -34,9 +34,18 @@ def dashboard(request):
     if request.method == 'POST' and request.FILES.get('file'):
         uploaded_file = request.FILES['file']
         
+        # Проверяем размер файла
+        if uploaded_file.size > settings.MAX_FILE_SIZE:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024*1024):.0f}MB'}, status=400)
+            messages.error(request, f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024*1024):.0f}MB')
+            return redirect('dashboard')
+        
         # Проверяем квоту
         profile = request.user.userprofile
         if profile.get_used_storage() + uploaded_file.size > profile.storage_quota:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': 'Недостаточно места в хранилище'}, status=400)
             messages.error(request, 'Недостаточно места в хранилище')
             return redirect('dashboard')
             
@@ -45,7 +54,17 @@ def dashboard(request):
         if not os.path.exists(user_folder):
             os.makedirs(user_folder)
             
-        file_path = os.path.join(user_folder, uploaded_file.name)
+        # Обрабатываем имя файла для избежания конфликтов
+        filename = uploaded_file.name
+        file_path = os.path.join(user_folder, filename)
+        
+        # Если файл существует, добавляем суффикс
+        counter = 1
+        while os.path.exists(file_path):
+            name, ext = os.path.splitext(filename)
+            filename = f"{name}_{counter}{ext}"
+            file_path = os.path.join(user_folder, filename)
+            counter += 1
         
         with open(file_path, 'wb+') as destination:
             for chunk in uploaded_file.chunks():
@@ -53,9 +72,13 @@ def dashboard(request):
                 
         UserFile.objects.create(
             user=request.user,
-            file=f'{request.user.id}/{uploaded_file.name}',
-            filename=uploaded_file.name
+            file=f'{request.user.id}/{filename}',
+            filename=filename
         )
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': 'Файл успешно загружен'})
+        
         messages.success(request, 'Файл успешно загружен')
         return redirect('dashboard')
         
@@ -606,28 +629,80 @@ def video_list(request):
     videos = YouTubeVideo.objects.all().order_by('-downloaded_at')
     return render(request, 'storage/video_list.html', {'videos': videos})
 
-@csrf_exempt
+@login_required
 def upload_chunk(request, filename):
     if request.method == 'POST':
         try:
-            chunk = request.FILES['file']
+            if not request.user.is_authenticated:
+                return JsonResponse({'error': 'Authentication required'}, status=401)
+                
+            chunk = request.FILES.get('file')
+            if not chunk:
+                return JsonResponse({'error': 'No file chunk provided'}, status=400)
+                
             chunk_number = int(request.POST.get('chunk', 0))
             total_chunks = int(request.POST.get('chunks', 1))
+            file_size = int(request.POST.get('file_size', 0))
+            
+            # Проверяем размер файла
+            if file_size > settings.MAX_FILE_SIZE:
+                return JsonResponse({
+                    'error': f'File too large. Maximum size: {settings.MAX_FILE_SIZE / (1024*1024):.0f}MB',
+                    'max_size': settings.MAX_FILE_SIZE
+                }, status=400)
+            
+            # Проверяем квоту
+            profile = request.user.userprofile
+            if profile.get_used_storage() + file_size > profile.storage_quota:
+                return JsonResponse({
+                    'error': 'Not enough storage space',
+                    'available': profile.storage_quota - profile.get_used_storage()
+                }, status=400)
+            
+            # Декодируем имя файла если оно было закодировано
+            import urllib.parse
+            try:
+                filename = urllib.parse.unquote(filename)
+            except:
+                pass
             
             # Путь для временного файла
+            os.makedirs(settings.FILE_UPLOAD_TEMP_DIR, exist_ok=True)
             temp_path = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, f"{request.user.id}_{filename}.part")
             
             # Записываем чанк
             with open(temp_path, 'ab') as f:
-                for chunk in chunk.chunks():
-                    f.write(chunk)
+                for chunk_data in chunk.chunks():
+                    f.write(chunk_data)
             
             # Если это последний чанк
             if chunk_number == total_chunks - 1:
                 # Перемещаем файл в постоянное хранилище
-                final_path = os.path.join(settings.MEDIA_ROOT, str(request.user.id), filename)
-                os.makedirs(os.path.dirname(final_path), exist_ok=True)
+                user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.id))
+                os.makedirs(user_folder, exist_ok=True)
+                
+                final_path = os.path.join(user_folder, filename)
+                
+                # Если файл существует, добавляем суффикс
+                counter = 1
+                original_path = final_path
+                while os.path.exists(final_path):
+                    name, ext = os.path.splitext(filename)
+                    new_filename = f"{name}_{counter}{ext}"
+                    final_path = os.path.join(user_folder, new_filename)
+                    counter += 1
+                
+                # Если имя файла изменилось, обновляем filename
+                if final_path != original_path:
+                    filename = os.path.basename(final_path)
+                
                 os.rename(temp_path, final_path)
+                
+                # Проверяем, не существует ли уже запись с таким именем
+                existing_file = UserFile.objects.filter(user=request.user, filename=filename).first()
+                if existing_file:
+                    # Если файл существует, удаляем старую запись
+                    existing_file.delete()
                 
                 # Создаем запись в БД
                 UserFile.objects.create(
@@ -636,11 +711,13 @@ def upload_chunk(request, filename):
                     filename=filename
                 )
                 
-                return JsonResponse({'status': 'complete'})
+                return JsonResponse({'status': 'complete', 'filename': filename})
             
-            return JsonResponse({'status': 'chunk_uploaded'})
+            return JsonResponse({'status': 'chunk_uploaded', 'chunk': chunk_number + 1})
             
         except Exception as e:
+            import traceback
+            logging.error(f"Upload chunk error: {str(e)}\n{traceback.format_exc()}")
             return JsonResponse({'error': str(e)}, status=400)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
