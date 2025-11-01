@@ -206,7 +206,7 @@
                         {% csrf_token %}
                         <input type="file" id="fileInput" name="file" class="d-none" multiple>
                         <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
-                            {{ t.storage.select_files }}
+                            <i class="fas fa-folder-open me-2"></i>{{ t.storage.select_files }}
                         </button>
                     </form>
                 </div>
@@ -306,7 +306,10 @@
                                             <input type="checkbox" class="form-check-input file-checkbox" 
                                                    value="{{ file.id }}" data-filename="{{ file.filename }}">
                                         </td>
-                                        <td>{{ file.filename }}</td>
+                                        <td>
+                                            <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }} me-2"></i>
+                                            {{ file.filename }}
+                                        </td>
                                         <td>{{ file.get_file_type_display }}</td>
                                         <td class="file-size">{{ file.get_file_size_formatted|default:"—" }}</td>
                                         <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
@@ -329,6 +332,18 @@
                                                 </button>
                                                 <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
                                                     <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                                </button>
+                                            {% elif file.is_text %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                                    <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                                </button>
+                                            {% elif file.is_document %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
+                                                    <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                                </button>
+                                            {% elif file.is_code %}
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                                    <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% endif %}
                                             <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
@@ -367,6 +382,7 @@
                             <div class="d-flex align-items-center mb-2">
                                 <input type="checkbox" class="form-check-input file-checkbox me-2" 
                                        value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }} me-2"></i>
                                 <h5 class="card-title mb-0">{{ file.filename }}</h5>
                             </div>
                             <p class="card-text">
@@ -393,6 +409,18 @@
                                     </button>
                                     <button class="btn btn-sm btn-warning mb-1" onclick="extractArchive('{{ file.id }}')">
                                         <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    </button>
+                                {% elif file.is_text %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_document %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_code %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% endif %}
                                 <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')">

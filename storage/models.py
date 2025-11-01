@@ -14,6 +14,9 @@ class UserFile(models.Model):
         ('video', 'Видео'),
         ('audio', 'Аудио'),
         ('archive', 'Архив'),
+        ('text', 'Текстовый файл'),
+        ('document', 'Документ'),
+        ('code', 'Код'),
         ('other', 'Другое')
     ]
     
@@ -21,7 +24,7 @@ class UserFile(models.Model):
     file = models.FileField(upload_to='')
     filename = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    file_type = models.CharField(max_length=10, choices=FILE_TYPES, default='other')
+    file_type = models.CharField(max_length=20, choices=FILE_TYPES, default='other')
     is_public = models.BooleanField(default=False)
     public_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
     file_size = models.BigIntegerField(default=0)
@@ -43,14 +46,20 @@ class UserFile(models.Model):
             
         # Определяем тип файла по расширению
         ext = os.path.splitext(self.filename)[1].lower()
-        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico']:
             self.file_type = 'image'
-        elif ext in ['.mp4', '.avi', '.mov', '.wmv', '.webm']:
+        elif ext in ['.mp4', '.avi', '.mov', '.wmv', '.webm', '.mkv', '.flv', '.m4v']:
             self.file_type = 'video'
-        elif ext in ['.mp3', '.wav', '.ogg', '.m4a']:
+        elif ext in ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma']:
             self.file_type = 'audio'
-        elif ext in ['.zip', '.rar', '.7z', '.tar', '.gz']:
+        elif ext in ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz']:
             self.file_type = 'archive'
+        elif ext in ['.txt', '.log', '.md', '.readme']:
+            self.file_type = 'text'
+        elif ext in ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp']:
+            self.file_type = 'document'
+        elif ext in ['.py', '.js', '.html', '.css', '.java', '.cpp', '.c', '.php', '.rb', '.go', '.rs', '.ts', '.tsx', '.jsx', '.json', '.xml', '.yaml', '.yml', '.sh', '.bat', '.ps1']:
+            self.file_type = 'code'
         else:
             self.file_type = 'other'
             
@@ -74,6 +83,76 @@ class UserFile(models.Model):
     @property
     def is_archive(self):
         return self.file_type == 'archive'
+
+    @property
+    def is_text(self):
+        return self.file_type == 'text'
+
+    @property
+    def is_document(self):
+        return self.file_type == 'document'
+
+    @property
+    def is_code(self):
+        return self.file_type == 'code'
+
+    def get_file_icon(self):
+        """Возвращает иконку Font Awesome для типа файла"""
+        # Определяем расширение файла для более точных иконок
+        ext = os.path.splitext(self.filename)[1].lower()
+        
+        icon_map = {
+            'image': 'fa-file-image',
+            'video': 'fa-file-video',
+            'audio': 'fa-file-audio',
+            'archive': 'fa-file-archive',
+            'text': 'fa-file-alt',
+            'document': self._get_document_icon(ext),
+            'code': self._get_code_icon(ext),
+            'other': 'fa-file'
+        }
+        return icon_map.get(self.file_type, 'fa-file')
+    
+    def _get_document_icon(self, ext):
+        """Возвращает иконку для типа документа"""
+        doc_icons = {
+            '.pdf': 'fa-file-pdf',
+            '.doc': 'fa-file-word',
+            '.docx': 'fa-file-word',
+            '.xls': 'fa-file-excel',
+            '.xlsx': 'fa-file-excel',
+            '.ppt': 'fa-file-powerpoint',
+            '.pptx': 'fa-file-powerpoint',
+        }
+        return doc_icons.get(ext, 'fa-file-pdf')
+    
+    def _get_code_icon(self, ext):
+        """Возвращает иконку для типа кода"""
+        code_icons = {
+            '.py': 'fa-file-code',
+            '.js': 'fa-file-code',
+            '.html': 'fa-file-code',
+            '.css': 'fa-file-code',
+            '.json': 'fa-file-code',
+            '.xml': 'fa-file-code',
+            '.yaml': 'fa-file-code',
+            '.yml': 'fa-file-code',
+        }
+        return code_icons.get(ext, 'fa-file-code')
+    
+    def get_file_icon_color(self):
+        """Возвращает цвет иконки для типа файла"""
+        color_map = {
+            'image': 'text-primary',
+            'video': 'text-danger',
+            'audio': 'text-success',
+            'archive': 'text-warning',
+            'text': 'text-info',
+            'document': 'text-danger',
+            'code': 'text-purple',
+            'other': 'text-muted'
+        }
+        return color_map.get(self.file_type, 'text-muted')
 
     def get_archive_contents(self):
         """Получить список файлов в архиве"""

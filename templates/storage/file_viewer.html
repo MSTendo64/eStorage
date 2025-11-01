@@ -309,6 +309,24 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     const playerData = createUnifiedPlayerHTML(type, url, filename);
     previewContent.innerHTML = playerData.html;
     
+    // Загружаем текстовые файлы после вставки в DOM
+    if (type === 'text' && window._pendingTextLoad && window._pendingTextLoad.length > 0) {
+        const pending = window._pendingTextLoad.pop();
+        if (pending) {
+            (async () => {
+                try {
+                    const response = await fetch(pending.url);
+                    const text = await response.text();
+                    const pre = document.getElementById(pending.id);
+                    if (pre) pre.textContent = text;
+                } catch(e) {
+                    const pre = document.getElementById(pending.id);
+                    if (pre) pre.textContent = 'Ошибка загрузки файла: ' + e.message;
+                }
+            })();
+        }
+    }
+    
     // Инициализируем Plyr для видео/аудио
     if (playerData.playerClass) {
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);

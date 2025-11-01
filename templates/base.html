@@ -32,6 +32,11 @@
             --bs-container-color: #e9ecef;
             --bs-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
+        
+        /* Дополнительные цвета для иконок */
+        .text-purple {
+            color: #6f42c1 !important;
+        }
     </style>
 
     <!-- Добавим data-атрибуты для хранения данных -->
@@ -1327,6 +1332,18 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
+            break;
+        case 'text':
+            // Для текстовых файлов создаем элемент pre с уникальным ID
+            const textId = 'text-content-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            content = `<pre id="${textId}" style="width: 100%; height: 100%; overflow: auto; padding: 15px; margin: 0; background: var(--bs-body-bg, #ffffff); color: var(--bs-body-color, #000000); font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">Загрузка...</pre>`;
+            // Сохраняем URL для последующей загрузки
+            window._pendingTextLoad = window._pendingTextLoad || [];
+            window._pendingTextLoad.push({ id: textId, url: url });
+            break;
+        case 'document':
+            // Для документов используем iframe
+            content = `<iframe src="${url}" style="width: 100%; height: 100%; border: none;"></iframe>`;
             break;
     }
     
