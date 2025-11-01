@@ -12,13 +12,25 @@
     <style>
         /* Базовые стили */
         :root {
-            --bs-body-bg: #f8f9fa;
-            --bs-body-color: #212529;
+            --bs-body-bg: #e9ecef;
+            --bs-body-color: #1a1d21;
             --bs-primary: #0d6efd;
             --bs-link-color: #0d6efd;
-            --bs-link-hover-color: #0d6efd;
-            --bs-navbar-color: #212529;
-            --bs-container-color: #f8f9fa;
+            --bs-link-hover-color: #0a58ca;
+            --bs-navbar-color: #1a1d21;
+            --bs-container-color: #e9ecef;
+        }
+        
+        /* Стили для светлой темы с уменьшенной яркостью */
+        [data-bs-theme="light"] {
+            --bs-body-bg: #e9ecef;
+            --bs-body-color: #1a1d21;
+            --bs-secondary-color: #343a40;
+            --bs-muted-color: #495057;
+            --bs-border-color: #ced4da;
+            --bs-navbar-color: #1a1d21;
+            --bs-container-color: #e9ecef;
+            --bs-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
     </style>
 
@@ -602,10 +614,19 @@
                     box-shadow 0.3s ease;
     }
 
-    /* Улучшенная контрастность для теста */
-    .card,
-    .list-group-item,
-    .dropdown-menu {
+    /* Улучшенная контрастность для текста в светлой теме */
+    [data-bs-theme="light"] .card,
+    [data-bs-theme="light"] .list-group-item,
+    [data-bs-theme="light"] .dropdown-menu,
+    [data-bs-theme="light"] .card-body,
+    [data-bs-theme="light"] .modal-body {
+        color: #1a1d21 !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    [data-bs-theme="light"] .card,
+    [data-bs-theme="light"] .list-group-item,
+    [data-bs-theme="light"] .dropdown-menu {
         color: var(--bs-body-color);
     }
 
@@ -775,7 +796,35 @@
 
     /* Улучшенная контрастность для текста */
     [data-bs-theme="light"] {
-        --text-color: #212529;
+        --text-color: #1a1d21;
+    }
+    
+    /* Дополнительные стили для улучшения читабельности в светлой теме */
+    [data-bs-theme="light"] body,
+    [data-bs-theme="light"] .content-container,
+    [data-bs-theme="light"] p,
+    [data-bs-theme="light"] span,
+    [data-bs-theme="light"] div:not(.card):not(.navbar):not(.modal) {
+        color: #1a1d21 !important;
+    }
+    
+    [data-bs-theme="light"] .text-muted {
+        color: #495057 !important;
+    }
+    
+    [data-bs-theme="light"] h1,
+    [data-bs-theme="light"] h2,
+    [data-bs-theme="light"] h3,
+    [data-bs-theme="light"] h4,
+    [data-bs-theme="light"] h5,
+    [data-bs-theme="light"] h6 {
+        color: #0d1117 !important;
+        font-weight: 600;
+    }
+    
+    [data-bs-theme="light"] .card-title,
+    [data-bs-theme="light"] .card-header {
+        color: #0d1117 !important;
     }
 
     [data-bs-theme="dark"] {
