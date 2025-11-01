@@ -217,7 +217,36 @@
 
 <div class="row mt-4">
     <div class="col-md-12">
-        <h2>{{ t.storage.file_list.title }}</h2>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-sort me-2"></i>
+                    <span id="sortLabel">Сортировка</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                    <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
+                        <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="date-asc" onclick="sortFiles('date', 'asc'); return false;">
+                        <i class="fas fa-calendar-alt me-2"></i>По дате (старые сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="name-asc" onclick="sortFiles('name', 'asc'); return false;">
+                        <i class="fas fa-sort-alpha-down me-2"></i>По алфавиту (А-Я)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="name-desc" onclick="sortFiles('name', 'desc'); return false;">
+                        <i class="fas fa-sort-alpha-up me-2"></i>По алфавиту (Я-А)
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" data-sort="size-desc" onclick="sortFiles('size', 'desc'); return false;">
+                        <i class="fas fa-sort-amount-down me-2"></i>По размеру (большие сначала)
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" data-sort="size-asc" onclick="sortFiles('size', 'asc'); return false;">
+                        <i class="fas fa-sort-amount-up me-2"></i>По размеру (маленькие сначала)
+                    </a></li>
+                </ul>
+            </div>
+        </div>
         <div class="card mb-4">
             <div class="card-body">
                 <div class="input-group">
@@ -243,20 +272,25 @@
                                     </th>
                                     <th>{{ t.storage.file_list.table.filename }}</th>
                                     <th>{{ t.storage.file_list.table.type }}</th>
+                                    <th>Размер</th>
                                     <th>{{ t.storage.file_list.table.upload_date }}</th>
                                     <th>{{ t.storage.file_list.table.actions }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for file in files %}
-                                    <tr>
+                                    <tr class="file-row" 
+                                        data-filename="{{ file.filename|lower }}"
+                                        data-filesize="{{ file.file_size|default:0 }}"
+                                        data-uploaded="{{ file.uploaded_at|date:'U' }}">
                                         <td>
                                             <input type="checkbox" class="form-check-input file-checkbox" 
                                                    value="{{ file.id }}" data-filename="{{ file.filename }}">
                                         </td>
                                         <td>{{ file.filename }}</td>
                                         <td>{{ file.get_file_type_display }}</td>
-                                        <td>{{ file.uploaded_at }}</td>
+                                        <td class="file-size">{{ file.get_file_size_formatted|default:"—" }}</td>
+                                        <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
                                         <td>
                                             {% if file.is_image %}
                                                 <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
@@ -304,9 +338,12 @@
             </div>
 
             <!-- Мобильная версия (карточки) -->
-            <div class="d-md-none">
+            <div class="d-md-none" id="mobileFilesContainer">
                 {% for file in files %}
-                    <div class="card mb-3">
+                    <div class="card mb-3 file-card" 
+                         data-filename="{{ file.filename|lower }}"
+                         data-filesize="{{ file.file_size|default:0 }}"
+                         data-uploaded="{{ file.uploaded_at|date:'U' }}">
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-2">
                                 <input type="checkbox" class="form-check-input file-checkbox me-2" 
@@ -315,7 +352,7 @@
                             </div>
                             <p class="card-text">
                                 <small class="text-muted">
-                                    {{ file.get_file_type_display }} • {{ file.uploaded_at }}
+                                    {{ file.get_file_type_display }} • {{ file.get_file_size_formatted|default:"—" }} • {{ file.uploaded_at }}
                                 </small>
                             </p>
                             <div class="btn-group-vertical w-100">
@@ -1179,12 +1216,93 @@ function downloadFile(fileId) {
     });
 }
 
-// Добавим функцию поиска файлов
+// Функция сортировки файлов
+let currentSort = { type: 'date', order: 'desc' };
+
+function sortFiles(type, order) {
+    currentSort = { type: type, order: order };
+    
+    // Обновляем текст кнопки сортировки
+    const sortLabels = {
+        'date-desc': 'По дате (новые сначала)',
+        'date-asc': 'По дате (старые сначала)',
+        'name-asc': 'По алфавиту (А-Я)',
+        'name-desc': 'По алфавиту (Я-А)',
+        'size-desc': 'По размеру (большие сначала)',
+        'size-asc': 'По размеру (маленькие сначала)'
+    };
+    const sortLabel = document.getElementById('sortLabel');
+    if (sortLabel) {
+        sortLabel.textContent = sortLabels[`${type}-${order}`] || 'Сортировка';
+    }
+    
+    // Сортируем строки таблицы (десктопная версия)
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+        const rows = Array.from(tbody.querySelectorAll('tr.file-row'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (type === 'name') {
+                aValue = a.dataset.filename || '';
+                bValue = b.dataset.filename || '';
+                return order === 'asc' 
+                    ? aValue.localeCompare(bValue, 'ru', { numeric: true })
+                    : bValue.localeCompare(aValue, 'ru', { numeric: true });
+            } else if (type === 'size') {
+                aValue = parseInt(a.dataset.filesize || '0', 10);
+                bValue = parseInt(b.dataset.filesize || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            } else if (type === 'date') {
+                aValue = parseInt(a.dataset.uploaded || '0', 10);
+                bValue = parseInt(b.dataset.uploaded || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+            return 0;
+        });
+        
+        // Перемещаем отсортированные строки обратно в таблицу
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // Сортируем карточки (мобильная версия)
+    const mobileContainer = document.getElementById('mobileFilesContainer');
+    if (mobileContainer) {
+        const cards = Array.from(mobileContainer.querySelectorAll('.file-card'));
+        
+        cards.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (type === 'name') {
+                aValue = a.dataset.filename || '';
+                bValue = b.dataset.filename || '';
+                return order === 'asc' 
+                    ? aValue.localeCompare(bValue, 'ru', { numeric: true })
+                    : bValue.localeCompare(aValue, 'ru', { numeric: true });
+            } else if (type === 'size') {
+                aValue = parseInt(a.dataset.filesize || '0', 10);
+                bValue = parseInt(b.dataset.filesize || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            } else if (type === 'date') {
+                aValue = parseInt(a.dataset.uploaded || '0', 10);
+                bValue = parseInt(b.dataset.uploaded || '0', 10);
+                return order === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+            return 0;
+        });
+        
+        // Перемещаем отсортированные карточки обратно в контейнер
+        cards.forEach(card => mobileContainer.appendChild(card));
+    }
+}
+
+// Добавим функцию поиска файлов (обновленная с учетом сортировки)
 const fileSearch = document.getElementById('fileSearch');
 if (fileSearch) {
     fileSearch.addEventListener('input', function(e) {
         const searchText = e.target.value.toLowerCase();
-        const fileRows = document.querySelectorAll('tbody tr');
+        const fileRows = document.querySelectorAll('tbody tr.file-row');
         let visibleCount = 0;
         
         fileRows.forEach(row => {
@@ -1194,6 +1312,17 @@ if (fileSearch) {
                 visibleCount++;
             } else {
                 row.style.display = 'none';
+            }
+        });
+        
+        // Также скрываем/показываем карточки в мобильной версии
+        const fileCards = document.querySelectorAll('.file-card');
+        fileCards.forEach(card => {
+            const fileName = card.querySelector('.card-title').textContent.toLowerCase();
+            if (fileName.includes(searchText)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
             }
         });
         

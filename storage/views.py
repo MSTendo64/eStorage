@@ -73,10 +73,14 @@ def dashboard(request):
             for chunk in uploaded_file.chunks():
                 destination.write(chunk)
                 
+        # Получаем размер файла
+        file_size = uploaded_file.size
+        
         UserFile.objects.create(
             user=request.user,
             file=f'{request.user.id}/{filename}',
-            filename=filename
+            filename=filename,
+            file_size=file_size
         )
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -213,11 +217,15 @@ def extract_archive(request, file_id):
                     # Перемещаем файл
                     shutil.move(src_path, dst_path)
                     
+                    # Получаем размер файла
+                    file_size = os.path.getsize(dst_path) if os.path.exists(dst_path) else 0
+                    
                     # Создаем запис в БД
                     UserFile.objects.create(
                         user=request.user,
                         file=f'{request.user.id}/{unique_filename}',
-                        filename=filename
+                        filename=filename,
+                        file_size=file_size
                     )
             
             # Запускаем отложенное удаление временной папки
@@ -356,11 +364,16 @@ def bulk_archive(request):
                 if os.path.exists(file_path):
                     zip_file.write(file_path, file.filename)
         
+        # Получаем размер архива
+        archive_path = os.path.join(user_folder, archive_name)
+        file_size = os.path.getsize(archive_path) if os.path.exists(archive_path) else 0
+        
         # Создаем новый файл в БД
         UserFile.objects.create(
             user=request.user,
             file=f'{request.user.id}/{archive_name}',
-            filename=archive_name
+            filename=archive_name,
+            file_size=file_size
         )
         
         return JsonResponse({
@@ -722,11 +735,15 @@ def upload_chunk(request, filename):
                 
                 os.rename(temp_path, final_path)
                 
+                # Получаем размер файла
+                file_size = os.path.getsize(final_path) if os.path.exists(final_path) else 0
+                
                 # Создаем запись в БД
                 UserFile.objects.create(
                     user=request.user,
                     file=db_file_path,
-                    filename=filename
+                    filename=filename,
+                    file_size=file_size
                 )
                 
                 return JsonResponse({'status': 'complete', 'filename': filename})
