@@ -198,7 +198,7 @@ if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
     os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 # Large file settings
-LARGE_FILE_SIZE_THRESHOLD = 10485760 * 10  # 10MB
+LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB (10485760 bytes = 10 * 1024 * 1024)
 MAX_FILE_SIZE = 1073741824  # 1GB (было 2GB, уменьшено до 1GB согласно требованиям)
 MAX_UPLOAD_SIZE = 1073741824  # 1GB
 

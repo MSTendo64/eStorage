@@ -235,7 +235,7 @@ def settings_appearance(request):
             
             # Если это AJAX запрос, возвращаем JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'status': 'success'})
+                return JsonResponse({'success': True, 'status': 'success'})
             
             # Для обычного запроса - редирект с cookie
             response = redirect('settings_appearance')
@@ -318,6 +318,7 @@ def settings_appearance(request):
         # Если это AJAX запрос, возвращаем JSON
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
+                'success': True,
                 'status': 'success',
                 'theme': profile.theme,
                 'accent_color': profile.accent_color,
