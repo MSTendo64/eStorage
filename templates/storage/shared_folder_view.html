@@ -29,11 +29,7 @@
         {% endif %}
     </div>
     
-    {% if not access.can_view %}
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle me-2"></i>У вас нет прав на просмотр этой папки.
-    </div>
-    {% else %}
+    {% if access.can_view or is_owner %}
     
     {% if folder.subfolders.exists %}
     <div class="card mb-4">
@@ -100,7 +96,10 @@
         <i class="fas fa-info-circle me-2"></i>В этой папке пока нет файлов.
     </div>
     {% endif %}
-    
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>У вас нет прав на просмотр этой папки.
+    </div>
     {% endif %}
 </div>
 

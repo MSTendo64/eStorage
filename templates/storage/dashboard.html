@@ -395,7 +395,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Примонтированные папки -->
+                                <!-- Примонтированные папки (ярлыки) -->
                                 {% for mounted in mounted_folders %}
                                     <tr class="folder-row mounted-folder" data-filename="{{ mounted.folder.name|lower }}">
                                         <td>
@@ -404,18 +404,24 @@
                                         </td>
                                         <td>
                                             <span style="color: #28a745;">
-                                                <i class="fas fa-folder text-success me-2"></i>
-                                                <strong>{{ mounted.folder.name }}</strong>
-                                                <small class="text-muted ms-2">(от {{ mounted.owner.username }})</small>
+                                                <i class="fas fa-link text-success me-2"></i>
+                                                <strong style="color: #28a745;">{{ mounted.folder.name }}</strong>
+                                                <small class="text-muted ms-2 d-block">Владелец: {{ mounted.owner.username }}</small>
                                             </span>
                                         </td>
-                                        <td>Примонтированная папка</td>
+                                        <td><span class="badge bg-success">Ярлык папки</span></td>
                                         <td>{{ mounted.folder.get_files_count }} файлов</td>
-                                        <td>{{ mounted.folder.created_at|date:"d.m.Y H:i" }}</td>
+                                        <td>{{ mounted.mounted_at|date:"d.m.Y H:i" }}</td>
                                         <td>
-                                            <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-folder-open"></i> Открыть
-                                            </a>
+                                            {% if mounted.access.access_type == 'link' %}
+                                                <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-folder-open"></i> Открыть
+                                                </a>
+                                            {% else %}
+                                                <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-folder-open"></i> Открыть
+                                                </a>
+                                            {% endif %}
                                             <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mounted.mounted.id }})">
                                                 <i class="fas fa-unlink"></i> Отмонтировать
                                             </button>

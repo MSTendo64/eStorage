@@ -245,10 +245,16 @@ def shared_folders_list(request):
             'mounted_at': mount.mounted_at
         })
     
+    # Папки, которыми пользователь поделился (владелец)
+    owned_folders = SharedFolderAccess.objects.filter(
+        owner=request.user
+    ).select_related('folder').order_by('-created_at')
+    
     context = {
         'email_accesses': email_accesses,
         'link_accesses': link_accesses,
-        'mounted_folders': mounted_folders
+        'mounted_folders': mounted_folders,
+        'owned_folders': owned_folders
     }
     
     return render(request, 'storage/shared_folders.html', context)
@@ -387,6 +393,9 @@ def shared_folder_view(request, token):
                 shared_access=access
             ).exists()
         
+        # Проверяем, является ли пользователь владельцем
+        is_owner = request.user.is_authenticated and access.owner == request.user
+        
         context = {
             'folder': folder,
             'files': files,
@@ -394,7 +403,9 @@ def shared_folder_view(request, token):
             'access': access,
             'is_mounted': is_mounted,
             'owner': access.owner,
-            'is_authenticated': request.user.is_authenticated
+            'is_owner': is_owner,
+            'is_authenticated': request.user.is_authenticated,
+            'user': request.user if request.user.is_authenticated else None
         }
         
         return render(request, 'storage/shared_folder_view.html', context)

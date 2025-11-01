@@ -163,7 +163,78 @@
     </div>
     {% endif %}
     
-    {% if not email_accesses and not link_accesses and not mounted_folders %}
+    <!-- Папки, которыми вы поделились -->
+    {% if owned_folders %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4><i class="fas fa-share me-2"></i>Папки, которыми вы поделились</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Папка</th>
+                            <th>Тип доступа</th>
+                            <th>Пользователи</th>
+                            <th>Права</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for access in owned_folders %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-folder text-warning me-2"></i>
+                                <strong>{{ access.folder.name }}</strong>
+                            </td>
+                            <td>
+                                {% if access.access_type == 'email' %}
+                                    <span class="badge bg-primary">По email</span>
+                                    {% if access.granted_to_user %}
+                                        <small class="text-muted">({{ access.granted_to_user.username }})</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-success">По ссылке</span>
+                                    <small class="text-muted">({{ access.get_shared_users_count }}/{{ access.max_users|default:"∞" }} пользователей)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if access.access_type == 'link' %}
+                                    <button class="btn btn-sm btn-info" onclick="showLinkUsers({{ access.id }})">
+                                        <i class="fas fa-users"></i> Список
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if access.can_view %}<span class="badge bg-info">Просмотр</span>{% endif %}
+                                {% if access.can_download %}<span class="badge bg-success">Скачивание</span>{% endif %}
+                                {% if access.can_modify %}<span class="badge bg-warning">Изменение</span>{% endif %}
+                                {% if access.can_delete %}<span class="badge bg-danger">Удаление</span>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'dashboard' %}?folder={{ access.folder.id }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-warning" onclick="showAccessSettings({{ access.id }})">
+                                    <i class="fas fa-cog"></i> Настройки
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="revokeAccess({{ access.folder.id }})">
+                                    <i class="fas fa-ban"></i> Отозвать
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if not email_accesses and not link_accesses and not mounted_folders and not owned_folders %}
     <div class="alert alert-info">
         <i class="fas fa-info-circle me-2"></i>У вас пока нет доступов к папкам других пользователей.
     </div>
@@ -199,6 +270,46 @@ function getCsrfToken() {
     
     const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
     return cookieMatch ? cookieMatch[1] : null;
+}
+
+async function revokeAccess(folderId) {
+    if (!confirm('Вы уверены, что хотите отозвать доступ к этой папке у всех пользователей?')) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'revoke_folder_access' 0 %}`.replace('0', folderId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Доступ успешно отозван!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отзыве доступа: ' + error.message);
+    }
+}
+
+function showAccessSettings(accessId) {
+    alert('Функция настройки модификаторов доступа будет добавлена в следующем обновлении');
 }
 
 async function mountFolder(accessId) {
