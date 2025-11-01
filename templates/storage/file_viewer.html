@@ -81,13 +81,27 @@ html {
 
 #previewContent video,
 #previewContent audio {
-    max-width: 100%;
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
 }
 
 /* Стили для плеера */
 .plyr {
     width: 100%;
-    max-height: calc(90vh - 120px);
+    height: 100%;
+    max-width: none;
+    max-height: none;
+}
+
+.plyr video {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: fill;
 }
 
 /* Анимация появления */
@@ -188,13 +202,16 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
             previewContentEl.style.height = '100%';
             previewContentEl.style.overflow = 'hidden';
             
-            // Обновляем размер видео, если оно есть
+            // Обновляем размер видео, если оно есть - убираем ограничения для полного качества
             const video = previewContentEl.querySelector('video');
             if (video && typeof globalPlayer !== 'undefined' && globalPlayer) {
                 setTimeout(() => {
                     if (globalPlayer && typeof globalPlayer.media !== 'undefined') {
-                        globalPlayer.media.style.maxWidth = '100%';
-                        globalPlayer.media.style.maxHeight = '100%';
+                        globalPlayer.media.style.maxWidth = 'none';
+                        globalPlayer.media.style.maxHeight = 'none';
+                        globalPlayer.media.style.width = '100%';
+                        globalPlayer.media.style.height = '100%';
+                        globalPlayer.media.style.objectFit = 'fill';
                     }
                 }, 10);
             }
