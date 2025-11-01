@@ -303,8 +303,13 @@ function updateLineNumbers(textarea, lineNumbersDiv) {
     lineNumbersDiv.style.paddingTop = paddingTop + 'px';
     lineNumbersDiv.style.paddingBottom = paddingBottom + 'px';
     
-    // Синхронизируем прокрутку
-    lineNumbersDiv.scrollTop = textarea.scrollTop;
+    // Синхронизируем прокрутку (без собственного скроллбара)
+    // Номера строк прокручиваются вместе с textarea через JS
+    lineNumbersDiv.style.overflow = 'hidden';
+    // Сохраняем scrollTop для синхронизации
+    const scrollTop = textarea.scrollTop;
+    // Устанавливаем transform для визуальной синхронизации
+    lineNumbersDiv.style.transform = `translateY(-${scrollTop}px)`;
 }
 
 // Функция для сохранения текстового файла
@@ -461,7 +466,9 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                         editor.addEventListener('input', () => updateLineNumbers(editor, lineNumbers));
                         editor.addEventListener('scroll', () => {
                             if (lineNumbers) {
-                                lineNumbers.scrollTop = editor.scrollTop;
+                                // Синхронизируем прокрутку через transform вместо scrollTop
+                                const scrollTop = editor.scrollTop;
+                                lineNumbers.style.transform = `translateY(-${scrollTop}px)`;
                             }
                         });
                         editor.addEventListener('keyup', () => updateLineNumbers(editor, lineNumbers));
@@ -499,11 +506,31 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         modalDialog.style.top = '50%';
         modalDialog.style.transform = 'translate(-50%, -50%)';
         modalDialog.style.margin = '0';
-        modalDialog.style.width = 'auto';
-        modalDialog.style.maxWidth = 'none';
-        modalContent.style.width = '';
-        modalContent.style.height = '';
-        modalContent.style.maxWidth = '';
+        
+        // Для текстовых файлов устанавливаем размер квадрата на 50% от размера страницы
+        if (type === 'text') {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const size = Math.min(viewportWidth * 0.5, viewportHeight * 0.5);
+            
+            modalDialog.style.width = size + 'px';
+            modalDialog.style.height = size + 'px';
+            modalDialog.style.maxWidth = size + 'px';
+            modalDialog.style.maxHeight = size + 'px';
+            modalDialog.style.minWidth = size + 'px';
+            modalDialog.style.minHeight = size + 'px';
+            
+            modalContent.style.width = size + 'px';
+            modalContent.style.height = size + 'px';
+            modalContent.style.maxWidth = size + 'px';
+            modalContent.style.maxHeight = size + 'px';
+        } else {
+            modalDialog.style.width = 'auto';
+            modalDialog.style.maxWidth = 'none';
+            modalContent.style.width = '';
+            modalContent.style.height = '';
+            modalContent.style.maxWidth = '';
+        }
     }
     
     modal.show();
