@@ -179,9 +179,13 @@ VIDEO_QUALITY_REQUIREMENTS = {
 }
 
 # File upload settings
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
+# Максимальный размер файла в памяти перед сохранением на диск (100MB)
+# Файлы больше этого размера автоматически сохраняются во временный файл
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
+# Максимальный размер всех данных POST-запроса (1GB)
+# Это критически важно для загрузки больших файлов
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB
 CHUNKED_UPLOAD_MAX_BYTES = 2147483648  # 2GB
 CHUNKED_UPLOAD_CHUNK_SIZE = 5242880  # 5MB
 
@@ -194,20 +198,15 @@ if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
 
 # Large file settings
 LARGE_FILE_SIZE_THRESHOLD = 10485760 * 10  # 10MB
-MAX_FILE_SIZE = 2147483648  # 2GB
+MAX_FILE_SIZE = 1073741824  # 1GB (было 2GB, уменьшено до 1GB согласно требованиям)
+MAX_UPLOAD_SIZE = 1073741824  # 1GB
+
+# Настройки для больших файлов
+CHUNK_SIZE = 2097152  # 2MB
 
 # Login URL
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
-
-# Увеличиваем лимиты загрузки файлов
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 100MB
-MAX_UPLOAD_SIZE = 2147483648  # 2GB
-
-# Настройки для больших файлов
-LARGE_FILE_SIZE_THRESHOLD = 10485760 * 10  # 10MB
-CHUNK_SIZE = 2097152  # 2MB
 
 # Настройки безопасности
 SECURE_SSL_REDIRECT = True
