@@ -1,4 +1,4 @@
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 import os
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -633,6 +633,7 @@ def video_list(request):
     return render(request, 'storage/video_list.html', {'videos': videos})
 
 @login_required
+@ensure_csrf_cookie
 def upload_chunk(request, filename):
     if request.method == 'POST':
         try:

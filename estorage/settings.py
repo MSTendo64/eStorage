@@ -212,6 +212,11 @@ LOGIN_REDIRECT_URL = 'dashboard'
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# Настройки CSRF для работы с большими файлами
+CSRF_COOKIE_HTTPONLY = False  # Позволяет JavaScript читать CSRF токен из cookie
+CSRF_USE_SESSIONS = False  # Используем cookie вместо сессии для CSRF
+CSRF_COOKIE_SAMESITE = 'Lax'  # Для работы с AJAX запросами
+CSRF_TRUSTED_ORIGINS = ['storage.eventshock.ru', 's.eventshock.ru', '127.0.0.1', 'localhost']
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
