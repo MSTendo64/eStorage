@@ -630,86 +630,8 @@
 </style>
 
 <script>
-// Функции для работы с плеером находятся в file_viewer.html
-// Переопределяем глобальные переменные для совместимости
-let globalPlayer = null;
+// Функции для работы с плеером (showPreview, globalPlayer, initDragAndResize) находятся в file_viewer.html
 let zoom = null;
-
-function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
-    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    const modalDialog = document.getElementById('previewModalDialog');
-    const modalContent = document.getElementById('previewModalContent');
-    const previewContent = document.getElementById('previewContent');
-    
-    // Очищаем предыдущий плеер если он существует
-    if (globalPlayer) {
-        try {
-            globalPlayer.destroy();
-        } catch(e) {
-            console.error('Error destroying player:', e);
-        }
-        globalPlayer = null;
-    }
-    
-    // Создаем единую структуру плеера
-    const playerData = createUnifiedPlayerHTML(type, url, filename);
-    previewContent.innerHTML = playerData.html;
-    
-    // Инициализируем Plyr для видео/аудио
-    if (playerData.playerClass) {
-        const playerElement = previewContent.querySelector('.' + playerData.playerClass);
-        if (playerElement) {
-            globalPlayer = initUnifiedPlayer(playerElement);
-        }
-    }
-    
-    // Обновляем цвет заголовка
-    const header = previewContent.querySelector('.unified-player-header');
-    const title = previewContent.querySelector('.unified-player-title');
-    if (header && title) {
-        updatePlayerHeaderColor(header, title);
-    }
-    
-    // Сбрасываем позицию и размер модального окна
-    if (modalDialog) {
-        modalDialog.style.position = 'fixed';
-        modalDialog.style.left = '50%';
-        modalDialog.style.top = '50%';
-        modalDialog.style.transform = 'translate(-50%, -50%)';
-        modalDialog.style.margin = '0';
-        modalContent.style.width = '';
-        modalContent.style.height = '';
-    }
-    
-    modal.show();
-    
-    // Инициализируем drag and drop после показа модального окна
-    setTimeout(() => {
-        initDragAndResize();
-        // Обновляем цвет заголовка после показа
-        if (header && title) {
-            updatePlayerHeaderColor(header, title);
-        }
-    }, 100);
-    
-    // Очищаем при закрытии модального окна
-    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
-        previewContent.innerHTML = '';
-        isDragging = false;
-        isResizing = false;
-        // Уничтожаем плеер при закрытии
-        if (globalPlayer) {
-            try {
-                globalPlayer.destroy();
-                globalPlayer = null;
-            } catch(e) {
-                console.error('Error destroying player:', e);
-            }
-        }
-    }, { once: true });
-}
-
-// Функции updateTitleColor и initDragAndResize находятся в file_viewer.html
 
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
