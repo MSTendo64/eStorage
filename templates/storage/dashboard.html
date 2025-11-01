@@ -679,7 +679,14 @@ function showPreview(url, type, fileId = null) {
             // Получаем метаданные видео, если передан file_id
             if (fileId && videoInfoModal) {
                 fetch(`/storage/metadata/${fileId}/`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => {
+                                throw new Error(err.error || `HTTP ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success && data.metadata) {
                             const metadata = data.metadata;
@@ -713,10 +720,13 @@ function showPreview(url, type, fileId = null) {
                                 document.getElementById('videoBitrateModal').textContent = 
                                     bitrateMbps + ' Mbps';
                             }
+                        } else {
+                            console.warn('Метаданные недоступны:', data.error || 'Неизвестная ошибка');
                         }
                     })
                     .catch(error => {
-                        console.error('Ошибка при получении метаданных:', error);
+                        console.error('Ошибка при получении метаданных:', error.message || error);
+                        // Не показываем ошибку пользователю, просто скрываем блок метаданных
                     });
             }
             break;

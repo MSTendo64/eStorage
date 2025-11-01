@@ -802,7 +802,23 @@ def get_file_metadata(request, file_id):
                 'error': 'Файл не является видео'
             }, status=400)
         
-        file_path = file.file.path
+        try:
+            file_path = file.file.path
+        except Exception as e:
+            logging.error(f"Error getting file path: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Ошибка при получении пути к файлу: {str(e)}'
+            }, status=500)
+        
+        # Проверяем существование файла
+        if not os.path.exists(file_path):
+            logging.error(f"File not found: {file_path}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Файл не найден на диске'
+            }, status=404)
+        
         metadata = get_video_metadata(file_path)
         
         if metadata:
@@ -813,7 +829,7 @@ def get_file_metadata(request, file_id):
         else:
             return JsonResponse({
                 'success': False,
-                'error': 'Не удалось получить метаданные видео'
+                'error': 'Не удалось получить метаданные видео. Возможно, ffprobe не установлен или файл поврежден.'
             }, status=500)
             
     except UserFile.DoesNotExist:
@@ -822,6 +838,9 @@ def get_file_metadata(request, file_id):
             'error': 'Файл не найден'
         }, status=404)
     except Exception as e:
+        logging.error(f"Error in get_file_metadata: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
         return JsonResponse({
             'success': False,
             'error': f'Ошибка: {str(e)}'
@@ -840,7 +859,23 @@ def get_public_file_metadata(request, token):
                 'error': 'Файл не является видео'
             }, status=400)
         
-        file_path = file.file.path
+        try:
+            file_path = file.file.path
+        except Exception as e:
+            logging.error(f"Error getting file path: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Ошибка при получении пути к файлу: {str(e)}'
+            }, status=500)
+        
+        # Проверяем существование файла
+        if not os.path.exists(file_path):
+            logging.error(f"File not found: {file_path}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Файл не найден на диске'
+            }, status=404)
+        
         metadata = get_video_metadata(file_path)
         
         if metadata:
@@ -851,7 +886,7 @@ def get_public_file_metadata(request, token):
         else:
             return JsonResponse({
                 'success': False,
-                'error': 'Не удалось получить метаданные видео'
+                'error': 'Не удалось получить метаданные видео. Возможно, ffprobe не установлен или файл поврежден.'
             }, status=500)
             
     except UserFile.DoesNotExist:
@@ -860,6 +895,9 @@ def get_public_file_metadata(request, token):
             'error': 'Файл не найден'
         }, status=404)
     except Exception as e:
+        logging.error(f"Error in get_public_file_metadata: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
         return JsonResponse({
             'success': False,
             'error': f'Ошибка: {str(e)}'

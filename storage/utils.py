@@ -64,6 +64,16 @@ def get_video_metadata(file_path):
         return None
     
     try:
+        # Проверяем доступность ffprobe
+        try:
+            subprocess.run(['ffprobe', '-version'], 
+                         capture_output=True, 
+                         timeout=5, 
+                         check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            print("ffprobe не найден или недоступен")
+            return None
+        
         # Используем ffprobe для получения метаданных в формате JSON
         cmd = [
             'ffprobe',
@@ -82,9 +92,20 @@ def get_video_metadata(file_path):
         )
         
         if result.returncode != 0:
+            # Логируем ошибку для отладки
+            error_msg = result.stderr if result.stderr else "Unknown error"
+            print(f"ffprobe error (returncode {result.returncode}): {error_msg}")
             return None
         
-        data = json.loads(result.stdout)
+        if not result.stdout:
+            print("ffprobe returned empty output")
+            return None
+        
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing ffprobe JSON: {e}")
+            return None
         
         # Находим видео поток
         video_stream = None
