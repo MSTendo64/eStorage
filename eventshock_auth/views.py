@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from oauth2_provider.views.generic import ProtectedResourceView
 from oauth2_provider.models import AccessToken
 from .models import UserProfile, LinkedAccount, OAuthApplication, APIKey, ESIDToken
@@ -19,6 +20,10 @@ def generate_client_secret():
     return uuid.uuid4().hex
 
 def login_view(request):
+    # Проверяем, была ли сессия истекшей
+    if request.GET.get('session_expired') == '1':
+        messages.warning(request, 'Ваша сессия истекла. Пожалуйста, войдите снова.')
+    
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -162,6 +167,7 @@ def link_github(request):
     return redirect('manage_accounts')
 
 @login_required
+@ensure_csrf_cookie
 def settings_profile(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     
@@ -216,6 +222,7 @@ def settings_profile(request):
     return render(request, 'eventshock_auth/settings/profile.html', {'active_tab': 'profile'})
 
 @login_required
+@ensure_csrf_cookie
 def settings_appearance(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     

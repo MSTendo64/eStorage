@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'utils.middleware.SessionValidationMiddleware',  # Проверка валидности сессии
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.middleware.LanguageMiddleware',
@@ -212,11 +213,39 @@ LOGIN_REDIRECT_URL = 'dashboard'
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-# Настройки CSRF для работы с большими файлами
-CSRF_COOKIE_HTTPONLY = False  # Позволяет JavaScript читать CSRF токен из cookie
-CSRF_USE_SESSIONS = False  # Используем cookie вместо сессии для CSRF
-CSRF_COOKIE_SAMESITE = 'Lax'  # Для работы с AJAX запросами
-CSRF_TRUSTED_ORIGINS = ['storage.eventshock.ru', 's.eventshock.ru', '127.0.0.1', 'localhost']
+
+# Настройки сессий
+# Время жизни сессии в секундах (по умолчанию 2 недели)
+SESSION_COOKIE_AGE = 1209600  # 14 дней (60 * 60 * 24 * 14)
+# Обновлять время жизни сессии при каждом запросе
+SESSION_SAVE_EVERY_REQUEST = True
+# Истекает ли сессия при закрытии браузера (False = использует SESSION_COOKIE_AGE)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+# Хранить сессии в базе данных (надежнее, чем cookies)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# Имя cookie для сессии
+SESSION_COOKIE_NAME = 'sessionid'
+# SameSite настройка для сессионных cookie
+SESSION_COOKIE_SAMESITE = 'Lax'
+# HTTPOnly для безопасности (предотвращает доступ JavaScript к cookie сессии)
+SESSION_COOKIE_HTTPONLY = True
+# Настройки CSRF для работы с большими файлами и обычными формами
+# Разрешаем JavaScript читать CSRF токен из cookie для AJAX запросов
+CSRF_COOKIE_HTTPONLY = False
+# Используем cookie вместо сессии для CSRF
+CSRF_USE_SESSIONS = False
+# SameSite настройка: 'Lax' работает для обычных форм и AJAX
+# При необходимости можно изменить на 'None' если есть проблемы с cross-site запросами
+CSRF_COOKIE_SAMESITE = 'Lax'
+# Доверенные источники
+CSRF_TRUSTED_ORIGINS = [
+    'https://storage.eventshock.ru',
+    'https://s.eventshock.ru',
+    'http://127.0.0.1',
+    'http://localhost',
+    'https://127.0.0.1',
+    'https://localhost',
+]
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

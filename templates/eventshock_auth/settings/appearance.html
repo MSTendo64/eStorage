@@ -288,18 +288,29 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Обновим обработчик формы
-document.querySelector('form').addEventListener('submit', function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (!form) return;
     
-    const formData = new FormData(this);
-    
-    fetch(this.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const csrfToken = getCsrfToken();
+        
+        if (!csrfToken) {
+            alert('Ошибка: не удалось получить CSRF токен. Перезагрузите страницу.');
+            return;
         }
-    })
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
@@ -366,13 +377,46 @@ function changeLanguage(select) {
     form.submit();
 }
 
+// Функция для получения CSRF токена
+function getCsrfToken() {
+    // Сначала пытаемся получить из скрытого поля формы
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
+    // Если не найден в форме, получаем из cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    return getCookie('csrftoken');
+}
+
 // Обновляем остальные функции для работы с формой
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');
+    if (!form) return;
+    
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
+        const csrfToken = getCsrfToken();
+        
+        if (!csrfToken) {
+            alert('Ошибка: не удалось получить CSRF токен. Перезагрузите страницу.');
+            return;
+        }
         
         // Показываем индикатор загрузки
         const submitBtn = this.querySelector('button[type="submit"]');
@@ -385,18 +429,22 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'  // Добавляем заголовок для AJAX
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Ошибка CSRF. Попробуйте перезагрузить страницу.');
+                }
+                throw new Error('Network response was not ok');
+            }
             window.location.reload();  // Перезагружаем страницу после успешного сохранения
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Произошла ошибка при сохранении настроек');
-        })
-        .finally(() => {
+            alert('Произошла ошибка при сохранении настроек: ' + error.message);
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
         });
