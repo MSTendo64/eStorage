@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success) {
-                const shareUrl = data.data.share_url;
+                const shareUrl = data.share_url;
                 const message = `Ссылка создана!\n\nСсылка для доступа:\n${shareUrl}\n\nСкопировать ссылку в буфер обмена?`;
                 if (confirm(message)) {
                     navigator.clipboard.writeText(shareUrl);
