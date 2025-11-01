@@ -189,15 +189,13 @@ def settings_profile(request):
             from django.conf import settings
             MAX_AVATAR_SIZE = getattr(settings, 'MAX_AVATAR_SIZE', 5 * 1024 * 1024)
             if avatar_file.size > MAX_AVATAR_SIZE:
-                messages.error(request, f'Размер аватара не должен превышать {MAX_AVATAR_SIZE / (1024*1024):.0f}MB')
-                messages.success(request, 'Данные профиля успешно обновлены')
+                messages.error(request, f'Размер аватара не должен превышать {MAX_AVATAR_SIZE / (1024*1024):.0f}MB. Данные профиля обновлены, но аватар не был сохранен.')
                 return redirect('settings_profile')
             
             # Проверяем формат файла
             allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
             if avatar_file.content_type not in allowed_formats:
-                messages.error(request, 'Неподдерживаемый формат изображения. Используйте JPG, PNG, GIF или WEBP')
-                messages.success(request, 'Данные профиля успешно обновлены')
+                messages.error(request, 'Неподдерживаемый формат изображения. Используйте JPG, PNG, GIF или WEBP. Данные профиля обновлены, но аватар не был сохранен.')
                 return redirect('settings_profile')
             
             # Удаляем старый аватар если он существует

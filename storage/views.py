@@ -690,31 +690,42 @@ def upload_chunk(request, filename):
                 
                 final_path = os.path.join(user_folder, filename)
                 
-                # Если файл существует, добавляем суффикс
+                # Если файл существует на файловой системе, добавляем суффикс
                 counter = 1
                 original_path = final_path
                 while os.path.exists(final_path):
                     name, ext = os.path.splitext(filename)
                     new_filename = f"{name}_{counter}{ext}"
                     final_path = os.path.join(user_folder, new_filename)
+                    filename = new_filename
                     counter += 1
                 
-                # Если имя файла изменилось, обновляем filename
-                if final_path != original_path:
-                    filename = os.path.basename(final_path)
+                # Вычисляем путь для записи в БД
+                db_file_path = f'{request.user.id}/{filename}'
+                
+                # Проверяем, не существует ли уже запись в БД с таким путем к файлу
+                existing_file = UserFile.objects.filter(user=request.user, file=db_file_path).first()
+                if existing_file:
+                    # Проверяем, существует ли файл физически по этому пути
+                    if os.path.exists(final_path):
+                        # Файл существует на ФС - это реальный конфликт, переименовываем
+                        while os.path.exists(final_path) or UserFile.objects.filter(user=request.user, file=db_file_path).exists():
+                            name, ext = os.path.splitext(filename)
+                            new_filename = f"{name}_{counter}{ext}"
+                            final_path = os.path.join(user_folder, new_filename)
+                            filename = new_filename
+                            db_file_path = f'{request.user.id}/{filename}'
+                            counter += 1
+                    else:
+                        # Файл не существует на ФС - это сиротская запись в БД, удаляем её
+                        existing_file.delete()
                 
                 os.rename(temp_path, final_path)
-                
-                # Проверяем, не существует ли уже запись с таким именем
-                existing_file = UserFile.objects.filter(user=request.user, filename=filename).first()
-                if existing_file:
-                    # Если файл существует, удаляем старую запись
-                    existing_file.delete()
                 
                 # Создаем запись в БД
                 UserFile.objects.create(
                     user=request.user,
-                    file=f'{request.user.id}/{filename}',
+                    file=db_file_path,
                     filename=filename
                 )
                 
