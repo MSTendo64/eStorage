@@ -1091,29 +1091,6 @@ function initUnifiedPlayer(selector, options = {}) {
     // Получаем элемент медиа
     const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
     
-    // Проверяем наличие source элементов с data-plyr-quality для автоматического определения качеств
-    let qualityOptions = [];
-    let qualityMapping = {}; // Определяем в правильном scope
-    
-    if (mediaElement) {
-        // Ищем source элементы с атрибутом size (стандартный способ для Plyr)
-        // или data-plyr-quality (для совместимости)
-        const qualitySources = mediaElement.querySelectorAll('source[size], source[data-plyr-quality]');
-        if (qualitySources.length > 0) {
-            qualitySources.forEach(source => {
-                // Приоритет отдаем атрибуту size, затем data-plyr-quality
-                const quality = source.getAttribute('size') || source.getAttribute('data-plyr-quality');
-                if (quality && !qualityOptions.includes(quality)) {
-                    qualityOptions.push(quality);
-                }
-                // Создаем mapping между качествами и source элементами
-                if (quality) {
-                    qualityMapping[quality] = source.src || source.getAttribute('src');
-                }
-            });
-        }
-    }
-    
     const defaultOptions = {
         controls: [
             'play-large', 'play', 'progress', 'current-time', 'duration',
@@ -1128,86 +1105,7 @@ function initUnifiedPlayer(selector, options = {}) {
         resetOnEnd: false
     };
     
-    // Подготавливаем sources для передачи в Plyr, если найдены source элементы с data-plyr-quality
-    let plyrSources = null;
-    if (qualityOptions.length > 1) {
-        // Сортируем качества в порядке убывания для правильного отображения
-        qualityOptions.sort((a, b) => parseInt(b) - parseInt(a));
-        
-        // Создаем массив sources для передачи в Plyr
-        plyrSources = qualityOptions.map(q => {
-            const src = qualityMapping[q];
-            const size = parseInt(q);
-            return {
-                src: src,
-                type: 'video/mp4',
-                size: size // Атрибут size необходим для работы меню качества
-            };
-        });
-        
-        // Настраиваем качество для Plyr
-        defaultOptions.quality = {
-            default: parseInt(qualityOptions[0]), // Самое высокое качество по умолчанию
-            options: qualityOptions.map(q => parseInt(q)), // Массив числовых значений (высоты)
-            forced: true // Принудительно включаем меню качества
-        };
-        console.log('Setting up quality menu with options:', qualityOptions, 'sources:', plyrSources, 'mapping:', qualityMapping);
-    } else {
-        console.log('No quality options found or only one quality available');
-    }
-    
     const player = new Plyr(selector, { ...defaultOptions, ...options });
-    
-    // Если есть несколько источников, передаем их в Plyr через API
-    if (plyrSources && plyrSources.length > 1 && player) {
-        // Передаем источники через API Plyr для гарантированного отображения меню качества
-        player.source = {
-            type: 'video',
-            sources: plyrSources
-        };
-        console.log('Sources set via Plyr API:', plyrSources);
-    }
-    
-    // Обрабатываем изменение качества после создания player
-    if (qualityOptions.length > 1 && qualityMapping && player && player.media) {
-        // Сохраняем позицию воспроизведения при изменении качества
-        let savedTime = 0;
-        let wasPlaying = false;
-        
-        player.on('qualitychange', function() {
-            savedTime = player.currentTime;
-            wasPlaying = !player.paused;
-            console.log('Quality changing, saving time:', savedTime);
-        });
-        
-        // Восстанавливаем позицию после загрузки нового источника
-        player.on('loadedmetadata', function() {
-            if (savedTime > 0 && player.currentTime !== savedTime) {
-                player.currentTime = savedTime;
-                console.log('Position restored to:', savedTime);
-                if (wasPlaying) {
-                    player.play().catch(e => console.error('Play error:', e));
-                }
-            }
-        });
-        
-        // Проверяем через небольшую задержку, создано ли меню качества
-        setTimeout(() => {
-            if (player && player.quality) {
-                const qualityValue = player.quality;
-                console.log('Quality menu status - quality value:', qualityValue);
-                // Проверяем наличие кнопки настроек с меню качества
-                const settingsButton = player.elements?.container?.querySelector('.plyr__control[data-plyr="settings"]');
-                if (settingsButton) {
-                    console.log('Settings button found');
-                } else {
-                    console.warn('Settings button not found');
-                }
-            } else {
-                console.warn('Quality menu not available. Player.quality:', player ? player.quality : 'player is null');
-            }
-        }, 1000);
-    }
     
     // Предотвращаем перезагрузку видео при перемотке
     if (player && player.media) {
@@ -1264,7 +1162,7 @@ function updatePlayerHeaderColor(headerSelector, titleSelector) {
 }
 
 // Создание HTML структуры единого плеера
-function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, availableQualities = [], fileId = null, publicToken = null) {
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null) {
     const closeBtn = closeAction 
         ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
         : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
@@ -1278,30 +1176,9 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
     
     switch(type) {
         case 'video':
-            // Создаем source элементы для разных качеств, если они доступны
-            let sourcesHtml = '';
-            if (availableQualities && availableQualities.length > 1) {
-                // Добавляем source для каждого качества с data-plyr-quality атрибутом
-                availableQualities.forEach((quality) => {
-                    let qualityUrl;
-                    if (fileId) {
-                        qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
-                    } else if (publicToken) {
-                        qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
-                    } else {
-                        qualityUrl = url;
-                    }
-                    // Используем атрибут size (высота видео) для Plyr - это стандартный способ указания качества
-                    // Также добавляем data-plyr-quality для совместимости
-                    sourcesHtml += `<source src="${qualityUrl}" type="video/mp4" size="${quality}" data-plyr-quality="${quality}">`;
-                });
-            } else {
-                // Если качеств нет или только одно, используем оригинальный URL
-                sourcesHtml = `<source src="${url}" type="video/mp4">`;
-            }
-            
+            // Используем оригинальное качество видео
             content = `<video class="plyr-video" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
-${sourcesHtml}
+                <source src="${url}" type="video/mp4">
             </video>`;
             playerClass = 'plyr-video';
             break;
@@ -1332,49 +1209,6 @@ ${sourcesHtml}
         `,
         playerClass: playerClass
     };
-}
-
-// Функция для изменения качества видео (для авторизованных пользователей)
-function changeVideoQuality(videoElement, fileId, quality, originalUrl) {
-    if (!videoElement || !fileId) return;
-    
-    const qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
-    
-    // Обновляем src видео элемента
-    videoElement.src = qualityUrl;
-    
-    // Если используется Plyr, перезагружаем медиа
-    if (globalPlayer && globalPlayer.media) {
-        globalPlayer.source = {
-            type: 'video',
-            sources: [{
-                src: qualityUrl,
-                type: 'video/mp4'
-            }]
-        };
-    }
-}
-
-// Функция для изменения качества публичного видео
-function changePublicVideoQuality(videoElement, publicToken, quality, originalUrl) {
-    if (!videoElement || !publicToken) return;
-    
-    const qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
-    
-    // Обновляем src видео элемента
-    videoElement.src = qualityUrl;
-    
-    // Если используется Plyr, перезагружаем медиа
-    const player = Plyr.get(videoElement);
-    if (player && player.media) {
-        player.source = {
-            type: 'video',
-            sources: [{
-                src: qualityUrl,
-                type: 'video/mp4'
-            }]
-        };
-    }
 }
 </script>
 </body>

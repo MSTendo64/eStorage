@@ -299,55 +299,15 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         globalPlayer = null;
     }
     
-    // Получаем метаданные и доступные качества для видео
-    let availableQualities = [];
-    if (type === 'video' && fileId) {
-        try {
-            const metadataResponse = await fetch(`/storage/metadata/${fileId}/`);
-            const metadataData = await metadataResponse.json();
-            if (metadataData.success && metadataData.metadata.available_qualities) {
-                availableQualities = metadataData.metadata.available_qualities;
-            }
-        } catch(e) {
-            console.error('Error loading video metadata:', e);
-        }
-    }
-    
-    // Создаем единую структуру плеера с поддержкой качества
-    const playerData = createUnifiedPlayerHTML(type, url, filename, null, null, availableQualities, fileId);
+    // Создаем единую структуру плеера
+    const playerData = createUnifiedPlayerHTML(type, url, filename);
     previewContent.innerHTML = playerData.html;
     
-    // Инициализируем Plyr для видео/аудио с поддержкой качества
+    // Инициализируем Plyr для видео/аудио
     if (playerData.playerClass) {
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
-            // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
             globalPlayer = initUnifiedPlayer(playerElement);
-            
-            // Слушаем событие изменения качества и сохраняем позицию воспроизведения
-            if (type === 'video' && availableQualities.length > 1 && fileId) {
-                // Добавляем слушатель на сам видео элемент, а не на playerElement
-                if (playerElement && playerElement.tagName === 'VIDEO') {
-                    playerElement.addEventListener('qualitychange', (e) => {
-                        const quality = e.detail.quality;
-                        // quality может быть строкой "720p" или числом 720, нормализуем
-                        const qualityNum = typeof quality === 'string' ? parseInt(quality.replace('p', '')) : quality;
-                        // Сохраняем текущую позицию перед изменением качества
-                        const currentTime = globalPlayer.currentTime;
-                        console.log('Quality changed to:', quality, 'Current time:', currentTime);
-                        
-                        // Восстанавливаем позицию после загрузки нового источника
-                        if (globalPlayer && globalPlayer.media) {
-                            globalPlayer.media.addEventListener('loadedmetadata', function restoreTime() {
-                                if (globalPlayer && currentTime > 0) {
-                                    globalPlayer.currentTime = currentTime;
-                                    globalPlayer.media.removeEventListener('loadedmetadata', restoreTime);
-                                }
-                            }, { once: true });
-                        }
-                    });
-                }
-            }
         }
     }
     
@@ -524,55 +484,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     {% endif %}
     
     if (playerElement) {
-        // Получаем метаданные и доступные качества для видео
-        let availableQualities = [];
-        if (playerType === 'video' && fileToken) {
-            try {
-                const metadataResponse = await fetch(`/storage/public/metadata/${fileToken}/`);
-                const metadataData = await metadataResponse.json();
-                if (metadataData.success && metadataData.metadata.available_qualities) {
-                    availableQualities = metadataData.metadata.available_qualities;
-                }
-            } catch(e) {
-                console.error('Error loading video metadata:', e);
-            }
-        }
-        
-        // Создаем единую структуру плеера с поддержкой качества
-        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', availableQualities, null, fileToken);
+        // Создаем единую структуру плеера
+        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'');
         playerElement.innerHTML = playerData.html;
         
-        // Инициализируем Plyr для видео/аудио с поддержкой качества
+        // Инициализируем Plyr для видео/аудио
         if (playerData.playerClass) {
             const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
             if (mediaElement) {
-                // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
                 const player = initUnifiedPlayer(mediaElement);
-                
-                // Слушаем событие изменения качества и сохраняем позицию воспроизведения
-                if (playerType === 'video' && availableQualities.length > 1 && fileToken) {
-                    // Добавляем слушатель на сам видео элемент
-                    if (mediaElement && mediaElement.tagName === 'VIDEO') {
-                        mediaElement.addEventListener('qualitychange', (e) => {
-                            const quality = e.detail.quality;
-                            // quality может быть строкой "720p" или числом 720, нормализуем
-                            const qualityNum = typeof quality === 'string' ? parseInt(quality.replace('p', '')) : quality;
-                            // Сохраняем текущую позицию перед изменением качества
-                            const currentTime = player.currentTime;
-                            console.log('Quality changed to:', quality, 'Current time:', currentTime);
-                            
-                            // Восстанавливаем позицию после загрузки нового источника
-                            if (player && player.media) {
-                                player.media.addEventListener('loadedmetadata', function restoreTime() {
-                                    if (player && currentTime > 0) {
-                                        player.currentTime = currentTime;
-                                        player.media.removeEventListener('loadedmetadata', restoreTime);
-                                    }
-                                }, { once: true });
-                            }
-                        });
-                    }
-                }
             }
         }
         
