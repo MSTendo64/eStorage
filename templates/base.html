@@ -1093,6 +1093,8 @@ function initUnifiedPlayer(selector, options = {}) {
     
     // Проверяем наличие source элементов с data-plyr-quality для автоматического определения качеств
     let qualityOptions = [];
+    let qualityMapping = {}; // Определяем в правильном scope
+    
     if (mediaElement) {
         const qualitySources = mediaElement.querySelectorAll('source[data-plyr-quality]');
         if (qualitySources.length > 0) {
@@ -1101,6 +1103,8 @@ function initUnifiedPlayer(selector, options = {}) {
                 if (quality && !qualityOptions.includes(quality)) {
                     qualityOptions.push(quality);
                 }
+                // Создаем mapping между качествами и source элементами
+                qualityMapping[quality] = source.src;
             });
         }
     }
@@ -1119,29 +1123,68 @@ function initUnifiedPlayer(selector, options = {}) {
         resetOnEnd: false
     };
     
-    // Не передаем quality явно - Plyr должен автоматически обнаружить source элементы
-    // с атрибутом data-plyr-quality и создать меню качества
-    console.log('Initializing Plyr with quality options:', qualityOptions);
+    // Явно передаем настройки качества, если найдены source элементы с data-plyr-quality
+    if (qualityOptions.length > 1) {
+        // Сортируем качества в порядке убывания для правильного отображения
+        qualityOptions.sort((a, b) => parseInt(b) - parseInt(a));
+        
+        defaultOptions.quality = {
+            default: qualityOptions[0], // Самое высокое качество по умолчанию
+            options: qualityOptions,
+            forced: false,
+            onChange: null // Будет установлено после создания player
+        };
+        console.log('Setting up quality menu with options:', qualityOptions, 'mapping:', qualityMapping);
+    } else {
+        console.log('No quality options found or only one quality available');
+    }
     
     const player = new Plyr(selector, { ...defaultOptions, ...options });
     
-    // После инициализации проверяем, что качества обнаружены
-    if (qualityOptions.length > 1) {
-        setTimeout(() => {
-            if (player.quality && player.quality.length > 1) {
-                console.log('Plyr quality menu detected with options:', player.quality);
-            } else {
-                console.warn('Plyr quality menu not detected. Available sources:', qualityOptions);
-                // Проверяем source элементы напрямую
-                if (mediaElement) {
-                    const sources = mediaElement.querySelectorAll('source[data-plyr-quality]');
-                    console.log('Direct source check:', sources.length, 'sources found');
-                    sources.forEach((src, idx) => {
-                        console.log(`Source ${idx}:`, src.getAttribute('data-plyr-quality'), src.src);
-                    });
+    // Устанавливаем onChange для качества после создания player
+    if (qualityOptions.length > 1 && qualityMapping && player && player.quality) {
+        // Обновляем onChange с правильным контекстом
+        player.quality.onChange = function(newQuality) {
+            const currentTime = player.currentTime;
+            const wasPlaying = !player.paused;
+            const videoElement = player.media;
+            
+            console.log('Quality changing to:', newQuality, 'at time:', currentTime);
+            
+            // Находим соответствующий source элемент
+            if (mediaElement && qualityMapping[newQuality]) {
+                const newSourceUrl = qualityMapping[newQuality];
+                
+                // Сохраняем позицию перед переключением
+                const restorePosition = function() {
+                    if (currentTime > 0 && currentTime < videoElement.duration) {
+                        videoElement.currentTime = currentTime;
+                        console.log('Position restored to:', currentTime);
+                    }
+                    if (wasPlaying) {
+                        videoElement.play().catch(e => console.error('Play error:', e));
+                    }
+                    videoElement.removeEventListener('canplay', restorePosition);
+                };
+                
+                videoElement.addEventListener('canplay', restorePosition, { once: true });
+                
+                // Переключаем источник через Plyr API
+                const currentSrc = videoElement.currentSrc || videoElement.src;
+                if (currentSrc !== newSourceUrl) {
+                    console.log('Switching source from', currentSrc, 'to', newSourceUrl);
+                    
+                    // Используем Plyr API для переключения источника
+                    player.source = {
+                        type: 'video',
+                        sources: [{
+                            src: newSourceUrl,
+                            type: 'video/mp4'
+                        }]
+                    };
                 }
             }
-        }, 500);
+        };
     }
     
     // Предотвращаем перезагрузку видео при перемотке
