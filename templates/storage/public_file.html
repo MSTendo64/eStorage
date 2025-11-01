@@ -6,8 +6,8 @@
 <div class="container-fluid p-0" style="position: relative; height: 100vh; overflow: hidden;">
     {% if file.is_video %}
     <!-- Видео плеер с улучшенным интерфейсом -->
-    <div id="publicVideoPlayer" style="position: fixed; left: 50%; top: 60%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 450px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+    <div id="publicVideoPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 800px; min-height: 450px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <div class="draggable-header-public" style="cursor: default; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
             <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicVideoTitle">{{ file.filename }}</h5>
             <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
                 <i class="fas fa-download"></i>
@@ -22,8 +22,8 @@
         </div>
     </div>
     {% elif file.is_image %}
-    <div id="publicImagePlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; max-height: 90vh; z-index: 1000;">
-        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; border-radius: 8px 8px 0 0;">
+    <div id="publicImagePlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; max-height: 90vh; z-index: 1000; pointer-events: auto;">
+        <div class="draggable-header-public" style="cursor: default; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; border-radius: 8px 8px 0 0;">
             <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicImageTitle">{{ file.filename }}</h5>
             <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
                 <i class="fas fa-download"></i>
@@ -33,8 +33,8 @@
         <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.filename }}" style="max-height: 90vh; display: block; border-radius: 0 0 8px 8px;">
     </div>
     {% elif file.is_audio %}
-    <div id="publicAudioPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 500px; background: #fff; border-radius: 8px; padding: 1rem; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-        <div class="draggable-header-public" style="cursor: move; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; margin: -1rem -1rem 1rem -1rem; border-radius: 8px 8px 0 0;">
+    <div id="publicAudioPlayer" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; min-width: 500px; background: #fff; border-radius: 8px; padding: 1rem; box-shadow: 0 10px 40px rgba(0,0,0,0.3); pointer-events: auto;">
+        <div class="draggable-header-public" style="cursor: default; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; margin: -1rem -1rem 1rem -1rem; border-radius: 8px 8px 0 0;">
             <h5 class="modal-title-public" style="font-size: 0.75rem; margin: 0; font-weight: 600; flex: 1; text-align: left;" id="publicAudioTitle">{{ file.filename }}</h5>
             <a href="{{ file.file.url }}" class="btn btn-sm btn-success me-2" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;">
                 <i class="fas fa-download"></i>
@@ -68,9 +68,7 @@
 </style>
 
 <script>
-let isDraggingPublic = false;
 let isResizingPublic = false;
-let dragOffsetPublic = { x: 0, y: 0 };
 let resizeStartPublic = { x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 };
 let activeResizeHandlePublic = null;
 
@@ -129,44 +127,19 @@ function initPublicDragAndResize() {
     
     updatePublicTitleColor();
     
-    // Drag and drop
-    header.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('btn-close') || e.target.closest('a') || e.target.closest('button')) return;
-        
-        isDraggingPublic = true;
-        const rect = player.getBoundingClientRect();
-        dragOffsetPublic.x = e.clientX - rect.left;
-        dragOffsetPublic.y = e.clientY - rect.top;
-        
-        document.addEventListener('mousemove', handleDragPublic);
-        document.addEventListener('mouseup', stopDragPublic);
-        e.preventDefault();
-    });
+    // Убираем возможность перетаскивания - делаем окно статичным
+    header.style.cursor = 'default';
     
-    function handleDragPublic(e) {
-        if (!isDraggingPublic) return;
+    // Закрепляем позицию окна - фиксируем в центре экрана
+    if (player) {
+        // Сохраняем исходную позицию
+        const originalTransform = player.style.transform || 'translate(-50%, -50%)';
         
-        let newX = e.clientX - dragOffsetPublic.x;
-        let newY = e.clientY - dragOffsetPublic.y;
-        
-        const maxX = window.innerWidth - player.offsetWidth;
-        const minY = window.innerHeight / 2;
-        const maxY = window.innerHeight - player.offsetHeight;
-        
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(minY, Math.min(newY, maxY));
-        
-        player.style.left = newX + 'px';
-        player.style.top = newY + 'px';
-        player.style.transform = 'none';
-        
-        updatePublicTitleColor();
-    }
-    
-    function stopDragPublic() {
-        isDraggingPublic = false;
-        document.removeEventListener('mousemove', handleDragPublic);
-        document.removeEventListener('mouseup', stopDragPublic);
+        // Фиксируем позицию, чтобы она не менялась
+        player.style.position = 'fixed';
+        player.style.left = '50%';
+        player.style.top = '50%';
+        player.style.transform = originalTransform;
     }
     
     // Resize
@@ -200,14 +173,21 @@ function initPublicDragAndResize() {
         
         const minWidth = 300;
         const minHeight = 200;
-        const maxWidth = Math.min(window.innerWidth - resizeStartPublic.left - 10, window.innerWidth * 0.95);
-        const maxHeight = window.innerHeight - resizeStartPublic.top - 10;
+        // Максимальная ширина - 95% экрана, но центр окна остается на месте
+        const maxWidth = window.innerWidth * 0.95;
+        const maxHeight = window.innerHeight * 0.95;
         
         newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
         newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
         
+        // Изменяем только размер, позиция остается зафиксированной в центре
         player.style.width = newWidth + 'px';
         player.style.height = newHeight + 'px';
+        
+        // Убеждаемся, что позиция остается зафиксированной
+        player.style.left = '50%';
+        player.style.top = '50%';
+        player.style.transform = 'translate(-50%, -50%)';
     }
     
     function stopResizePublic() {
