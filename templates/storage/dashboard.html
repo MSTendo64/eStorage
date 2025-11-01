@@ -312,15 +312,15 @@
                                         <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
                                         <td>
                                             {% if file.is_image %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                                 </button>
                                             {% elif file.is_video %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }})">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                                 </button>
                                             {% elif file.is_audio %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
                                                     <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
                                                 </button>
                                             {% elif file.is_archive %}
@@ -376,15 +376,15 @@
                             </p>
                             <div class="btn-group-vertical w-100">
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }})">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio')">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
                                     </button>
                                 {% elif file.is_archive %}
@@ -424,27 +424,16 @@
 
 <!-- Модальное окно для предпросмотра -->
 <div class="modal fade" id="previewModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Просмотр файла</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered modal-lg" id="previewModalDialog">
+        <div class="modal-content" id="previewModalContent">
+            <div class="modal-header draggable-header" style="cursor: move; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); padding: 0.25rem 1rem; min-height: 24px;">
+                <h5 class="modal-title" style="font-size: 0.75rem; margin: 0;" id="previewModalTitle">Просмотр файла</h5>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>
             </div>
-            <div class="modal-body text-center p-0">
+            <div class="modal-body text-center p-0" style="position: relative;">
                 <div id="previewContent"></div>
-                <div id="videoInfoModal" style="display: none;" class="mt-3 p-3 bg-light">
-                    <div class="row text-start">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Качество:</strong> <span id="videoQualityModal">-</span></p>
-                            <p class="mb-1"><strong>Разрешение:</strong> <span id="videoResolutionModal">-</span></p>
-                            <p class="mb-1"><strong>Частота кадров (FPS):</strong> <span id="videoFPSModal">-</span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Кодек:</strong> <span id="videoCodecModal">-</span></p>
-                            <p class="mb-1"><strong>Битрейт:</strong> <span id="videoBitrateModal">-</span></p>
-                        </div>
-                    </div>
-                </div>
+                <div class="resize-handle resize-handle-se" style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize; z-index: 1000;"></div>
+                <div class="resize-handle resize-handle-sw" style="position: absolute; bottom: 0; left: 0; width: 20px; height: 20px; cursor: sw-resize; z-index: 1000;"></div>
             </div>
         </div>
     </div>
@@ -586,11 +575,13 @@
     align-items: center;
     min-height: calc(100vh - 60px);
     margin: 30px auto;
+    position: fixed;
 }
 
 #previewModal .modal-content {
     max-height: 90vh;
     overflow: hidden;
+    position: relative;
 }
 
 #previewModal .modal-body {
@@ -599,6 +590,44 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.draggable-header {
+    user-select: none;
+}
+
+.resize-handle {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+}
+
+.resize-handle:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.resize-handle-se::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 10px 10px;
+    border-color: transparent transparent rgba(0, 0, 0, 0.3) transparent;
+}
+
+.resize-handle-sw::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 10px 10px 0;
+    border-color: transparent rgba(0, 0, 0, 0.3) transparent transparent;
 }
 
 #previewContent {
@@ -649,14 +678,35 @@
 let player = null;
 let zoom = null;
 
-function showPreview(url, type, fileId = null) {
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let resizeStart = { x: 0, y: 0, width: 0, height: 0 };
+let activeResizeHandle = null;
+
+function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const previewContent = document.getElementById('previewContent');
-    const videoInfoModal = document.getElementById('videoInfoModal');
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const modalTitle = document.getElementById('previewModalTitle');
+    const modalDialog = document.getElementById('previewModalDialog');
+    const modalContent = document.getElementById('previewModalContent');
+    
+    // Устанавливаем название файла
+    if (modalTitle) {
+        modalTitle.textContent = filename;
+    }
     
     previewContent.innerHTML = '';
-    if (videoInfoModal) {
-        videoInfoModal.style.display = 'none';
+    
+    // Сбрасываем позицию и размер модального окна
+    if (modalDialog) {
+        modalDialog.style.position = 'fixed';
+        modalDialog.style.left = '50%';
+        modalDialog.style.top = '50%';
+        modalDialog.style.transform = 'translate(-50%, -50%)';
+        modalDialog.style.margin = '0';
+        modalContent.style.width = '';
+        modalContent.style.height = '';
     }
     
     switch(type) {
@@ -675,60 +725,6 @@ function showPreview(url, type, fileId = null) {
                 </video>
             `;
             const player = new Plyr('#player');
-            
-            // Получаем метаданные видео, если передан file_id
-            if (fileId && videoInfoModal) {
-                fetch(`/storage/metadata/${fileId}/`)
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => {
-                                throw new Error(err.error || `HTTP ${response.status}`);
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success && data.metadata) {
-                            const metadata = data.metadata;
-                            videoInfoModal.style.display = 'block';
-                            
-                            // Качество
-                            if (metadata.quality) {
-                                document.getElementById('videoQualityModal').textContent = metadata.quality;
-                            }
-                            
-                            // Разрешение
-                            if (metadata.width && metadata.height) {
-                                document.getElementById('videoResolutionModal').textContent = 
-                                    metadata.width + 'x' + metadata.height;
-                            }
-                            
-                            // FPS
-                            if (metadata.fps) {
-                                document.getElementById('videoFPSModal').textContent = 
-                                    metadata.fps + ' fps';
-                            }
-                            
-                            // Кодек
-                            if (metadata.codec) {
-                                document.getElementById('videoCodecModal').textContent = metadata.codec;
-                            }
-                            
-                            // Битрейт
-                            if (metadata.bitrate) {
-                                const bitrateMbps = (metadata.bitrate / 1000 / 1000).toFixed(2);
-                                document.getElementById('videoBitrateModal').textContent = 
-                                    bitrateMbps + ' Mbps';
-                            }
-                        } else {
-                            console.warn('Метаданные недоступны:', data.error || 'Неизвестная ошибка');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Ошибка при получении метаданных:', error.message || error);
-                        // Не показываем ошибку пользователю, просто скрываем блок метаданных
-                    });
-            }
             break;
             
         case 'audio':
@@ -743,13 +739,121 @@ function showPreview(url, type, fileId = null) {
     
     modal.show();
     
-    // Очищаем плеер при закрытии модального окна
+    // Инициализируем drag and drop после показа модального окна
+    setTimeout(() => {
+        initDragAndResize();
+    }, 100);
+    
+    // Очищаем при закрытии модального окна
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
         previewContent.innerHTML = '';
-        if (videoInfoModal) {
-            videoInfoModal.style.display = 'none';
-        }
+        isDragging = false;
+        isResizing = false;
     }, { once: true });
+}
+
+function initDragAndResize() {
+    const modalDialog = document.getElementById('previewModalDialog');
+    const modalContent = document.getElementById('previewModalContent');
+    const header = document.querySelector('#previewModal .draggable-header');
+    const resizeHandles = document.querySelectorAll('.resize-handle');
+    
+    if (!modalDialog || !modalContent || !header) return;
+    
+    // Drag and drop для шапки
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('btn-close')) return;
+        
+        isDragging = true;
+        const rect = modalDialog.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', stopDrag);
+        e.preventDefault();
+    });
+    
+    function handleDrag(e) {
+        if (!isDragging) return;
+        
+        let newX = e.clientX - dragOffset.x;
+        let newY = e.clientY - dragOffset.y;
+        
+        // Ограничиваем перемещение в пределах окна
+        const maxX = window.innerWidth - modalDialog.offsetWidth;
+        const maxY = window.innerHeight - modalDialog.offsetHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+        
+        modalDialog.style.left = newX + 'px';
+        modalDialog.style.top = newY + 'px';
+        modalDialog.style.transform = 'none';
+        modalDialog.style.margin = '0';
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', handleDrag);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+    
+    // Resize для нижних углов
+    resizeHandles.forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            activeResizeHandle = handle;
+            const rect = modalContent.getBoundingClientRect();
+            resizeStart.x = e.clientX;
+            resizeStart.y = e.clientY;
+            resizeStart.width = rect.width;
+            resizeStart.height = rect.height;
+            
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', stopResize);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    function handleResize(e) {
+        if (!isResizing || !activeResizeHandle) return;
+        
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
+        
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        
+        if (activeResizeHandle.classList.contains('resize-handle-se')) {
+            // Правый нижний угол
+            newWidth = resizeStart.width + deltaX;
+            newHeight = resizeStart.height + deltaY;
+        } else if (activeResizeHandle.classList.contains('resize-handle-sw')) {
+            // Левый нижний угол
+            newWidth = resizeStart.width - deltaX;
+            newHeight = resizeStart.height + deltaY;
+            
+            // Корректируем позицию при изменении ширины слева
+            const rect = modalDialog.getBoundingClientRect();
+            modalDialog.style.left = (rect.left + deltaX) + 'px';
+        }
+        
+        // Минимальные размеры
+        newWidth = Math.max(300, Math.min(newWidth, window.innerWidth - 20));
+        newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 20));
+        
+        modalContent.style.width = newWidth + 'px';
+        modalContent.style.height = newHeight + 'px';
+    }
+    
+    function stopResize() {
+        isResizing = false;
+        activeResizeHandle = null;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+    }
 }
 
 function getFileIcon(filename) {
