@@ -1810,10 +1810,25 @@
                 if (storageBar) {
                     storageBar.style.setProperty('--target-width', `${data.percent}%`);
                     storageBar.classList.add('animate');
-                    document.querySelector('.storage-percent').textContent = `${data.percent}%`;
-                    document.querySelector('.storage-used').textContent = data.used_formatted;
-                    document.querySelector('.storage-total').textContent = data.quota_formatted;
                 }
+                
+                const storagePercent = document.querySelector('.storage-percent');
+                if (storagePercent) {
+                    storagePercent.textContent = `${data.percent}%`;
+                }
+                
+                const storageUsed = document.querySelector('.storage-used');
+                if (storageUsed) {
+                    storageUsed.textContent = data.used_formatted;
+                }
+                
+                const storageTotal = document.querySelector('.storage-total');
+                if (storageTotal) {
+                    storageTotal.textContent = data.quota_formatted;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении статистики хранилища:', error);
             });
     }
 
