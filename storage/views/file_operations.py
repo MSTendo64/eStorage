@@ -107,14 +107,14 @@ def dashboard(request):
     # Получение примонтированных папок (только в корне)
     mounted_folders = []
     if not current_folder:
+        from .share_helpers import AccessPermissionManager
         mounted = MountedFolder.objects.filter(user=request.user).select_related(
             'shared_access', 'shared_access__folder', 'shared_access__owner'
         )
         for mount in mounted:
-            # Проверяем доступ (владелец всегда имеет доступ)
+            # Проверяем доступ через менеджер прав
             access = mount.shared_access
-            is_owner = access.owner == request.user
-            if access.can_view or is_owner:
+            if AccessPermissionManager.can_user_view(request.user, access):
                 mounted_folders.append({
                     'folder': access.folder,
                     'owner': access.owner,
