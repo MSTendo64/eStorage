@@ -975,64 +975,6 @@
     .plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
         background: var(--bs-primary) !important;
     }
-    
-    /* Исправление отображения настроек плеера - полный текст виден */
-    .plyr__menu {
-        min-width: 220px !important;
-        max-width: 400px !important;
-        width: auto !important;
-    }
-    
-    .plyr__menu__container {
-        min-width: 220px !important;
-        max-width: 400px !important;
-        width: auto !important;
-        overflow: visible !important;
-    }
-    
-    .plyr__control[role="menuitem"],
-    .plyr__control[role="menuitemradio"],
-    .plyr__control[role="menuitemcheckbox"] {
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        word-wrap: break-word !important;
-        word-break: break-word !important;
-        padding: 0.625rem 1rem !important;
-        line-height: 1.5 !important;
-        min-height: auto !important;
-        height: auto !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        text-align: left !important;
-    }
-    
-    .plyr__control[role="menuitem"] span,
-    .plyr__control[role="menuitemradio"] span,
-    .plyr__control[role="menuitemcheckbox"] span {
-        width: 100% !important;
-        display: block !important;
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-    }
-    
-    .plyr__menu__value {
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        word-wrap: break-word !important;
-        word-break: break-word !important;
-        margin-left: auto !important;
-        padding-left: 1rem !important;
-    }
-    
-    .plyr__tooltip {
-        white-space: normal !important;
-        max-width: 300px !important;
-        word-wrap: break-word !important;
-    }
 
     /* Бордеры и акценты */
     .border-primary {
@@ -1926,28 +1868,19 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
     
     switch(type) {
         case 'video':
-            // Для видео используем адаптивное качество
+            // Используем оригинальное качество видео
             // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Plyr
             const videoClass = playerType === 'native' ? 'native-video' : 'plyr-video';
-            const videoId = 'adaptive-video-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            content = `<video id="${videoId}" class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;" ${fileId ? `data-file-id="${fileId}"` : ''} data-original-url="${url}">
+            content = `<video class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
                 <source src="${url}" type="video/mp4">
             </video>`;
             playerClass = videoClass;
-            // Сохраняем данные для адаптивного качества
-            window._pendingAdaptiveVideo = window._pendingAdaptiveVideo || [];
-            window._pendingAdaptiveVideo.push({ id: videoId, fileId: fileId, originalUrl: url });
             break;
         case 'audio':
-            // Для аудио также используем адаптивное качество
-            const audioId = 'adaptive-audio-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            content = `<audio id="${audioId}" class="plyr-audio" controls style="width: 100%;" ${fileId ? `data-file-id="${fileId}"` : ''} data-original-url="${url}">
+            content = `<audio class="plyr-audio" controls style="width: 100%;">
                 <source src="${url}" type="audio/mpeg">
             </audio>`;
             playerClass = 'plyr-audio';
-            // Сохраняем данные для адаптивного качества аудио
-            window._pendingAdaptiveAudio = window._pendingAdaptiveAudio || [];
-            window._pendingAdaptiveAudio.push({ id: audioId, fileId: fileId, originalUrl: url });
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
