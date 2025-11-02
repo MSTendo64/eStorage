@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="row justify-content-center mx-0">
-    <div class="col-12 col-md-6 col-lg-4">
-        <div class="card border-primary">
+    <div class="col-12">
+        <div class="card border-primary login-card-container">
             <div class="card-header bg-primary text-white">
                 <h3 class="text-center mb-0">
                     <i class="fas fa-key me-2"></i>
@@ -163,20 +163,6 @@
 
 /* Мобильная адаптивность для формы входа */
 @media (max-width: 767.98px) {
-    .esuid-form .d-flex.align-items-center {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .esuid-form .d-flex.align-items-center .form-control {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-
-    .esuid-form .d-flex.align-items-center .btn {
-        width: 100%;
-    }
-
     .card {
         margin: 0;
         border-radius: 0.5rem;
@@ -225,6 +211,38 @@
 
 .card.border-primary .card-header {
     border-bottom-width: 2px;
+}
+
+/* Контейнер карточки входа с фиксированной максимальной шириной */
+.login-card-container {
+    max-width: 450px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+@media (max-width: 767.98px) {
+    .login-card-container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0 1rem;
+    }
+    
+    .esuid-form .d-flex.align-items-center {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .esuid-form .d-flex.align-items-center .form-control {
+        width: 100%;
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    .esuid-form .d-flex.align-items-center .btn {
+        width: auto;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
+    }
 }
 </style>
 
