@@ -879,26 +879,27 @@
     
     .unified-player-header {
         backdrop-filter: blur(10px);
-        padding: 0.25rem 1rem;
-        height: 24px;
-        min-height: 24px;
-        max-height: 24px;
+        padding: 0.5rem 1rem;
+        min-height: 40px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         user-select: none;
         position: relative;
         flex-shrink: 0;
+        z-index: 10;
     }
     
     .unified-player-title {
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         margin: 0;
         font-weight: 600;
-        position: absolute;
-        left: 0.5rem;
-        top: 50%;
-        transform: translateY(-50%);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-right: 0.5rem;
+        position: relative;
     }
     
     .unified-player-actions {
@@ -906,6 +907,34 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    
+    .unified-player-actions button {
+        padding: 0.5rem;
+        min-width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+    }
+    
+    /* Мобильная версия шапки */
+    @media (max-width: 767.98px) {
+        .unified-player-header {
+            padding: 0.75rem 1rem;
+            min-height: 50px;
+        }
+        
+        .unified-player-title {
+            font-size: 0.875rem;
+        }
+        
+        .unified-player-actions button {
+            min-width: 44px;
+            height: 44px;
+        }
     }
     
     .unified-player-content {
@@ -974,6 +1003,64 @@
 
     .plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
         background: var(--bs-primary) !important;
+    }
+    
+    /* Исправляем меню настроек Plyr - чтобы были видны варианты */
+    .plyr__menu {
+        width: auto !important;
+        min-width: 200px !important;
+        max-width: 300px !important;
+    }
+    
+    .plyr__menu__container {
+        min-width: 200px !important;
+        max-width: 300px !important;
+        overflow: visible !important;
+    }
+    
+    .plyr__control[role="menuitem"],
+    .plyr__control[role="menuitemradio"] {
+        white-space: nowrap !important;
+        overflow: visible !important;
+        padding: 0.5rem 1rem !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        min-width: 200px !important;
+    }
+    
+    .plyr__menu__value {
+        overflow: visible !important;
+        white-space: nowrap !important;
+        flex: 1 !important;
+        text-align: right !important;
+    }
+    
+    .plyr__control[role="menuitem"] > span,
+    .plyr__control[role="menuitemradio"] > span {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Исправляем шапку - чтобы не перекрывала плеер */
+    .unified-player-header {
+        position: relative !important;
+        z-index: 10 !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .unified-player-content {
+        position: relative !important;
+        z-index: 1 !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+    }
+    
+    .plyr__controls {
+        position: relative !important;
+        z-index: 2 !important;
     }
 
     /* Бордеры и акценты */
