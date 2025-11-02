@@ -92,6 +92,55 @@
     transition: width 1s ease-in-out;
 }
 
+/* Стили для кнопки загрузки - квадратная с закругленными углами */
+.upload-btn-square {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.upload-btn-square:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.upload-btn-square i {
+    font-size: 1.25rem;
+    margin: 0 !important;
+}
+
+.upload-button-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+@media (max-width: 767.98px) {
+    .upload-btn-square {
+        width: 45px !important;
+        height: 45px !important;
+        min-width: 45px !important;
+        max-width: 45px !important;
+    }
+    
+    .upload-button-wrapper {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .storage-info {
+        width: 100%;
+    }
+}
+
 /* Улучшенные стили для десктопа */
 @media (min-width: 992px) {
     .storage-info {
@@ -228,8 +277,9 @@
     }
 }
 
-/* Новые стили для улучшенных карточек файлов */
-.file-card-enhanced {
+/* Новые стили для улучшенных карточек файлов и папок */
+.file-card-enhanced,
+.folder-card-enhanced {
     background: var(--bs-body-bg, #ffffff);
     border: 1px solid var(--bs-border-color, #dee2e6);
     border-radius: 0.75rem;
@@ -238,13 +288,25 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
-.file-card-enhanced:hover {
+.file-card-enhanced:hover,
+.folder-card-enhanced:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
     border-color: var(--bs-primary, #0d6efd);
 }
 
-.file-card-header {
+/* Специальные стили для примонтированных папок */
+.mounted-folder-card {
+    border-left: 3px solid #28a745;
+}
+
+.mounted-folder-card:hover {
+    border-left-color: #28a745;
+    border-color: var(--bs-primary, #0d6efd);
+}
+
+.file-card-header,
+.folder-card-header {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
@@ -253,27 +315,50 @@
     border-bottom: 1px solid var(--bs-border-color, #dee2e6);
 }
 
-.file-card-icon-wrapper {
+.file-card-icon-wrapper,
+.folder-card-icon-wrapper {
     width: 48px;
     height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
     border-radius: 0.5rem;
     flex-shrink: 0;
 }
 
+.file-card-icon-wrapper {
+    background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+}
+
+.folder-card-icon-wrapper {
+    background: rgba(255, 193, 7, 0.15);
+}
+
+.folder-icon-mounted {
+    background: rgba(40, 167, 69, 0.15) !important;
+}
+
+.folder-card-icon-wrapper i,
 .file-card-icon-wrapper i {
     font-size: 1.5rem;
 }
 
-.file-card-info {
+.folder-card-icon-wrapper i {
+    color: #ffc107;
+}
+
+.folder-icon-mounted i {
+    color: #28a745 !important;
+}
+
+.file-card-info,
+.folder-card-info {
     flex: 1;
     min-width: 0;
 }
 
-.file-card-title {
+.file-card-title,
+.folder-card-title {
     font-size: 0.95rem;
     font-weight: 600;
     word-break: break-word;
@@ -281,7 +366,8 @@
     color: var(--bs-body-color, #1a1d21);
 }
 
-.file-card-meta {
+.file-card-meta,
+.folder-card-meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -290,12 +376,14 @@
     font-size: 0.85rem;
 }
 
-.file-card-meta .badge {
+.file-card-meta .badge,
+.folder-card-meta .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
 
-.file-card-actions {
+.file-card-actions,
+.folder-card-actions {
     margin-top: 0.75rem;
 }
 
@@ -353,30 +441,40 @@
         padding: 0.875rem;
     }
 
-    .file-card-header {
+    .file-card-header,
+    .folder-card-header {
         gap: 0.75rem;
         margin-bottom: 0.75rem;
         padding-bottom: 0.75rem;
     }
 
-    .file-card-icon-wrapper {
+    .file-card-icon-wrapper,
+    .folder-card-icon-wrapper {
         width: 40px;
         height: 40px;
     }
 
-    .file-card-icon-wrapper i {
+    .file-card-icon-wrapper i,
+    .folder-card-icon-wrapper i {
         font-size: 1.25rem;
     }
 
-    .file-card-title {
+    .file-card-title,
+    .folder-card-title {
         font-size: 0.9rem;
     }
 
-    .file-card-meta {
+    .file-card-meta,
+    .folder-card-meta {
         font-size: 0.8rem;
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
+    }
+    
+    .file-card-enhanced,
+    .folder-card-enhanced {
+        padding: 0.875rem;
     }
 
     .btn-group-grid {
@@ -500,10 +598,10 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="storage-info mb-3 mb-md-0 w-100">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                    <div class="storage-info mb-3 mb-md-0 flex-grow-1 me-md-4">
                         <h5 class="mb-2">{{ t.storage.storage_usage }}</h5>
-                        <div class="progress" style="height: 10px; width: 100%; max-width: 100%;">
+                        <div class="progress" style="height: 10px; max-width: 500px;">
                             <div class="progress-bar storage-progress-bar" role="progressbar" 
                                  data-value="{{ user.userprofile.get_storage_percent }}"
                                  aria-valuenow="{{ user.userprofile.get_storage_percent }}" 
@@ -518,12 +616,12 @@
                             (<span class="storage-percent">{{ user.userprofile.get_storage_percent }}</span>%)
                         </small>
                     </div>
-                    <div class="w-100 w-md-auto">
-                        <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline; width: 100%;">
+                    <div class="upload-button-wrapper">
+                        <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline;">
                             {% csrf_token %}
                             <input type="file" id="fileInput" name="file" class="d-none" multiple>
-                            <button type="button" class="btn btn-primary w-100 w-md-auto" style="max-width: 200px;" onclick="document.getElementById('fileInput').click()">
-                                <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
+                            <button type="button" class="btn btn-primary upload-btn-square" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-plus"></i>
                             </button>
                         </form>
                     </div>
@@ -574,27 +672,7 @@
 <div class="row mt-4">
     <div class="col-md-12">
         <!-- Breadcrumbs навигация -->
-        <nav aria-label="breadcrumb" class="mb-3">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item">
-                    <a href="{% url 'dashboard' %}">
-                        <i class="fas fa-home"></i> Главная
-                    </a>
-                </li>
-                {% if current_folder %}
-                    {% for breadcrumb in breadcrumbs %}
-                        <li class="breadcrumb-item {% if forloop.last %}active{% endif %}">
-                            {% if not forloop.last %}
-                                <a href="{% url 'dashboard' %}?folder={{ breadcrumb.id }}">{{ breadcrumb.name }}</a>
-                            {% else %}
-                                {{ breadcrumb.name }}
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                {% endif %}
-            </ol>
-        </nav>
-        
+        <!-- Панель инструментов и поиска (перемещены наверх) -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
             <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
@@ -608,7 +686,7 @@
                     <i class="fas fa-folder-open me-1"></i> Переместить в папку
                 </button>
                 <div class="dropdown">
-                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()" style="border: 2px solid var(--bs-secondary); background-color: var(--bs-secondary); color: white;">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid var(--bs-secondary); background-color: var(--bs-secondary); color: white;">
                         <i class="fas fa-sort me-2"></i>
                         <span id="sortLabel">Сортировка</span>
                     </button>
@@ -637,23 +715,22 @@
                 </div>
             
                 <script>
-                function toggleDropdown() {
-                    const dropdownMenu = document.getElementById('dropdownMenu');
-                    dropdownMenu.classList.toggle('show');
-                }
-            
-            // Закрытие dropdown при клике вне его
-                document.addEventListener('click', function(event) {
-                    const dropdown = document.querySelector('.dropdown');
-                    const isClickInside = dropdown.contains(event.target);
-                
-                    if (!isClickInside) {
-                        document.getElementById('dropdownMenu').classList.remove('show');
+                // Инициализация Bootstrap Dropdown
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sortDropdownElement = document.getElementById('sortDropdown');
+                    if (sortDropdownElement) {
+                        // Инициализируем Bootstrap Dropdown если он еще не инициализирован
+                        try {
+                            const dropdown = bootstrap.Dropdown.getInstance(sortDropdownElement) || new bootstrap.Dropdown(sortDropdownElement);
+                        } catch(e) {
+                            console.warn('Dropdown initialization warning:', e);
+                        }
                     }
                 });
                 </script>
             
         </div>
+        
         <div class="card mb-4">
             <div class="card-body">
                 <div class="input-group">
@@ -665,6 +742,28 @@
                 </div>
             </div>
         </div>
+
+        <!-- Breadcrumbs навигация -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'dashboard' %}">
+                        <i class="fas fa-home"></i> Главная
+                    </a>
+                </li>
+                {% if current_folder %}
+                    {% for breadcrumb in breadcrumbs %}
+                        <li class="breadcrumb-item {% if forloop.last %}active{% endif %}">
+                            {% if not forloop.last %}
+                                <a href="{% url 'dashboard' %}?folder={{ breadcrumb.id }}">{{ breadcrumb.name }}</a>
+                            {% else %}
+                                {{ breadcrumb.name }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                {% endif %}
+            </ol>
+        </nav>
 
         {% if folders or files %}
             <!-- Десктопная в��сия (таблица) -->
@@ -835,6 +934,95 @@
 
             <!-- Мобильная версия (карточки) -->
             <div class="d-md-none" id="mobileFilesContainer">
+                <!-- Примонтированные папки -->
+                {% for mounted in mounted_folders %}
+                    <div class="folder-card-enhanced mb-3 mounted-folder-card" data-filename="{{ mounted.folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-mounted">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="mounted_{{ mounted.mounted.id }}" disabled>
+                                    <h6 class="folder-card-title mb-0">{{ mounted.folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-success">Примонтированная папка</span>
+                                    <span class="text-muted ms-2">{{ mounted.folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-user me-1"></i>{{ mounted.owner.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid">
+                                {% if mounted.access.access_type == 'link' %}
+                                    <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary mb-1">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary mb-1">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-warning mb-1" onclick="unmountFolder({{ mounted.mounted.id }})">
+                                    <i class="fas fa-unlink"></i> Отмонтировать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Обычные папки -->
+                {% for folder in folders %}
+                    <div class="folder-card-enhanced mb-3" data-filename="{{ folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-normal">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
+                                    <h6 class="folder-card-title mb-0">{{ folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-warning">Папка</span>
+                                    <span class="text-muted ms-2">{{ folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ folder.created_at|date:"d.m.Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid">
+                                <a href="{% url 'dashboard' %}?folder={{ folder.id }}" class="btn btn-sm btn-primary mb-1">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success mb-1" onclick="showShareFolderModal({{ folder.id }})">
+                                    <i class="fas fa-share-alt"></i> Поделиться
+                                </button>
+                                {% for access in folder.shared_accesses.all %}
+                                    {% if access.owner == user %}
+                                        <button class="btn btn-sm btn-warning mb-1" onclick="showAccessSettings({{ access.id }})">
+                                            <i class="fas fa-cog"></i> Доступ
+                                        </button>
+                                        <button class="btn btn-sm btn-danger mb-1" onclick="revokeAccess({{ folder.id }})">
+                                            <i class="fas fa-ban"></i> Отозвать
+                                        </button>
+                                    {% endif %}
+                                {% endfor %}
+                                <button class="btn btn-sm btn-info mb-1" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-edit"></i> Переименовать
+                                </button>
+                                <button class="btn btn-sm btn-danger mb-1" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Файлы -->
                 {% for file in files %}
                     <div class="file-card-enhanced mb-3" 
                          data-filename="{{ file.filename|lower }}"
@@ -1796,10 +1984,10 @@ function sortFiles(type, order) {
         sortLabel.textContent = sortLabels[`${type}-${order}`] || 'Сортировка';
     }
     
-    // Сортируем строки таблицы (десктопная версия)
+    // Сортируем строки таблицы (десктопная версия) - включая папки и файлы
     const tbody = document.querySelector('tbody');
     if (tbody) {
-        const rows = Array.from(tbody.querySelectorAll('tr.file-row'));
+        const rows = Array.from(tbody.querySelectorAll('tr.file-row, tr.folder-row'));
         
         rows.sort((a, b) => {
             let aValue, bValue;
@@ -1826,10 +2014,10 @@ function sortFiles(type, order) {
         rows.forEach(row => tbody.appendChild(row));
     }
     
-    // Сортируем карточки (мобильная версия)
+    // Сортируем карточки (мобильная версия) - включая папки и файлы
     const mobileContainer = document.getElementById('mobileFilesContainer');
     if (mobileContainer) {
-        const cards = Array.from(mobileContainer.querySelectorAll('.file-card'));
+        const cards = Array.from(mobileContainer.querySelectorAll('.file-card-enhanced, .folder-card-enhanced'));
         
         cards.sort((a, b) => {
             let aValue, bValue;
@@ -1857,12 +2045,12 @@ function sortFiles(type, order) {
     }
 }
 
-// Добавим функцию поиска файлов (обновленная с учетом сортировки)
+// Добавим функцию поиска файлов и папок (обновленная с учетом сортировки)
 const fileSearch = document.getElementById('fileSearch');
 if (fileSearch) {
     fileSearch.addEventListener('input', function(e) {
         const searchText = e.target.value.toLowerCase();
-        const fileRows = document.querySelectorAll('tbody tr.file-row');
+        const fileRows = document.querySelectorAll('tbody tr.file-row, tbody tr.folder-row');
         let visibleCount = 0;
         
         fileRows.forEach(row => {
@@ -1875,10 +2063,11 @@ if (fileSearch) {
             }
         });
         
-        // Также скрываем/показываем карточки в мобильной версии
-        const fileCards = document.querySelectorAll('.file-card');
+        // Также скрываем/показываем карточки в мобильной версии (файлы и папки)
+        const fileCards = document.querySelectorAll('.file-card-enhanced, .folder-card-enhanced');
         fileCards.forEach(card => {
-            const fileName = card.querySelector('.card-title').textContent.toLowerCase();
+            const titleElement = card.querySelector('.file-card-title, .folder-card-title');
+            const fileName = titleElement ? titleElement.textContent.toLowerCase() : '';
             if (fileName.includes(searchText)) {
                 card.style.display = '';
             } else {
