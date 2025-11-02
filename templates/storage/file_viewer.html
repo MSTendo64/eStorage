@@ -126,16 +126,14 @@ html {
     transform: none;
 }
 
-/* Мобильные устройства - размер модального окна 40% от экрана */
+/* Мобильные устройства - нормальный размер модального окна */
 @media (max-width: 767.98px) {
     #previewModal .modal-dialog {
-        margin: auto;
-        width: 40vw;
-        max-width: 40vw;
-        height: 40vh;
-        max-height: 40vh;
-        min-height: 200px;
-        min-width: 250px;
+        margin: 1rem auto;
+        width: calc(100% - 2rem);
+        max-width: 400px;
+        height: auto;
+        max-height: calc(100vh - 2rem);
         position: fixed;
         top: 50%;
         left: 50%;
@@ -151,8 +149,7 @@ html {
     }
     
     #previewModal .modal-body {
-        max-height: calc(100% - 80px);
-        height: calc(100% - 80px);
+        max-height: calc(100vh - 150px);
         padding: 0.75rem;
         overflow: auto;
     }
@@ -679,19 +676,35 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
         } else {
-            // Для всех устройств используем 40% от экрана (как на мобильной версии YouTube)
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            const width = Math.max(250, viewportWidth * 0.4);
-            const height = Math.max(200, viewportHeight * 0.4);
-            modalDialog.style.width = width + 'px';
-            modalDialog.style.maxWidth = width + 'px';
-            modalDialog.style.height = height + 'px';
-            modalDialog.style.maxHeight = height + 'px';
-            modalContent.style.width = '100%';
-            modalContent.style.height = '100%';
-            modalContent.style.maxWidth = '100%';
-            modalContent.style.maxHeight = '100%';
+            // На мобильных используем нормальный размер (не на весь экран)
+            if (isMobile) {
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const maxWidth = Math.min(400, viewportWidth - 32);
+                const maxHeight = viewportHeight - 32;
+                modalDialog.style.width = maxWidth + 'px';
+                modalDialog.style.maxWidth = maxWidth + 'px';
+                modalDialog.style.height = 'auto';
+                modalDialog.style.maxHeight = maxHeight + 'px';
+                modalContent.style.width = '100%';
+                modalContent.style.height = 'auto';
+                modalContent.style.maxWidth = '100%';
+                modalContent.style.maxHeight = maxHeight + 'px';
+            } else {
+                // Для десктопа используем 40% от экрана
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const width = Math.max(250, viewportWidth * 0.4);
+                const height = Math.max(200, viewportHeight * 0.4);
+                modalDialog.style.width = width + 'px';
+                modalDialog.style.maxWidth = width + 'px';
+                modalDialog.style.height = height + 'px';
+                modalDialog.style.maxHeight = height + 'px';
+                modalContent.style.width = '100%';
+                modalContent.style.height = '100%';
+                modalContent.style.maxWidth = '100%';
+                modalContent.style.maxHeight = '100%';
+            }
         }
     }
     
