@@ -104,64 +104,6 @@ html {
     object-fit: fill;
 }
 
-/* Исправляем меню настроек Plyr - чтобы были видны варианты */
-.plyr__menu {
-    width: auto !important;
-    min-width: 200px !important;
-    max-width: 300px !important;
-}
-
-.plyr__menu__container {
-    min-width: 200px !important;
-    max-width: 300px !important;
-    overflow: visible !important;
-}
-
-.plyr__control[role="menuitem"],
-.plyr__control[role="menuitemradio"] {
-    white-space: nowrap !important;
-    overflow: visible !important;
-    padding: 0.5rem 1rem !important;
-    text-overflow: ellipsis !important;
-    width: 100% !important;
-    min-width: 200px !important;
-}
-
-.plyr__menu__value {
-    overflow: visible !important;
-    white-space: nowrap !important;
-    flex: 1 !important;
-    text-align: right !important;
-}
-
-.plyr__control[role="menuitem"] > span,
-.plyr__control[role="menuitemradio"] > span {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    width: 100% !important;
-    gap: 0.5rem !important;
-}
-
-/* Исправляем шапку - чтобы не перекрывала плеер */
-.unified-player-header {
-    position: relative !important;
-    z-index: 10 !important;
-    flex-shrink: 0 !important;
-}
-
-.unified-player-content {
-    position: relative !important;
-    z-index: 1 !important;
-    flex: 1 !important;
-    min-height: 0 !important;
-}
-
-.plyr__controls {
-    position: relative !important;
-    z-index: 2 !important;
-}
-
 /* Анимация появления */
 .modal.fade .modal-dialog {
     transform: translate(0, -50px);
@@ -172,45 +114,35 @@ html {
     transform: none;
 }
 
-    /* Мобильные устройства - модальное окно как в YouTube (почти на весь экран) */
+/* Мобильные устройства - размер модального окна 40% от экрана */
 @media (max-width: 767.98px) {
     #previewModal .modal-dialog {
-        margin: 0;
-        width: 100%;
-        max-width: 100%;
-        height: 100vh;
-        min-height: 100vh;
-        max-height: 100vh;
-        display: flex;
-        align-items: stretch;
-        justify-content: stretch;
+        margin: auto;
+        width: 40vw;
+        max-width: 40vw;
+        height: 40vh;
+        max-height: 40vh;
+        min-height: 200px;
+        min-width: 250px;
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        transform: none;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
     
     #previewModal .modal-content {
         width: 100%;
-        height: 100vh;
+        height: 100%;
         max-width: 100%;
-        max-height: 100vh;
-        border-radius: 0;
-        display: flex;
-        flex-direction: column;
-        margin: 0;
+        max-height: 100%;
+        border-radius: 0.75rem;
     }
     
     #previewModal .modal-body {
-        flex: 1;
-        overflow: hidden;
-        padding: 0;
-        display: flex;
-        align-items: stretch;
-        justify-content: stretch;
-        min-height: 0;
+        max-height: calc(100% - 80px);
+        height: calc(100% - 80px);
+        padding: 0.75rem;
+        overflow: auto;
     }
     
     #previewContent {
@@ -218,67 +150,6 @@ html {
         height: 100%;
         max-width: 100%;
         max-height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: stretch;
-    }
-    
-    #previewContent .unified-player {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    /* Исправляем шапку на мобильных */
-    #previewContent .unified-player-header {
-        position: relative;
-        z-index: 10;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(10px);
-        padding: 0.75rem 1rem;
-        height: auto;
-        min-height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
-    }
-    
-    #previewContent .unified-player-title {
-        font-size: 0.875rem;
-        margin: 0;
-        padding: 0;
-        position: static;
-        transform: none;
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        padding-right: 0.5rem;
-    }
-    
-    #previewContent .unified-player-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-shrink: 0;
-    }
-    
-    #previewContent .unified-player-actions button {
-        padding: 0.5rem;
-        min-width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    #previewContent .unified-player-content {
-        flex: 1;
-        min-height: 0;
-        position: relative;
     }
     
     #previewContent img {
@@ -304,63 +175,23 @@ html {
     }
     
     .plyr {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
     }
     
     .plyr video {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
-        object-fit: contain !important;
-    }
-    
-    .plyr--audio {
         width: 100%;
+        height: 100%;
         max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .plyr-audio {
+        width: 100%;
         height: auto;
-    }
-    
-    /* Исправляем меню настроек Plyr на мобильных */
-    .plyr__menu {
-        width: auto !important;
-        min-width: 250px !important;
-        max-width: 85vw !important;
-    }
-    
-    .plyr__menu__container {
-        min-width: 250px !important;
-        max-width: 85vw !important;
-        overflow: visible !important;
-        z-index: 100 !important;
-    }
-    
-    .plyr__control[role="menuitem"],
-    .plyr__control[role="menuitemradio"] {
-        white-space: nowrap !important;
-        overflow: visible !important;
-        padding: 0.75rem 1rem !important;
-        text-overflow: ellipsis !important;
-        width: 100% !important;
-        min-width: 250px !important;
-        display: flex !important;
-        justify-content: space-between !important;
-    }
-    
-    .plyr__menu__value {
-        overflow: visible !important;
-        white-space: nowrap !important;
-        flex: 1 !important;
-        text-align: right !important;
-        margin-left: 1rem !important;
-    }
-    
-    /* Скрываем resize-handle на мобильных */
-    #previewModal .resize-handle {
-        display: none !important;
     }
 }
 {% endif %}
@@ -368,18 +199,6 @@ html {
 .resize-handle {
     background: transparent;
     border: none;
-}
-
-/* Скрываем resize-handle для аудио файлов */
-#previewContent audio ~ .resize-handle,
-#previewContent .plyr--audio ~ .resize-handle,
-#previewContent [class*="audio"] ~ .resize-handle {
-    display: none !important;
-}
-
-.unified-player:has(audio) .resize-handle,
-.unified-player:has(.plyr--audio) .resize-handle {
-    display: none !important;
 }
 
 .resize-handle::after {
@@ -392,6 +211,14 @@ html {
     border-style: solid;
     border-width: 0 0 10px 10px;
     border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+}
+
+/* Скрываем resize-handle для аудио */
+#previewContent audio ~ .resize-handle,
+.plyr-audio ~ .resize-handle,
+.unified-player-content:has(audio) .resize-handle {
+    display: none !important;
+    pointer-events: none !important;
 }
 </style>
 
@@ -696,6 +523,9 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     const modalContent = document.getElementById('previewModalContent');
     const previewContent = document.getElementById('previewContent');
     
+    // Сохраняем тип файла в глобальную переменную для использования в initDragAndResize
+    window._currentPreviewType = type;
+    
     // Сохраняем исходный title страницы
     const originalTitle = document.title;
     
@@ -837,24 +667,20 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
         } else {
-            // На мобильных для других типов файлов используем весь экран (как YouTube)
+            // На мобильных для других типов файлов используем 40% от экрана
             if (isMobile) {
-                modalDialog.style.width = '100%';
-                modalDialog.style.maxWidth = '100%';
-                modalDialog.style.height = '100vh';
-                modalDialog.style.minHeight = '100vh';
-                modalDialog.style.maxHeight = '100vh';
-                modalDialog.style.margin = '0';
-                modalDialog.style.top = '0';
-                modalDialog.style.left = '0';
-                modalDialog.style.right = '0';
-                modalDialog.style.bottom = '0';
-                modalDialog.style.transform = 'none';
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const width = Math.max(250, viewportWidth * 0.4);
+                const height = Math.max(200, viewportHeight * 0.4);
+                modalDialog.style.width = width + 'px';
+                modalDialog.style.maxWidth = width + 'px';
+                modalDialog.style.height = height + 'px';
+                modalDialog.style.maxHeight = height + 'px';
                 modalContent.style.width = '100%';
-                modalContent.style.height = '100vh';
+                modalContent.style.height = '100%';
                 modalContent.style.maxWidth = '100%';
-                modalContent.style.maxHeight = '100vh';
-                modalContent.style.borderRadius = '0';
+                modalContent.style.maxHeight = '100%';
             } else {
                 modalDialog.style.width = 'auto';
                 modalDialog.style.maxWidth = 'none';
@@ -868,11 +694,8 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     modal.show();
     
     // Инициализируем resize после показа модального окна (без drag and drop)
-    // Не инициализируем resize для аудио
     setTimeout(() => {
-        if (type !== 'audio') {
-            initDragAndResize();
-        }
+        initDragAndResize();
         // Обновляем цвет заголовка после показа
         if (header && title) {
             updatePlayerHeaderColor(header, title);
@@ -883,6 +706,9 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
         // Восстанавливаем исходный title страницы
         document.title = originalTitle;
+        
+        // Очищаем глобальную переменную типа файла
+        window._currentPreviewType = null;
         
         previewContent.innerHTML = '';
         modalResizeState.isResizing = false;
@@ -915,17 +741,20 @@ function initDragAndResize() {
     
     if (!modalDialog || !modalContent || !header) return;
     
-    // Проверяем, не является ли это аудио файлом
-    const previewContent = document.getElementById('previewContent');
-    if (previewContent) {
-        const audioElements = previewContent.querySelectorAll('audio, .plyr--audio, [class*="audio"]');
-        if (audioElements.length > 0) {
-            // Скрываем resize-handle для аудио
-            resizeHandles.forEach(handle => {
-                if (handle) handle.style.display = 'none';
-            });
-            return; // Не инициализируем resize для аудио
-        }
+    // Получаем тип файла из глобальной переменной
+    const fileType = window._currentPreviewType || '';
+    
+    // Отключаем изменение размера для аудио
+    if (fileType === 'audio') {
+        // Скрываем resize-handle для аудио
+        resizeHandles.forEach(handle => {
+            if (handle) {
+                handle.style.display = 'none';
+                handle.style.pointerEvents = 'none';
+            }
+        });
+        // Не инициализируем resize для аудио
+        return;
     }
     
     // Обновляем цвет текста периодически и при изменениях
@@ -962,8 +791,8 @@ function initDragAndResize() {
     modalDialog.style.transform = 'translate(-50%, -50%)';
     modalDialog.style.margin = '0';
     
-    // Инициализация изменения размера используя общую функцию
-    if (modalContent) {
+    // Инициализация изменения размера используя общую функцию (только если не аудио)
+    if (modalContent && fileType !== 'audio') {
         initResizeForElement(modalContent, modalResizeState, true);
     }
 }
@@ -1056,18 +885,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    // Инициализируем drag and resize для публичного просмотра (только для видео и изображений, не для аудио)
-    if (playerType === 'video' || playerType === 'image') {
+    // Инициализируем drag and resize для публичного просмотра (только для видео)
+    if (playerType === 'video') {
         setTimeout(() => {
             initPublicDragAndResize();
         }, 100);
-    }
-    // Для аудио скрываем resize-handle
-    if (playerType === 'audio') {
-        const resizeHandles = playerElement.querySelectorAll('.resize-handle');
-        resizeHandles.forEach(handle => {
-            if (handle) handle.style.display = 'none';
-        });
     }
     
     // Обновляем цвет при изменении темы
