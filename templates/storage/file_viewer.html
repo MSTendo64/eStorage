@@ -50,12 +50,12 @@ html {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 40vw;
-    max-width: 40vw;
-    height: 40vh;
-    max-height: 40vh;
-    min-height: 200px;
-    min-width: 250px;
+    width: 70vw;
+    max-width: 1200px;
+    height: auto;
+    max-height: 85vh;
+    min-height: 300px;
+    min-width: 400px;
 }
 
 #previewModal .modal-content {
@@ -69,11 +69,12 @@ html {
 
 #previewModal .modal-body {
     overflow: auto;
-    max-height: calc(100% - 80px);
-    height: calc(100% - 80px);
+    max-height: calc(100% - 60px);
+    height: calc(100% - 60px);
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 0.5rem;
 }
 
 .draggable-header {
@@ -691,15 +692,31 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                 modalContent.style.maxWidth = '100%';
                 modalContent.style.maxHeight = maxHeight + 'px';
             } else {
-                // Для десктопа используем 40% от экрана
+                // Для десктопа используем нормальный размер проигрывателя
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
-                const width = Math.max(250, viewportWidth * 0.4);
-                const height = Math.max(200, viewportHeight * 0.4);
-                modalDialog.style.width = width + 'px';
-                modalDialog.style.maxWidth = width + 'px';
-                modalDialog.style.height = height + 'px';
-                modalDialog.style.maxHeight = height + 'px';
+                const maxWidth = Math.min(1200, viewportWidth * 0.7);
+                const maxHeight = viewportHeight * 0.85;
+                
+                // Для видео используем соотношение 16:9, для других файлов - адаптивно
+                if (type === 'video') {
+                    const videoHeight = maxWidth / (16 / 9);
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = Math.min(videoHeight, maxHeight) + 'px';
+                    modalDialog.style.maxHeight = maxHeight + 'px';
+                } else if (type === 'audio') {
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = 'auto';
+                    modalDialog.style.maxHeight = '300px';
+                } else {
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = Math.min(maxWidth * 0.75, maxHeight) + 'px';
+                    modalDialog.style.maxHeight = maxHeight + 'px';
+                }
+                
                 modalContent.style.width = '100%';
                 modalContent.style.height = '100%';
                 modalContent.style.maxWidth = '100%';
