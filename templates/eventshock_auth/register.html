@@ -3,9 +3,9 @@
 {% block title %}Регистрация | Eventshock Storage{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card border-primary">
+<div class="row justify-content-center mx-0">
+    <div class="col-12">
+        <div class="card border-primary login-card-container">
             <div class="card-header bg-primary text-white">
                 <h3 class="text-center mb-0">
                     <i class="fas fa-user-plus me-2"></i>
@@ -26,44 +26,44 @@
                 <form method="post" class="esuid-form" id="registerForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="username" class="form-label">Придумайте имя пользователя</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-user"></i>
-                            </span>
+                        <label for="username" class="form-label d-flex align-items-center">
+                            <i class="fas fa-user me-2"></i>
+                            Придумайте имя пользователя
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="email" class="form-label">Ваш email</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-envelope"></i>
-                            </span>
+                        <label for="email" class="form-label d-flex align-items-center">
+                            <i class="fas fa-envelope me-2"></i>
+                            Ваш email
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="email" class="form-control" id="email" name="email" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Придумайте пароль</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-lock"></i>
-                            </span>
+                        <label for="password" class="form-label d-flex align-items-center">
+                            <i class="fas fa-lock me-2"></i>
+                            Придумайте пароль
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="password" class="form-control" id="password" name="password" required>
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                            <button class="btn btn-outline-secondary ms-2" type="button" onclick="togglePassword('password')" style="flex-shrink: 0;">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
                         <div class="password-strength mt-2" id="passwordStrength"></div>
                     </div>
                     <div class="mb-3">
-                        <label for="password2" class="form-label">Повторите пароль</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-lock"></i>
-                            </span>
+                        <label for="password2" class="form-label d-flex align-items-center">
+                            <i class="fas fa-lock me-2"></i>
+                            Повторите пароль
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="password" class="form-control" id="password2" name="password2" required>
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password2')">
+                            <button class="btn btn-outline-secondary ms-2" type="button" onclick="togglePassword('password2')" style="flex-shrink: 0;">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -144,17 +144,48 @@
     color: #0a58ca !important;
 }
 
+.esuid-form .form-label {
+    margin-bottom: 0.5rem;
+}
+
+.esuid-form .form-label i {
+    font-size: 1rem;
+}
+
+.esuid-form .form-control {
+    border-width: 2px;
+    border-style: solid;
+    padding: 0.75rem;
+}
+
 [data-bs-theme="light"] .esuid-form .form-control {
     background-color: #ffffff !important;
     color: #1a1d21 !important;
-    border-color: #ced4da !important;
+    border-color: #adb5bd !important;
+    width: 100%;
+    max-width: 100%;
 }
 
 [data-bs-theme="light"] .esuid-form .form-control:focus {
     background-color: #ffffff !important;
     color: #1a1d21 !important;
     border-color: var(--bs-primary) !important;
+    border-width: 2px;
     box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+[data-bs-theme="dark"] .esuid-form .form-control {
+    border-width: 2px;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .esuid-form .form-control:focus {
+    border-width: 2px;
+    border-color: var(--bs-primary) !important;
+}
+
+.esuid-form .d-flex.align-items-center {
+    gap: 0;
 }
 
 [data-bs-theme="light"] .form-label {
@@ -249,13 +280,98 @@
 .strength-weak { background: #dc3545; }
 .strength-medium { background: #ffc107; }
 .strength-strong { background: #198754; }
+
+/* Контейнер карточки регистрации с фиксированной максимальной шириной */
+.login-card-container {
+    max-width: 450px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+@media (max-width: 767.98px) {
+    .login-card-container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0 1rem;
+    }
+    
+    .esuid-form .d-flex.align-items-center {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .esuid-form .d-flex.align-items-center .form-control {
+        width: 100%;
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    .esuid-form .d-flex.align-items-center .btn {
+        width: auto;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
+    }
+
+    .card {
+        margin: 0;
+        border-radius: 0.5rem;
+    }
+
+    .card-header {
+        padding: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    h4 {
+        font-size: 1.1rem;
+    }
+
+    .fa-3x {
+        font-size: 2rem !important;
+    }
+    
+    /* Исправление масштаба для мобильной версии */
+    html {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+    
+    body {
+        font-size: 16px;
+    }
+    
+    .form-control {
+        font-size: 16px !important;
+    }
+    
+    .btn {
+        font-size: 16px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .slider-container {
+        max-width: 100%;
+    }
+}
 </style>
 
 <script>
 // Функция для переключения видимости пароля
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
-    const icon = input.nextElementSibling.querySelector('i');
+    const container = input.closest('.d-flex.align-items-center');
+    const button = container ? container.querySelector('button') : null;
+    const icon = button ? button.querySelector('i') : null;
+    
+    if (!icon) return;
     
     if (input.type === 'password') {
         input.type = 'text';
