@@ -113,6 +113,70 @@ html {
 .modal.show .modal-dialog {
     transform: none;
 }
+
+/* Мобильные устройства - увеличенный размер модального окна */
+@media (max-width: 767.98px) {
+    #previewModal .modal-dialog {
+        margin: 0.5rem;
+        width: calc(100% - 1rem);
+        max-width: calc(100% - 1rem);
+        min-height: calc(100vh - 1rem);
+        height: calc(100vh - 1rem);
+    }
+    
+    #previewModal .modal-content {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0.75rem;
+    }
+    
+    #previewModal .modal-body {
+        max-height: calc(100vh - 80px);
+        height: calc(100vh - 80px);
+        padding: 0.75rem;
+    }
+    
+    #previewContent {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+    }
+    
+    #previewContent img {
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+    
+    #previewContent video,
+    #previewContent audio {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+        object-fit: contain;
+    }
+    
+    .plyr {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+    }
+    
+    .plyr video {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 80px);
+        object-fit: contain;
+    }
+}
 {% endif %}
 
 .resize-handle {
@@ -151,12 +215,13 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
     // Минимальные размеры с учетом шапки и элементов управления плеера
     const headerHeight = 24;
     const controlsHeight = 80;
-    const minWidth = 400;
-    const minHeight = headerHeight + controlsHeight + 200;
+    const isMobile = window.innerWidth <= 767.98;
+    const minWidth = isMobile ? window.innerWidth * 0.9 : 400;
+    const minHeight = isMobile ? window.innerHeight * 0.7 : headerHeight + controlsHeight + 200;
     
     // Максимальные размеры
-    const maxWidth = window.innerWidth * 0.95;
-    const maxHeight = window.innerHeight * 0.95;
+    const maxWidth = window.innerWidth * (isMobile ? 0.98 : 0.95);
+    const maxHeight = window.innerHeight * (isMobile ? 0.98 : 0.95);
     
     newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
     newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
@@ -551,11 +616,16 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         modalDialog.style.transform = 'translate(-50%, -50%)';
         modalDialog.style.margin = '0';
         
-        // Для текстовых файлов устанавливаем размер квадрата на 50% от размера страницы
+        // Определяем, мобильное устройство или нет
+        const isMobile = window.innerWidth <= 767.98;
+        
+        // Для текстовых файлов устанавливаем размер квадрата
         if (type === 'text') {
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
-            const size = Math.min(viewportWidth * 0.5, viewportHeight * 0.5);
+            // На мобильных используем больше пространства
+            const sizeRatio = isMobile ? 0.95 : 0.5;
+            const size = Math.min(viewportWidth * sizeRatio, viewportHeight * sizeRatio);
             
             modalDialog.style.width = size + 'px';
             modalDialog.style.height = size + 'px';
@@ -569,11 +639,25 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
         } else {
-            modalDialog.style.width = 'auto';
-            modalDialog.style.maxWidth = 'none';
-            modalContent.style.width = '';
-            modalContent.style.height = '';
-            modalContent.style.maxWidth = '';
+            // На мобильных для других типов файлов используем максимум пространства
+            if (isMobile) {
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                modalDialog.style.width = (viewportWidth - 16) + 'px';
+                modalDialog.style.maxWidth = (viewportWidth - 16) + 'px';
+                modalDialog.style.height = (viewportHeight - 16) + 'px';
+                modalDialog.style.maxHeight = (viewportHeight - 16) + 'px';
+                modalContent.style.width = '100%';
+                modalContent.style.height = '100%';
+                modalContent.style.maxWidth = '100%';
+                modalContent.style.maxHeight = '100%';
+            } else {
+                modalDialog.style.width = 'auto';
+                modalDialog.style.maxWidth = 'none';
+                modalContent.style.width = '';
+                modalContent.style.height = '';
+                modalContent.style.maxWidth = '';
+            }
         }
     }
     

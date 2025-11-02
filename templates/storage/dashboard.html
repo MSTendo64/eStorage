@@ -357,6 +357,33 @@
     min-width: 0;
 }
 
+/* Чекбоксы в карточках - правильное позиционирование */
+.file-card-header .form-check-input,
+.folder-card-header .form-check-input {
+    margin-top: 0;
+    margin-right: 0.5rem;
+    margin-left: 0;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+}
+
+.file-card-header .d-flex,
+.folder-card-header .d-flex {
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+.file-card-title,
+.folder-card-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .file-card-title,
 .folder-card-title {
     font-size: 0.95rem;
@@ -401,6 +428,20 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Десктопная версия кнопок - горизонтальная сетка */
+.btn-group-grid-desktop {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.btn-group-grid-desktop .btn {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
 }
 
 /* Кнопка сортировки - улучшенная видимость */
@@ -788,152 +829,170 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Примонтированные папки (отображаются как обычные папки, но зеленые) -->
-                                {% for mounted in mounted_folders %}
-                                    <tr class="folder-row mounted-folder" data-filename="{{ mounted.folder.name|lower }}">
-                                        <td>
-                                            <input type="checkbox" class="form-check-input folder-checkbox" 
-                                                   value="mounted_{{ mounted.mounted.id }}" disabled>
-                                        </td>
-                                        <td>
-                                            <a href="{% if mounted.access.access_type == 'link' %}{% url 'shared_folder_view' mounted.access.share_token %}{% else %}{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}{% endif %}" 
-                                               style="text-decoration: none; color: inherit;">
-                                                <i class="fas fa-folder text-success me-2"></i>
-                                                <strong style="color: #28a745;">{{ mounted.folder.name }}</strong>
-                                                <small class="text-muted ms-2">(от {{ mounted.owner.username }})</small>
-                                            </a>
-                                        </td>
-                                        <td>Папка</td>
-                                        <td>{{ mounted.folder.get_files_count }} файлов</td>
-                                        <td>{{ mounted.mounted_at|date:"d.m.Y H:i" }}</td>
-                                        <td>
-                                            {% if mounted.access.access_type == 'link' %}
-                                                <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-folder-open"></i> Открыть
-                                                </a>
-                                            {% else %}
-                                                <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-folder-open"></i> Открыть
-                                                </a>
-                                            {% endif %}
-                                            <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mounted.mounted.id }})">
-                                                <i class="fas fa-unlink"></i> Отмонтировать
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                <!-- Папки -->
-                                {% for folder in folders %}
-                                    <tr class="folder-row" data-filename="{{ folder.name|lower }}">
-                                        <td>
-                                            <input type="checkbox" class="form-check-input folder-checkbox" 
-                                                   value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
-                                        </td>
-                                        <td>
-                                            <a href="{% url 'dashboard' %}?folder={{ folder.id }}" style="text-decoration: none; color: inherit;">
-                                                <i class="fas fa-folder text-warning me-2"></i>
-                                                <strong>{{ folder.name }}</strong>
-                                            </a>
-                                        </td>
-                                        <td>Папка</td>
-                                        <td>{{ folder.get_files_count }} файлов</td>
-                                        <td>{{ folder.created_at|date:"d.m.Y H:i" }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-success" onclick="showShareFolderModal({{ folder.id }})">
-                                                <i class="fas fa-share-alt"></i> Поделиться
-                                            </button>
-                                            {% for access in folder.shared_accesses.all %}
-                                                {% if access.owner == user %}
-                                                    <button class="btn btn-sm btn-warning" onclick="showAccessSettings({{ access.id }})">
-                                                        <i class="fas fa-cog"></i> Доступ
-                                                    </button>
-                                                    <button class="btn btn-sm btn-danger" onclick="revokeAccess({{ folder.id }})">
-                                                        <i class="fas fa-ban"></i> Отозвать
-                                                    </button>
-                                                {% endif %}
-                                            {% endfor %}
-                                            <button class="btn btn-sm btn-info" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
-                                                <i class="fas fa-edit"></i> Переименовать
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
-                                                <i class="fas fa-trash"></i> Удалить
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                <!-- Файлы -->
-                                {% for file in files %}
-                                    <tr class="file-row" 
-                                        data-filename="{{ file.filename|lower }}"
-                                        data-filesize="{{ file.file_size|default:0 }}"
-                                        data-uploaded="{{ file.uploaded_at|date:'U' }}">
-                                        <td>
-                                            <input type="checkbox" class="form-check-input file-checkbox" 
-                                                   value="{{ file.id }}" data-filename="{{ file.filename }}">
-                                        </td>
-                                        <td>
-                                            <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }} me-2"></i>
-                                            {{ file.filename }}
-                                        </td>
-                                        <td>{{ file.get_file_type_display }}</td>
-                                        <td class="file-size">{{ file.get_file_size_formatted|default:"—" }}</td>
-                                        <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
-                                        <td>
-                                            {% if file.is_image %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
-                                                </button>
-                                            {% elif file.is_video %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
-                                                </button>
-                                            {% elif file.is_audio %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
-                                                </button>
-                                            {% elif file.is_archive %}
-                                                <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
-                                                    <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
-                                                </button>
-                                                <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
-                                                    <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
-                                                </button>
-                                            {% elif file.is_text %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
-                                                </button>
-                                            {% elif file.is_document %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
-                                                </button>
-                                            {% elif file.is_code %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
-                                                </button>
-                                            {% endif %}
-                                            <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
-                                                <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
-                                                <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
-                                            </button>
-                                            <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
-                                                    onclick="togglePublicity('{{ file.id }}', this)"
-                                                    data-public="{{ file.is_public|yesno:'true,false' }}">
-                                                <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
-                                                {% if file.is_public %}
-                                                    {{ t.storage.file_list.actions.public }}
-                                                {% else %}
-                                                    {{ t.storage.file_list.actions.private }}
-                                                {% endif %}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <!-- Примонтированные папки -->
+                {% for mounted in mounted_folders %}
+                    <div class="folder-card-enhanced mb-3 mounted-folder-card" data-filename="{{ mounted.folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-mounted">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="mounted_{{ mounted.mounted.id }}" disabled>
+                                    <h6 class="folder-card-title mb-0">{{ mounted.folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-success">Примонтированная папка</span>
+                                    <span class="text-muted ms-2">{{ mounted.folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-user me-1"></i>{{ mounted.owner.username }}</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ mounted.mounted_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                {% if mounted.access.access_type == 'link' %}
+                                    <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mounted.mounted.id }})">
+                                    <i class="fas fa-unlink"></i> Отмонтировать
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                {% endfor %}
+                <!-- Обычные папки -->
+                {% for folder in folders %}
+                    <div class="folder-card-enhanced mb-3" data-filename="{{ folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-normal">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
+                                    <h6 class="folder-card-title mb-0">{{ folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-warning">Папка</span>
+                                    <span class="text-muted ms-2">{{ folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ folder.created_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                <a href="{% url 'dashboard' %}?folder={{ folder.id }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="showShareFolderModal({{ folder.id }})">
+                                    <i class="fas fa-share-alt"></i> Поделиться
+                                </button>
+                                {% for access in folder.shared_accesses.all %}
+                                    {% if access.owner == user %}
+                                        <button class="btn btn-sm btn-warning" onclick="showAccessSettings({{ access.id }})">
+                                            <i class="fas fa-cog"></i> Доступ
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="revokeAccess({{ folder.id }})">
+                                            <i class="fas fa-ban"></i> Отозвать
+                                        </button>
+                                    {% endif %}
+                                {% endfor %}
+                                <button class="btn btn-sm btn-info" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-edit"></i> Переименовать
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                <!-- Файлы -->
+                {% for file in files %}
+                    <div class="file-card-enhanced mb-3" 
+                         data-filename="{{ file.filename|lower }}"
+                         data-filesize="{{ file.file_size|default:0 }}"
+                         data-uploaded="{{ file.uploaded_at|date:'U' }}">
+                        <div class="file-card-header">
+                            <div class="file-card-icon-wrapper">
+                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }}"></i>
+                            </div>
+                            <div class="file-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input file-checkbox me-2" 
+                                           value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                    <h6 class="file-card-title mb-0">{{ file.filename }}</h6>
+                                </div>
+                                <div class="file-card-meta">
+                                    <span class="badge bg-secondary">{{ file.get_file_type_display }}</span>
+                                    <span class="text-muted ms-2">{{ file.get_file_size_formatted|default:"—" }}</span>
+                                    <span class="text-muted ms-2" data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}"><i class="fas fa-clock me-1"></i>{{ file.uploaded_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                {% if file.is_image %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_video %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                    </button>
+                                {% elif file.is_audio %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                    </button>
+                                {% elif file.is_archive %}
+                                    <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                        <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
+                                        <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    </button>
+                                {% elif file.is_text %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_document %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_code %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
+                                    <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                    <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+                                </button>
+                                <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
+                                        onclick="togglePublicity('{{ file.id }}', this)"
+                                        data-public="{{ file.is_public|yesno:'true,false' }}">
+                                    <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                    {% if file.is_public %}
+                                        {{ t.storage.file_list.actions.public }}
+                                    {% else %}
+                                        {{ t.storage.file_list.actions.private }}
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
 
             <!-- Мобильная версия (карточки) -->
@@ -1988,12 +2047,12 @@ function sortFiles(type, order) {
         sortLabel.textContent = sortLabels[`${type}-${order}`] || 'Сортировка';
     }
     
-    // Сортируем строки таблицы (десктопная версия) - включая папки и файлы
-    const tbody = document.querySelector('tbody');
-    if (tbody) {
-        const rows = Array.from(tbody.querySelectorAll('tr.file-row, tr.folder-row'));
+    // Сортируем карточки десктопной версии - включая папки и файлы
+    const desktopContainer = document.getElementById('desktopFilesContainer');
+    if (desktopContainer) {
+        const cards = Array.from(desktopContainer.querySelectorAll('.file-card-enhanced, .folder-card-enhanced'));
         
-        rows.sort((a, b) => {
+        cards.sort((a, b) => {
             let aValue, bValue;
             
             if (type === 'name') {
@@ -2014,8 +2073,8 @@ function sortFiles(type, order) {
             return 0;
         });
         
-        // Перемещаем отсортированные строки обратно в таблицу
-        rows.forEach(row => tbody.appendChild(row));
+        // Перемещаем отсортированные карточки обратно в контейнер
+        cards.forEach(card => desktopContainer.appendChild(card));
     }
     
     // Сортируем карточки (мобильная версия) - включая папки и файлы
@@ -2054,22 +2113,29 @@ const fileSearch = document.getElementById('fileSearch');
 if (fileSearch) {
     fileSearch.addEventListener('input', function(e) {
         const searchText = e.target.value.toLowerCase();
-        const fileRows = document.querySelectorAll('tbody tr.file-row, tbody tr.folder-row');
+        
+        // Десктопная версия - карточки
+        const desktopCards = document.querySelectorAll('#desktopFilesContainer .file-card-enhanced, #desktopFilesContainer .folder-card-enhanced');
+        
+        // Мобильная версия - карточки
+        const mobileCards = document.querySelectorAll('#mobileFilesContainer .file-card-enhanced, #mobileFilesContainer .folder-card-enhanced');
+        
         let visibleCount = 0;
         
-        fileRows.forEach(row => {
-            const fileName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        // Фильтруем десктопные карточки
+        desktopCards.forEach(card => {
+            const titleElement = card.querySelector('.file-card-title, .folder-card-title');
+            const fileName = titleElement ? titleElement.textContent.toLowerCase() : '';
             if (fileName.includes(searchText)) {
-                row.style.display = '';
+                card.style.display = '';
                 visibleCount++;
             } else {
-                row.style.display = 'none';
+                card.style.display = 'none';
             }
         });
         
-        // Также скрываем/показываем карточки в мобильной версии (файлы и папки)
-        const fileCards = document.querySelectorAll('.file-card-enhanced, .folder-card-enhanced');
-        fileCards.forEach(card => {
+        // Фильтруем мобильные карточки
+        mobileCards.forEach(card => {
             const titleElement = card.querySelector('.file-card-title, .folder-card-title');
             const fileName = titleElement ? titleElement.textContent.toLowerCase() : '';
             if (fileName.includes(searchText)) {
@@ -2079,8 +2145,8 @@ if (fileSearch) {
             }
         });
         
-        // Обновляем отображние "Нет файлов" если ничего не найдено
-        const noFilesMessage = document.querySelector('.table-responsive + p');
+        // Обновляем отображение "Нет файлов" если ничего не найдено
+        const noFilesMessage = document.querySelector('#desktopFilesContainer + p, #mobileFilesContainer + p');
         if (noFilesMessage) {
             if (visibleCount === 0) {
                 noFilesMessage.textContent = 'Файлы не найдены';
