@@ -2488,10 +2488,12 @@ window.prompt = function(message, defaultValue = '', title = 'Ввод') {
      margin: 0 auto;
  }
  
- /* Убираем эффект приподнятия при наведении для карточек аутентификации */
- .login-card-container .card:hover {
-     transform: none;
- }
+/* Убираем все эффекты hover для карточек аутентификации */
+.login-card-container .card:hover {
+    transform: none !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: none !important;
+}
  
  /* Мобильная адаптивность для форм аутентификации */
  @media (max-width: 767.98px) {
