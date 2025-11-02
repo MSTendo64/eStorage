@@ -199,7 +199,11 @@ def get_video_quality(request, file_id, quality):
 def get_optimal_quality(request, file_id):
     """API endpoint для получения оптимального качества видео на основе состояния сервера и сети"""
     try:
-        file = UserFile.objects.get(id=file_id, user=request.user)
+        try:
+            file = UserFile.objects.get(id=file_id, user=request.user)
+        except UserFile.DoesNotExist:
+            logger.error(f"File not found: {file_id}")
+            return create_json_response(False, 'Файл не найден', status=404)
         
         if not file.is_video:
             return create_json_response(False, 'Файл не является видео', status=400)
@@ -207,21 +211,37 @@ def get_optimal_quality(request, file_id):
         try:
             file_path = file.file.path
         except Exception as e:
-            logger.error(f"Error getting file path: {e}")
+            logger.error(f"Error getting file path for file_id {file_id}: {e}", exc_info=True)
             return create_json_response(False, f'Ошибка при получении пути к файлу: {str(e)}', status=500)
         
         if not os.path.exists(file_path):
+            logger.error(f"File path does not exist: {file_path}")
             return create_json_response(False, 'Файл не найден на диске', status=404)
         
-        metadata = get_video_metadata(file_path)
+        try:
+            metadata = get_video_metadata(file_path)
+        except Exception as e:
+            logger.error(f"Error getting video metadata: {e}", exc_info=True)
+            return create_json_response(False, f'Ошибка получения метаданных: {str(e)}', status=500)
+        
         if not metadata:
             return create_json_response(False, 'Не удалось получить метаданные видео', status=500)
         
         original_height = metadata.get('height')
         if not original_height:
+            logger.error(f"Could not determine original height for file_id {file_id}")
             return create_json_response(False, 'Не удалось определить исходное разрешение видео', status=500)
         
-        available_qualities = get_available_qualities(original_height)
+        try:
+            available_qualities = get_available_qualities(original_height)
+        except Exception as e:
+            logger.error(f"Error getting available qualities: {e}", exc_info=True)
+            return create_json_response(False, f'Ошибка получения доступных качеств: {str(e)}', status=500)
+        
+        # Проверяем, что есть доступные качества
+        if not available_qualities or len(available_qualities) == 0:
+            logger.warning(f"No available qualities for file_id {file_id}, using original height")
+            available_qualities = [original_height]
         
         # Получаем метрики от клиента
         try:
@@ -237,13 +257,22 @@ def get_optimal_quality(request, file_id):
         is_waiting = request.GET.get('is_waiting', 'false').lower() == 'true'  # видео остановилось
         
         # Получаем метрики сервера (упрощенная версия)
+        server_load = 0
+        cpu_percent = 0
+        memory_percent = 0
         try:
             import psutil
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            # Используем interval=None для неблокирующего вызова
+            cpu_percent = psutil.cpu_percent(interval=None)
             memory_percent = psutil.virtual_memory().percent
+            server_load = (cpu_percent + memory_percent) / 2
         except ImportError:
-            cpu_percent = 0
-            memory_percent = 0
+            # psutil не установлен - используем значения по умолчанию
+            server_load = 0
+        except Exception as e:
+            # Любая другая ошибка при получении метрик
+            logger.warning(f"Could not get server metrics: {e}")
+            server_load = 0
         
         # Определяем оптимальное качество
         optimal_quality = original_height
@@ -257,7 +286,6 @@ def get_optimal_quality(request, file_id):
                     break
         else:
             # Анализируем метрики
-            server_load = (cpu_percent + memory_percent) / 2
             
             # Если сервер перегружен (>80%), понижаем качество
             if server_load > 80:
@@ -288,12 +316,24 @@ def get_optimal_quality(request, file_id):
                         optimal_quality = q
                         break
         
+        # Определяем рекомендацию
+        try:
+            if is_waiting or (buffer_health is not None and buffer_health < 20) or (network_speed is not None and network_speed < 100000):
+                recommendation = 'decrease'
+            elif buffer_health is not None and buffer_health > 80 and network_speed is not None and network_speed > 500000:
+                recommendation = 'increase'
+            else:
+                recommendation = 'maintain'
+        except Exception as e:
+            logger.warning(f"Error determining recommendation: {e}")
+            recommendation = 'maintain'
+        
         return JsonResponse({
             'success': True,
             'optimal_quality': optimal_quality,
             'available_qualities': available_qualities,
             'server_load': server_load,
-            'recommendation': 'decrease' if is_waiting or (buffer_health and buffer_health < 20) or (network_speed and network_speed < 100000) else 'increase' if (buffer_health and buffer_health > 80 and network_speed and network_speed > 500000) else 'maintain'
+            'recommendation': recommendation
         })
         
     except UserFile.DoesNotExist:
@@ -306,7 +346,11 @@ def get_optimal_quality(request, file_id):
 def get_optimal_quality_public(request, token):
     """API endpoint для получения оптимального качества публичного видео"""
     try:
-        file = UserFile.objects.get(public_token=token, is_public=True)
+        try:
+            file = UserFile.objects.get(public_token=token, is_public=True)
+        except UserFile.DoesNotExist:
+            logger.error(f"Public file not found with token: {token}")
+            return create_json_response(False, 'Файл не найден или недоступен', status=404)
         
         if not file.is_video:
             return create_json_response(False, 'Файл не является видео', status=400)
@@ -314,21 +358,37 @@ def get_optimal_quality_public(request, token):
         try:
             file_path = file.file.path
         except Exception as e:
-            logger.error(f"Error getting file path: {e}")
+            logger.error(f"Error getting file path for token {token}: {e}", exc_info=True)
             return create_json_response(False, f'Ошибка при получении пути к файлу: {str(e)}', status=500)
         
         if not os.path.exists(file_path):
+            logger.error(f"File path does not exist: {file_path}")
             return create_json_response(False, 'Файл не найден на диске', status=404)
         
-        metadata = get_video_metadata(file_path)
+        try:
+            metadata = get_video_metadata(file_path)
+        except Exception as e:
+            logger.error(f"Error getting video metadata for token {token}: {e}", exc_info=True)
+            return create_json_response(False, f'Ошибка получения метаданных: {str(e)}', status=500)
+        
         if not metadata:
             return create_json_response(False, 'Не удалось получить метаданные видео', status=500)
         
         original_height = metadata.get('height')
         if not original_height:
+            logger.error(f"Could not determine original height for token {token}")
             return create_json_response(False, 'Не удалось определить исходное разрешение видео', status=500)
         
-        available_qualities = get_available_qualities(original_height)
+        try:
+            available_qualities = get_available_qualities(original_height)
+        except Exception as e:
+            logger.error(f"Error getting available qualities for token {token}: {e}", exc_info=True)
+            return create_json_response(False, f'Ошибка получения доступных качеств: {str(e)}', status=500)
+        
+        # Проверяем, что есть доступные качества
+        if not available_qualities or len(available_qualities) == 0:
+            logger.warning(f"No available qualities for token {token}, using original height")
+            available_qualities = [original_height]
         
         # Получаем метрики от клиента
         try:
@@ -344,13 +404,22 @@ def get_optimal_quality_public(request, token):
         is_waiting = request.GET.get('is_waiting', 'false').lower() == 'true'
         
         # Получаем метрики сервера
+        server_load = 0
+        cpu_percent = 0
+        memory_percent = 0
         try:
             import psutil
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            # Используем interval=None для неблокирующего вызова
+            cpu_percent = psutil.cpu_percent(interval=None)
             memory_percent = psutil.virtual_memory().percent
+            server_load = (cpu_percent + memory_percent) / 2
         except ImportError:
-            cpu_percent = 0
-            memory_percent = 0
+            # psutil не установлен - используем значения по умолчанию
+            server_load = 0
+        except Exception as e:
+            # Любая другая ошибка при получении метрик
+            logger.warning(f"Could not get server metrics: {e}")
+            server_load = 0
         
         # Определяем оптимальное качество (та же логика)
         optimal_quality = original_height
@@ -361,7 +430,6 @@ def get_optimal_quality_public(request, token):
                     optimal_quality = q
                     break
         else:
-            server_load = (cpu_percent + memory_percent) / 2
             
             if server_load > 80:
                 for q in reversed(available_qualities):
@@ -387,12 +455,24 @@ def get_optimal_quality_public(request, token):
                         optimal_quality = q
                         break
         
+        # Определяем рекомендацию
+        try:
+            if is_waiting or (buffer_health is not None and buffer_health < 20) or (network_speed is not None and network_speed < 100000):
+                recommendation = 'decrease'
+            elif buffer_health is not None and buffer_health > 80 and network_speed is not None and network_speed > 500000:
+                recommendation = 'increase'
+            else:
+                recommendation = 'maintain'
+        except Exception as e:
+            logger.warning(f"Error determining recommendation: {e}")
+            recommendation = 'maintain'
+        
         return JsonResponse({
             'success': True,
             'optimal_quality': optimal_quality,
             'available_qualities': available_qualities,
             'server_load': server_load,
-            'recommendation': 'decrease' if is_waiting or (buffer_health and buffer_health < 20) or (network_speed and network_speed < 100000) else 'increase' if (buffer_health and buffer_health > 80 and network_speed and network_speed > 500000) else 'maintain'
+            'recommendation': recommendation
         })
         
     except UserFile.DoesNotExist:
