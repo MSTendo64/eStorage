@@ -114,67 +114,99 @@ html {
     transform: none;
 }
 
-/* Мобильные устройства - увеличенный размер модального окна */
+    /* Мобильные устройства - модальное окно занимает 40% страницы */
 @media (max-width: 767.98px) {
     #previewModal .modal-dialog {
-        margin: 0.5rem;
-        width: calc(100% - 1rem);
-        max-width: calc(100% - 1rem);
-        min-height: calc(100vh - 1rem);
-        height: calc(100vh - 1rem);
+        margin: auto;
+        width: 90%;
+        max-width: 90%;
+        height: 40vh;
+        min-height: 40vh;
+        max-height: 40vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
     
     #previewModal .modal-content {
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: 100vh;
+        max-height: 100%;
         border-radius: 0.75rem;
+        display: flex;
+        flex-direction: column;
     }
     
     #previewModal .modal-body {
-        max-height: calc(100vh - 80px);
-        height: calc(100vh - 80px);
+        flex: 1;
+        overflow: auto;
         padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     #previewContent {
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 80px);
+        max-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     #previewContent img {
         max-width: 100%;
-        max-height: calc(100vh - 80px);
+        max-height: 100%;
         width: auto;
         height: auto;
         object-fit: contain;
     }
     
-    #previewContent video,
-    #previewContent audio {
+    #previewContent video {
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 80px);
+        max-height: 100%;
         object-fit: contain;
+    }
+    
+    #previewContent audio {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
     }
     
     .plyr {
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 80px);
+        max-height: 100%;
     }
     
     .plyr video {
         width: 100%;
         height: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 80px);
+        max-height: 100%;
         object-fit: contain;
+    }
+    
+    .plyr--audio {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Скрываем resize-handle на мобильных */
+    #previewModal .resize-handle {
+        display: none !important;
     }
 }
 {% endif %}
@@ -182,6 +214,18 @@ html {
 .resize-handle {
     background: transparent;
     border: none;
+}
+
+/* Скрываем resize-handle для аудио файлов */
+#previewContent audio ~ .resize-handle,
+#previewContent .plyr--audio ~ .resize-handle,
+#previewContent [class*="audio"] ~ .resize-handle {
+    display: none !important;
+}
+
+.unified-player:has(audio) .resize-handle,
+.unified-player:has(.plyr--audio) .resize-handle {
+    display: none !important;
 }
 
 .resize-handle::after {
@@ -639,14 +683,15 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
         } else {
-            // На мобильных для других типов файлов используем максимум пространства
+            // На мобильных для других типов файлов используем 40% от высоты экрана
             if (isMobile) {
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
-                modalDialog.style.width = (viewportWidth - 16) + 'px';
-                modalDialog.style.maxWidth = (viewportWidth - 16) + 'px';
-                modalDialog.style.height = (viewportHeight - 16) + 'px';
-                modalDialog.style.maxHeight = (viewportHeight - 16) + 'px';
+                modalDialog.style.width = '90%';
+                modalDialog.style.maxWidth = '90%';
+                modalDialog.style.height = '40vh';
+                modalDialog.style.minHeight = '40vh';
+                modalDialog.style.maxHeight = '40vh';
                 modalContent.style.width = '100%';
                 modalContent.style.height = '100%';
                 modalContent.style.maxWidth = '100%';
@@ -664,8 +709,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     modal.show();
     
     // Инициализируем resize после показа модального окна (без drag and drop)
+    // Не инициализируем resize для аудио
     setTimeout(() => {
-        initDragAndResize();
+        if (type !== 'audio') {
+            initDragAndResize();
+        }
         // Обновляем цвет заголовка после показа
         if (header && title) {
             updatePlayerHeaderColor(header, title);
@@ -707,6 +755,19 @@ function initDragAndResize() {
     const resizeHandles = document.querySelectorAll('#previewModal .resize-handle');
     
     if (!modalDialog || !modalContent || !header) return;
+    
+    // Проверяем, не является ли это аудио файлом
+    const previewContent = document.getElementById('previewContent');
+    if (previewContent) {
+        const audioElements = previewContent.querySelectorAll('audio, .plyr--audio, [class*="audio"]');
+        if (audioElements.length > 0) {
+            // Скрываем resize-handle для аудио
+            resizeHandles.forEach(handle => {
+                if (handle) handle.style.display = 'none';
+            });
+            return; // Не инициализируем resize для аудио
+        }
+    }
     
     // Обновляем цвет текста периодически и при изменениях
     updateTitleColor();
@@ -836,11 +897,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    // Инициализируем drag and resize для публичного просмотра (только для видео)
-    if (playerType === 'video') {
+    // Инициализируем drag and resize для публичного просмотра (только для видео и изображений, не для аудио)
+    if (playerType === 'video' || playerType === 'image') {
         setTimeout(() => {
             initPublicDragAndResize();
         }, 100);
+    }
+    // Для аудио скрываем resize-handle
+    if (playerType === 'audio') {
+        const resizeHandles = playerElement.querySelectorAll('.resize-handle');
+        resizeHandles.forEach(handle => {
+            if (handle) handle.style.display = 'none';
+        });
     }
     
     // Обновляем цвет при изменении темы
