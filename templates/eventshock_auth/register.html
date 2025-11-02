@@ -221,23 +221,7 @@
 </style>
 
 <script>
-// Функция для переключения видимости пароля
-function togglePassword(inputId) {
-    const input = document.getElementById(inputId);
-    const container = input.closest('.d-flex.align-items-center');
-    const button = container ? container.querySelector('button') : null;
-    const icon = button ? button.querySelector('i') : null;
-    
-    if (!icon) return;
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fas fa-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'fas fa-eye';
-    }
-}
+// Функция togglePassword доступна из base.html
 
 // Интерактивная капча
 const handle = document.getElementById('sliderHandle');

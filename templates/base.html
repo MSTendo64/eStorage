@@ -149,6 +149,138 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
             transform: translateY(-2px);
         }
+        
+        /* Улучшенные карточки файлов и папок */
+        .file-card-enhanced,
+        .folder-card-enhanced {
+            background: var(--bs-body-bg, #ffffff);
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .file-card-enhanced:hover,
+        .folder-card-enhanced:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+            border-color: var(--bs-primary, #0d6efd);
+        }
+        
+        .file-card-header,
+        .folder-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+        }
+        
+        .file-card-icon-wrapper,
+        .folder-card-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .file-card-icon-wrapper {
+            background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+        }
+
+        .folder-card-icon-wrapper {
+            background: rgba(255, 193, 7, 0.15);
+        }
+        
+        .file-card-icon-wrapper i,
+        .folder-card-icon-wrapper i {
+            font-size: 1.5rem;
+        }
+        
+        .file-card-title,
+        .folder-card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            color: var(--bs-body-color, #1a1d21);
+        }
+        
+        .file-card-header .form-check-input,
+        .folder-card-header .form-check-input {
+            margin-top: 0;
+            margin-right: 0.5rem;
+            margin-left: 0;
+            flex-shrink: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+        
+        .file-card-info,
+        .folder-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-card-meta,
+        .folder-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .file-card-actions,
+        .folder-card-actions {
+            margin-top: 0.75rem;
+        }
+        
+        .btn-group-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .btn-group-grid .btn {
+            width: 100%;
+            margin-bottom: 0;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        @media (min-width: 768px) {
+            .btn-group-grid-desktop {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+        }
+        
+        .file-card-header .d-flex,
+        .folder-card-header .d-flex {
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+        }
+        
+        .file-card-title,
+        .folder-card-title {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         @media (min-width: 992px) {
             .card {
@@ -1083,6 +1215,35 @@
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1051;
+    }
+    
+    .dropdown-item {
+        padding: 0.625rem 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .dropdown-item:hover {
+        background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+        color: var(--bs-primary, #0d6efd);
+    }
+    
+    /* Улучшенные стили для dropdown кнопок */
+    .dropdown .btn-secondary {
+        background-color: var(--bs-secondary, #6c757d) !important;
+        border-color: var(--bs-secondary, #6c757d) !important;
+        color: white !important;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dropdown .btn-secondary:hover {
+        background-color: #5a6268 !important;
+        border-color: #5a6268 !important;
+        color: white !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
     /* Улучшенная читаемость для теной темы */
@@ -2430,6 +2591,36 @@ window.prompt = function(message, defaultValue = '', title = 'Ввод') {
      }
  }
  </style>
+
+ <script>
+ /* ========== ОБЩИЕ УТИЛИТЫ ДЛЯ ФОРМ АУТЕНТИФИКАЦИИ ========== */
+ 
+ /**
+  * Переключение видимости пароля в полях ввода
+  * @param {string} inputId - ID поля ввода с паролем
+  */
+ function togglePassword(inputId) {
+     const input = document.getElementById(inputId);
+     if (!input) return;
+     
+     const container = input.closest('.d-flex.align-items-center');
+     const button = container ? container.querySelector('button') : null;
+     const icon = button ? button.querySelector('i') : null;
+     
+     if (!icon) return;
+     
+     if (input.type === 'password') {
+         input.type = 'text';
+         icon.className = 'fas fa-eye-slash';
+     } else {
+         input.type = 'password';
+         icon.className = 'fas fa-eye';
+     }
+ }
+ 
+ // Делаем функцию доступной глобально
+ window.togglePassword = togglePassword;
+ </script>
 
  </body>
  </html>
