@@ -682,82 +682,44 @@ class AdaptiveBitrateManager {
         // Измеряем скорость загрузки через загрузку небольшого фрагмента
         this.measureNetworkSpeed();
         
-        this.speedCheckInterval = setInterval(() => {
-            this.updateSpeedMeasurement();
-            // Повторяем измерение скорости каждые 10 секунд
-            if (Date.now() - this.lastSpeedMeasurement > 10000) {
-                this.measureNetworkSpeed();
-            }
-        }, 2000);
+               this.speedCheckInterval = setInterval(() => {
+                   this.updateSpeedMeasurement();
+                   // Инициализируем скорость при первом запуске, если еще не измерена
+                   if (!this.networkSpeed && Date.now() - this.lastSpeedMeasurement > 5000) {
+                       this.measureNetworkSpeed();
+                   }
+               }, 2000);
     }
     
     /**
      * Измеряет скорость сети через загрузку фрагмента файла
+     * Упрощенная версия - используем только оценку на основе буфера
      */
     async measureNetworkSpeed() {
-        try {
-            let qualityUrl;
-            if (this.type === 'video') {
-                if (this.isPublic && this.fileToken) {
-                    qualityUrl = `/storage/public/video-quality/${this.fileToken}/${this.currentQuality}/`;
-                } else {
-                    qualityUrl = `/storage/video-quality/${this.fileId}/${this.currentQuality}/`;
-                }
-            } else {
-                qualityUrl = this.mediaElement.getAttribute('data-original-url');
-            }
-            
-            const startTime = Date.now();
-            const response = await fetch(qualityUrl, {
-                method: 'HEAD',
-                headers: { 'Range': 'bytes=0-1048576' } // Запрашиваем первые 1MB для измерения
-            });
-            
-            const endTime = Date.now();
-            const contentLength = response.headers.get('content-length') || response.headers.get('content-range');
-            
-            if (contentLength) {
-                // Если есть Range, извлекаем общий размер
-                const totalSize = contentLength.includes('/') 
-                    ? parseInt(contentLength.split('/')[1])
-                    : parseInt(contentLength);
-                
-                // Запрашиваем небольшой фрагмент для точного измерения
-                const testResponse = await fetch(qualityUrl, {
-                    headers: { 'Range': 'bytes=0-1048576' } // 1MB для теста
-                });
-                
-                const testData = await testResponse.blob();
-                const testTime = Date.now() - startTime;
-                
-                if (testTime > 0 && testData.size > 0) {
-                    // Скорость в байтах в секунду
-                    const measuredSpeed = (testData.size / testTime) * 1000;
-                    
-                    // Используем скользящее среднее для сглаживания
-                    if (this.networkSpeed) {
-                        this.networkSpeed = (this.networkSpeed * 0.7) + (measuredSpeed * 0.3);
-                    } else {
-                        this.networkSpeed = measuredSpeed;
-                    }
-                    
-                    this.lastSpeedMeasurement = Date.now();
-                }
-            }
-        } catch (e) {
-            console.warn('Ошибка измерения скорости сети:', e);
+        // Пропускаем прямое измерение через загрузку файла
+        // Используем только оценку на основе буфера в updateSpeedMeasurement
+        // Это избегает ошибок ERR_CONTENT_LENGTH_MISMATCH и лишней нагрузки на сервер
+        
+        // Если скорость еще не измерена, используем начальную оценку
+        if (!this.networkSpeed) {
+            // Начальная оценка: предполагаем среднюю скорость 2 Мбит/с (250 KB/s)
+            this.networkSpeed = 250000; // 250 KB/s в байтах/сек
         }
+        
+        this.lastSpeedMeasurement = Date.now();
     }
     
     /**
      * Обновляет измерение скорости загрузки на основе буфера
      */
     updateSpeedMeasurement() {
-        if (!this.mediaElement.buffered || this.mediaElement.buffered.length === 0) return;
+        if (!this.mediaElement.buffered || this.mediaElement.buffered.length === 0) {
+            return;
+        }
         
         try {
             const bufferedEnd = this.mediaElement.buffered.end(this.mediaElement.buffered.length - 1);
-            const currentTime = this.mediaElement.currentTime;
+            const currentTime = this.mediaElement.currentTime || 0;
             const bufferDuration = bufferedEnd - currentTime;
             
             // Вычисляем здоровье буфера
@@ -770,14 +732,37 @@ class AdaptiveBitrateManager {
             
             if (timeDelta > 0.5 && bufferedEnd > this.lastBufferedEnd) {
                 // Приблизительная оценка скорости на основе роста буфера
-                const bufferGrowth = bufferedEnd - this.lastBufferedEnd;
-                // Предполагаем средний битрейт около 2 Мбит/с для видео (250 KB/s)
-                const estimatedBytesPerSecond = bufferGrowth * 250000;
-                const estimatedSpeed = estimatedBytesPerSecond / timeDelta;
+                const bufferGrowth = bufferedEnd - this.lastBufferedEnd; // секунды
                 
-                if (this.networkSpeed) {
-                    // Обновляем с небольшой коррекцией на основе буфера
-                    this.networkSpeed = (this.networkSpeed * 0.9) + (estimatedSpeed * 0.1);
+                // Оцениваем битрейт на основе текущего качества
+                // Примерные битрейты для разных разрешений (в байтах/сек):
+                let estimatedBitrate;
+                if (this.currentQuality >= 1080) {
+                    estimatedBitrate = 5000000; // 5 Мбит/с для 1080p и выше (~625 KB/s)
+                } else if (this.currentQuality >= 720) {
+                    estimatedBitrate = 2500000; // 2.5 Мбит/с для 720p (~312 KB/s)
+                } else if (this.currentQuality >= 480) {
+                    estimatedBitrate = 1250000; // 1.25 Мбит/с для 480p (~156 KB/s)
+                } else {
+                    estimatedBitrate = 625000; // 625 Кбит/с для 360p и ниже (~78 KB/s)
+                }
+                
+                // Преобразуем битрейт в байты/сек для видео
+                const bytesPerSecond = estimatedBitrate / 8;
+                
+                // Оцениваем скорость на основе роста буфера (секунды * битрейт)
+                const estimatedSpeed = (bufferGrowth * bytesPerSecond) / timeDelta;
+                
+                if (estimatedSpeed > 0 && isFinite(estimatedSpeed)) {
+                    if (this.networkSpeed) {
+                        // Обновляем с небольшой коррекцией на основе буфера
+                        this.networkSpeed = (this.networkSpeed * 0.85) + (estimatedSpeed * 0.15);
+                    } else {
+                        this.networkSpeed = estimatedSpeed;
+                    }
+                    
+                    // Ограничиваем разумными пределами (от 10 KB/s до 10 MB/s)
+                    this.networkSpeed = Math.max(10000, Math.min(10000000, this.networkSpeed));
                 }
             }
             
