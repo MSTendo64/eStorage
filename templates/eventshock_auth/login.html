@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row justify-content-center mx-0">
-    <div class="col-12 col-md-8 col-lg-6">
+    <div class="col-12 col-md-6 col-lg-4">
         <div class="card border-primary">
             <div class="card-header bg-primary text-white">
                 <h3 class="text-center mb-0">
@@ -26,22 +26,22 @@
                 <form method="post" class="esuid-form">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="username" class="form-label">Имя пользователя или Email</label>
-                        <div class="input-group flex-column flex-md-row">
-                            <span class="input-group-text w-100 w-md-auto">
-                                <i class="fas fa-user"></i>
-                            </span>
-                            <input type="text" class="form-control w-100" id="username" name="username" required>
+                        <label for="username" class="form-label d-flex align-items-center">
+                            <i class="fas fa-user me-2"></i>
+                            Имя пользователя или Email
+                        </label>
+                        <div class="d-flex align-items-center">
+                            <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Пароль</label>
-                        <div class="input-group flex-column flex-md-row">
-                            <span class="input-group-text w-100 w-md-auto">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                            <input type="password" class="form-control w-100" id="password" name="password" required>
-                            <button class="btn btn-outline-secondary w-100 w-md-auto mt-2 mt-md-0" type="button" onclick="togglePassword('password')">
+                        <label for="password" class="form-label d-flex align-items-center">
+                            <i class="fas fa-lock me-2"></i>
+                            Пароль
+                        </label>
+                        <div class="d-flex align-items-center">
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <button class="btn btn-outline-secondary ms-2" type="button" onclick="togglePassword('password')" style="flex-shrink: 0;">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -101,18 +101,24 @@
     color: #0a58ca !important;
 }
 
-.esuid-form .input-group-text {
-    background-color: var(--bs-primary);
-    color: white;
-    border-color: var(--bs-primary);
-    min-width: 45px;
-    justify-content: center;
+.esuid-form .form-label {
+    margin-bottom: 0.5rem;
+}
+
+.esuid-form .form-label i {
+    font-size: 1rem;
+}
+
+.esuid-form .form-control {
+    border-width: 2px;
+    border-style: solid;
+    padding: 0.75rem;
 }
 
 [data-bs-theme="light"] .esuid-form .form-control {
     background-color: #ffffff !important;
     color: #1a1d21 !important;
-    border-color: #ced4da !important;
+    border-color: #adb5bd !important;
     width: 100%;
     max-width: 100%;
 }
@@ -121,7 +127,22 @@
     background-color: #ffffff !important;
     color: #1a1d21 !important;
     border-color: var(--bs-primary) !important;
+    border-width: 2px;
     box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+[data-bs-theme="dark"] .esuid-form .form-control {
+    border-width: 2px;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .esuid-form .form-control:focus {
+    border-width: 2px;
+    border-color: var(--bs-primary) !important;
+}
+
+.esuid-form .d-flex.align-items-center {
+    gap: 0;
 }
 
 [data-bs-theme="light"] .form-label {
@@ -142,25 +163,17 @@
 
 /* Мобильная адаптивность для формы входа */
 @media (max-width: 767.98px) {
-    .esuid-form .input-group {
-        flex-wrap: wrap;
+    .esuid-form .d-flex.align-items-center {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .esuid-form .input-group-text {
+    .esuid-form .d-flex.align-items-center .form-control {
         width: 100%;
-        border-radius: 0.375rem 0.375rem 0 0 !important;
-        border-bottom: none;
+        margin-bottom: 0.5rem;
     }
 
-    .esuid-form .input-group .form-control {
-        border-radius: 0 !important;
-        border-top: none;
-        width: 100%;
-    }
-
-    .esuid-form .input-group .btn {
-        border-radius: 0 0 0.375rem 0.375rem !important;
-        border-top: none;
+    .esuid-form .d-flex.align-items-center .btn {
         width: 100%;
     }
 
@@ -218,7 +231,11 @@
 <script>
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
-    const icon = input.nextElementSibling.querySelector('i');
+    const container = input.closest('.d-flex.align-items-center');
+    const button = container ? container.querySelector('button') : null;
+    const icon = button ? button.querySelector('i') : null;
+    
+    if (!icon) return;
     
     if (input.type === 'password') {
         input.type = 'text';
