@@ -603,7 +603,7 @@ class AdaptiveBitrateManager {
         this.type = type;
         this.availableQualities = availableQualities.sort((a, b) => b - a); // Сортируем от высокого к низкому
         this.originalHeight = originalHeight;
-        this.currentQuality = originalHeight;
+        this.currentQuality = originalHeight; // Временно, будет обновлено при запросе у сервера
         this.currentQualityIndex = this.availableQualities.indexOf(originalHeight);
         if (this.currentQualityIndex === -1) {
             this.currentQualityIndex = 0; // Начинаем с самого высокого качества
@@ -630,9 +630,12 @@ class AdaptiveBitrateManager {
     /**
      * Начинает мониторинг и адаптивное переключение качества
      */
-    start() {
+    async start() {
         // Начинаем с измерения скорости загрузки
         this.startSpeedMeasurement();
+        
+        // Запрашиваем оптимальное качество у сервера при старте
+        await this.initializeOptimalQuality();
         
         // Начинаем мониторинг буфера каждые 2 секунды
         this.checkInterval = setInterval(() => {
@@ -645,19 +648,13 @@ class AdaptiveBitrateManager {
         });
         
         this.mediaElement.addEventListener('waiting', () => {
-            // Видео остановилось из-за нехватки данных - понижаем качество
-            if (this.currentQualityIndex < this.availableQualities.length - 1) {
-                this.decreaseQuality();
-            }
+            // Видео остановилось из-за нехватки данных - запрашиваем оптимальное качество у сервера
+            this.checkAndAdjustQuality();
         });
         
         this.mediaElement.addEventListener('canplaythrough', () => {
-            // Буфер заполнен - можно попробовать повысить качество
-            if (this.bufferHealth > this.BUFFER_THRESHOLD_HIGH && 
-                this.networkSpeed > this.SPEED_THRESHOLD_HIGH &&
-                this.currentQualityIndex > 0) {
-                this.increaseQuality();
-            }
+            // При заполнении буфера запрашиваем оптимальное качество у сервера
+            this.checkAndAdjustQuality();
         });
     }
     
@@ -792,9 +789,49 @@ class AdaptiveBitrateManager {
     }
     
     /**
-     * Проверяет условия и при необходимости переключает качество
+     * Инициализирует оптимальное качество при старте
      */
-    checkAndAdjustQuality() {
+    async initializeOptimalQuality() {
+        try {
+            const optimalQualityUrl = this.isPublic && this.fileToken
+                ? `/storage/public/optimal-quality/${this.fileToken}/`
+                : `/storage/optimal-quality/${this.fileId}/`;
+            
+            const params = new URLSearchParams({
+                network_speed: 0, // При инициализации скорость еще не известна
+                buffer_health: 100,
+                is_waiting: 'false'
+            });
+            
+            const response = await fetch(`${optimalQualityUrl}?${params.toString()}`);
+            const data = await response.json();
+            
+            if (data.success && data.optimal_quality) {
+                const optimalQuality = data.optimal_quality;
+                const optimalIndex = this.availableQualities.indexOf(optimalQuality);
+                
+                if (optimalIndex !== -1) {
+                    this.currentQuality = optimalQuality;
+                    this.currentQualityIndex = optimalIndex;
+                    
+                    // Переключаем качество только если оно отличается от загруженного
+                    // и медиа еще не загружено полностью
+                    if (optimalQuality !== this.originalHeight && 
+                        this.mediaElement.readyState < 3 && 
+                        !this.mediaElement.currentTime) {
+                        await this.switchQuality(optimalQuality, optimalIndex);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Ошибка инициализации оптимального качества:', e);
+        }
+    }
+    
+    /**
+     * Проверяет условия и при необходимости переключает качество через сервер
+     */
+    async checkAndAdjustQuality() {
         if (!this.mediaElement.buffered || this.mediaElement.buffered.length === 0) return;
         
         try {
@@ -804,25 +841,58 @@ class AdaptiveBitrateManager {
             const idealBuffer = 10;
             this.bufferHealth = Math.min(100, (bufferDuration / idealBuffer) * 100);
             
-            // Логика переключения качества
-            const shouldDecrease = this.bufferHealth < this.BUFFER_THRESHOLD_LOW || 
-                                   (this.networkSpeed && this.networkSpeed < this.SPEED_THRESHOLD_LOW);
+            // Получаем оптимальное качество от сервера
+            const isWaiting = this.mediaElement.readyState < 3; // Медиа не готово к воспроизведению
             
-            const shouldIncrease = this.bufferHealth > this.BUFFER_THRESHOLD_HIGH && 
-                                  this.networkSpeed > this.SPEED_THRESHOLD_HIGH &&
-                                  this.currentQualityIndex > 0;
+            const optimalQualityUrl = this.isPublic && this.fileToken
+                ? `/storage/public/optimal-quality/${this.fileToken}/`
+                : `/storage/optimal-quality/${this.fileId}/`;
             
-            if (shouldDecrease && this.currentQualityIndex < this.availableQualities.length - 1) {
-                this.decreaseQuality();
-            } else if (shouldIncrease && this.currentQualityIndex > 0) {
-                // Не повышаем качество слишком часто
-                const timeSinceLastChange = Date.now() - (this.lastQualityChange || 0);
-                if (timeSinceLastChange > 5000) { // Минимум 5 секунд между повышениями
-                    this.increaseQuality();
+            const params = new URLSearchParams({
+                network_speed: this.networkSpeed || 0,
+                buffer_health: this.bufferHealth || 100,
+                is_waiting: isWaiting ? 'true' : 'false'
+            });
+            
+            const response = await fetch(`${optimalQualityUrl}?${params.toString()}`);
+            const data = await response.json();
+            
+            if (data.success && data.optimal_quality) {
+                const optimalQuality = data.optimal_quality;
+                
+                // Если оптимальное качество отличается от текущего, переключаем
+                if (optimalQuality !== this.currentQuality) {
+                    const optimalIndex = this.availableQualities.indexOf(optimalQuality);
+                    if (optimalIndex !== -1 && optimalIndex !== this.currentQualityIndex) {
+                        await this.switchQuality(optimalQuality, optimalIndex);
+                    }
                 }
             }
         } catch (e) {
             console.warn('Ошибка проверки качества:', e);
+            // Fallback на клиентскую логику при ошибке сервера
+            this.checkAndAdjustQualityFallback();
+        }
+    }
+    
+    /**
+     * Резервная клиентская логика переключения качества
+     */
+    checkAndAdjustQualityFallback() {
+        const shouldDecrease = this.bufferHealth < this.BUFFER_THRESHOLD_LOW || 
+                               (this.networkSpeed && this.networkSpeed < this.SPEED_THRESHOLD_LOW);
+        
+        const shouldIncrease = this.bufferHealth > this.BUFFER_THRESHOLD_HIGH && 
+                              this.networkSpeed > this.SPEED_THRESHOLD_HIGH &&
+                              this.currentQualityIndex > 0;
+        
+        if (shouldDecrease && this.currentQualityIndex < this.availableQualities.length - 1) {
+            this.decreaseQuality();
+        } else if (shouldIncrease && this.currentQualityIndex > 0) {
+            const timeSinceLastChange = Date.now() - (this.lastQualityChange || 0);
+            if (timeSinceLastChange > 5000) {
+                this.increaseQuality();
+            }
         }
     }
     

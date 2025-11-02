@@ -20,6 +20,8 @@ from .video_operations import (
     get_public_file_metadata,
     get_video_quality,
     get_public_video_quality,
+    get_optimal_quality,
+    get_optimal_quality_public,
     public_file
 )
 from .bulk_operations import (
@@ -87,6 +89,8 @@ __all__ = [
     'get_public_file_metadata',
     'get_video_quality',
     'get_public_video_quality',
+    'get_optimal_quality',
+    'get_optimal_quality_public',
     'public_file',
     # Bulk operations
     'bulk_delete',
