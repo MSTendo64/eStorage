@@ -293,6 +293,8 @@
         max-width: 100%;
         margin: 0;
         padding: 0 1rem;
+        transform: scale(0.95);
+        transform-origin: center top;
     }
     
     .esuid-form .d-flex.align-items-center {
@@ -304,12 +306,34 @@
         width: 100%;
         margin-bottom: 0;
         flex: 1;
+        font-size: 18px !important;
+        padding: 1rem !important;
+        min-height: 48px;
     }
 
     .esuid-form .d-flex.align-items-center .btn {
         width: auto;
         flex-shrink: 0;
         margin-left: 0.5rem;
+        font-size: 18px !important;
+        padding: 1rem !important;
+        min-width: 48px;
+        min-height: 48px;
+    }
+    
+    .esuid-form .form-label {
+        font-size: 16px !important;
+        margin-bottom: 0.75rem;
+    }
+    
+    .esuid-form .form-label i {
+        font-size: 1.2rem !important;
+    }
+    
+    .btn-primary.btn-lg {
+        font-size: 18px !important;
+        padding: 1rem 1.5rem !important;
+        min-height: 52px;
     }
 
     .card {
@@ -318,23 +342,27 @@
     }
 
     .card-header {
-        padding: 1rem;
+        padding: 1.25rem !important;
     }
 
     .card-body {
-        padding: 1rem;
+        padding: 1.5rem !important;
     }
 
     h3 {
-        font-size: 1.25rem;
+        font-size: 1.5rem !important;
     }
 
     h4 {
-        font-size: 1.1rem;
+        font-size: 1.25rem !important;
+    }
+    
+    p, small {
+        font-size: 14px !important;
     }
 
     .fa-3x {
-        font-size: 2rem !important;
+        font-size: 2.5rem !important;
     }
     
     /* Исправление масштаба для мобильной версии */
@@ -348,17 +376,32 @@
         font-size: 16px;
     }
     
-    .form-control {
+    .slider-container {
+        max-width: 100%;
+        height: 48px;
+        margin: 1.5rem auto;
+    }
+    
+    .slider-handle {
+        width: 56px;
+        height: 48px;
+    }
+    
+    .slider-handle i {
+        font-size: 1.2rem;
+    }
+    
+    .captcha-container {
+        padding: 1rem !important;
+    }
+    
+    .captcha-task p {
         font-size: 16px !important;
     }
     
-    .btn {
-        font-size: 16px;
-        padding: 0.75rem 1rem;
-    }
-    
-    .slider-container {
-        max-width: 100%;
+    .password-strength {
+        height: 6px;
+        margin-top: 0.75rem;
     }
 }
 </style>
