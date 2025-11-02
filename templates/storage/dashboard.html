@@ -228,6 +228,184 @@
     }
 }
 
+/* Новые стили для улучшенных карточек файлов */
+.file-card-enhanced {
+    background: var(--bs-body-bg, #ffffff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.file-card-enhanced:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    border-color: var(--bs-primary, #0d6efd);
+}
+
+.file-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.file-card-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+}
+
+.file-card-icon-wrapper i {
+    font-size: 1.5rem;
+}
+
+.file-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    color: var(--bs-body-color, #1a1d21);
+}
+
+.file-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.file-card-meta .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.file-card-actions {
+    margin-top: 0.75rem;
+}
+
+.btn-group-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.btn-group-grid .btn {
+    width: 100%;
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Кнопка сортировки - улучшенная видимость */
+.dropdown .btn-secondary {
+    background-color: var(--bs-secondary, #6c757d) !important;
+    border-color: var(--bs-secondary, #6c757d) !important;
+    color: white !important;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown .btn-secondary:hover {
+    background-color: #5a6268 !important;
+    border-color: #5a6268 !important;
+    color: white !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-menu {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.dropdown-item {
+    padding: 0.625rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--bs-primary, #0d6efd);
+}
+
+/* Адаптивность для мобильных - кнопки и сортировка */
+@media (max-width: 767.98px) {
+    .file-card-enhanced {
+        padding: 0.875rem;
+    }
+
+    .file-card-header {
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .file-card-icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+
+    .file-card-icon-wrapper i {
+        font-size: 1.25rem;
+    }
+
+    .file-card-title {
+        font-size: 0.9rem;
+    }
+
+    .file-card-meta {
+        font-size: 0.8rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .btn-group-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dropdown {
+        width: 100%;
+        order: -1;
+    }
+
+    .dropdown .btn-secondary {
+        width: 100%;
+        text-align: left;
+        justify-content: space-between;
+    }
+
+    .dropdown-menu {
+        width: 100%;
+        max-width: 100vw;
+        left: 0 !important;
+        right: 0 !important;
+    }
+
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+}
+
 /* Стили для дерева папок */
 .folders-tree-container {
     max-height: 400px;
@@ -344,7 +522,7 @@
                         <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline; width: 100%;">
                             {% csrf_token %}
                             <input type="file" id="fileInput" name="file" class="d-none" multiple>
-                            <button type="button" class="btn btn-primary w-100 w-md-auto" onclick="document.getElementById('fileInput').click()">
+                            <button type="button" class="btn btn-primary w-100 w-md-auto" style="max-width: 200px;" onclick="document.getElementById('fileInput').click()">
                                 <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
                             </button>
                         </form>
@@ -417,10 +595,10 @@
             </ol>
         </nav>
         
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
-            <div>
-                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm me-2">
+            <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
+                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm">
                     <i class="fas fa-share-alt me-1"></i> Доступы
                 </a>
                 <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
@@ -429,13 +607,12 @@
                 <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
                     <i class="fas fa-folder-open me-1"></i> Переместить в папку
                 </button>
-            </div>
                 <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()" style="border: 2px solid var(--bs-secondary); background-color: var(--bs-secondary); color: white;">
                         <i class="fas fa-sort me-2"></i>
                         <span id="sortLabel">Сортировка</span>
                     </button>
-                    <ul class="dropdown-menu" id="dropdownMenu" aria-labelledby="sortDropdown">
+                    <ul class="dropdown-menu dropdown-menu-end" id="dropdownMenu" aria-labelledby="sortDropdown">
                     <!-- ваш список пунктов -->
                     <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
                         <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
@@ -659,23 +836,29 @@
             <!-- Мобильная версия (карточки) -->
             <div class="d-md-none" id="mobileFilesContainer">
                 {% for file in files %}
-                    <div class="card mb-3 file-card" 
+                    <div class="file-card-enhanced mb-3" 
                          data-filename="{{ file.filename|lower }}"
                          data-filesize="{{ file.file_size|default:0 }}"
                          data-uploaded="{{ file.uploaded_at|date:'U' }}">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-2">
-                                <input type="checkbox" class="form-check-input file-checkbox me-2" 
-                                       value="{{ file.id }}" data-filename="{{ file.filename }}">
-                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }} me-2"></i>
-                                <h5 class="card-title mb-0">{{ file.filename }}</h5>
+                        <div class="file-card-header">
+                            <div class="file-card-icon-wrapper">
+                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }}"></i>
                             </div>
-                            <p class="card-text">
-                                <small class="text-muted">
-                                    {{ file.get_file_type_display }} • {{ file.get_file_size_formatted|default:"—" }} • {{ file.uploaded_at }}
-                                </small>
-                            </p>
-                            <div class="btn-group-vertical w-100">
+                            <div class="file-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input file-checkbox me-2" 
+                                           value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                    <h6 class="file-card-title mb-0">{{ file.filename }}</h6>
+                                </div>
+                                <div class="file-card-meta">
+                                    <span class="badge bg-secondary">{{ file.get_file_type_display }}</span>
+                                    <span class="text-muted ms-2">{{ file.get_file_size_formatted|default:"—" }}</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ file.uploaded_at|date:"d.m.Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-card-actions">
+                            <div class="btn-group-grid">
                                 {% if file.is_image %}
                                     <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
