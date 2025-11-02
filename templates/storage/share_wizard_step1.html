@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Поделиться папкой | {{ folder.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-share-alt me-2"></i>Поделиться папкой: {{ folder.name }}</h3>
+        </div>
+        <div class="card-body">
+            <p class="lead">Выберите способ предоставления доступа:</p>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 share-option-card" onclick="selectAccessType('email')" style="cursor: pointer;">
+                        <div class="card-body text-center">
+                            <i class="fas fa-envelope fa-3x text-primary mb-3"></i>
+                            <h4>По email</h4>
+                            <p class="text-muted">Предоставить доступ конкретному пользователю по его email адресу</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 share-option-card" onclick="selectAccessType('link')" style="cursor: pointer;">
+                        <div class="card-body text-center">
+                            <i class="fas fa-link fa-3x text-success mb-3"></i>
+                            <h4>По ссылке</h4>
+                            <p class="text-muted">Создать ссылку для доступа к папке (можно ограничить количество пользователей)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="shareForm" method="POST" action="{% url 'share_folder_wizard' folder.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="access_type" id="accessTypeInput">
+                <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="nextBtn" disabled>Далее</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.share-option-card {
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.share-option-card:hover {
+    border-color: var(--bs-primary);
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.share-option-card.selected {
+    border-color: var(--bs-primary);
+    background-color: rgba(13, 110, 253, 0.1);
+}
+</style>
+
+<script>
+let selectedType = null;
+
+function selectAccessType(type) {
+    selectedType = type;
+    document.querySelectorAll('.share-option-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    document.getElementById('accessTypeInput').value = type;
+    document.getElementById('nextBtn').disabled = false;
+}
+</script>
+{% endblock %}
+

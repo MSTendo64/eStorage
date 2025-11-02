@@ -7,7 +7,8 @@ from .file_operations import (
     delete_file,
     download_file,
     generate_download_link,
-    generate_download_token
+    generate_download_token,
+    save_text_file
 )
 from .archive_operations import (
     get_archive_contents,
@@ -47,6 +48,27 @@ from .cleanup import (
     cleanup_downloads,
     cleanup_on_request
 )
+from .folder_operations import (
+    create_folder,
+    rename_folder,
+    delete_folder,
+    move_files,
+    rename_file,
+    get_folders_tree
+)
+from .share_operations import (
+    share_folder_wizard,
+    share_folder_email,
+    share_folder_link,
+    revoke_folder_access,
+    update_access_permissions,
+    shared_folders_list,
+    mount_folder,
+    unmount_folder,
+    get_link_access_users,
+    shared_folder_view,
+    shared_file_download
+)
 
 __all__ = [
     # File operations
@@ -55,6 +77,7 @@ __all__ = [
     'download_file',
     'generate_download_link',
     'generate_download_token',
+    'save_text_file',
     # Archive operations
     'get_archive_contents',
     'extract_archive',
@@ -85,5 +108,24 @@ __all__ = [
     'cleanup_temp_folders',
     'cleanup_downloads',
     'cleanup_on_request',
+    # Folder operations
+    'create_folder',
+    'rename_folder',
+    'delete_folder',
+    'move_files',
+    'rename_file',
+    'get_folders_tree',
+    # Share operations
+    'share_folder_wizard',
+    'share_folder_email',
+    'share_folder_link',
+    'revoke_folder_access',
+    'update_access_permissions',
+    'shared_folders_list',
+    'mount_folder',
+    'unmount_folder',
+    'get_link_access_users',
+    'shared_folder_view',
+    'shared_file_download',
 ]
 

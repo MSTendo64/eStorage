@@ -10,16 +10,642 @@
     <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
     <style>
+        /* ========== ГЛОБАЛЬНЫЕ СТИЛИ И ПРЕДОТВРАЩЕНИЕ ПЕРЕПОЛНЕНИЯ ========== */
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Предотвращение горизонтального скролла */
+        .container,
+        .container-fluid,
+        .row,
+        [class*="col-"] {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
         /* Базовые стили */
         :root {
-            --bs-body-bg: #f8f9fa;
-            --bs-body-color: #212529;
+            --bs-body-bg: #e9ecef;
+            --bs-body-color: #1a1d21;
             --bs-primary: #0d6efd;
             --bs-link-color: #0d6efd;
-            --bs-link-hover-color: #0d6efd;
-            --bs-navbar-color: #212529;
-            --bs-container-color: #f8f9fa;
+            --bs-link-hover-color: #0a58ca;
+            --bs-navbar-color: #1a1d21;
+            --bs-container-color: #e9ecef;
         }
+        
+        /* Стили для светлой темы с уменьшенной яркостью */
+        [data-bs-theme="light"] {
+            --bs-body-bg: #e9ecef;
+            --bs-body-color: #1a1d21;
+            --bs-secondary-color: #343a40;
+            --bs-muted-color: #495057;
+            --bs-border-color: #ced4da;
+            --bs-navbar-color: #1a1d21;
+            --bs-container-color: #e9ecef;
+            --bs-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Дополнительные цвета для иконок */
+        .text-purple {
+            color: #6f42c1 !important;
+        }
+        
+        /* Стили для редактора текста */
+        [data-bs-theme="dark"] .line-numbers {
+            background: rgba(33, 37, 41, 0.9) !important;
+            border-right-color: rgba(255, 255, 255, 0.1) !important;
+            color: #888 !important;
+        }
+        
+        [data-bs-theme="dark"] .text-editor-container textarea {
+            background: rgba(33, 37, 41, 0.95) !important;
+            color: #f8f9fa !important;
+        }
+        
+        /* Стили для номеров строк в темной теме */
+        [data-bs-theme="dark"] .line-numbers div {
+            color: #666 !important;
+        }
+        
+        /* Скрываем скроллбар для номеров строк, но сохраняем функциональность прокрутки */
+        .line-numbers::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .line-numbers {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        /* ========== ЕДИНЫЕ СТИЛИ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ ========== */
+        /* Контейнеры должны быть ограничены */
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding-left: 15px;
+            padding-right: 15px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Ограничение ширины на десктопе */
+        @media (min-width: 992px) {
+            .container-fluid {
+                max-width: 1400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .content-container {
+                max-width: 1400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
+        /* Контент контейнеры */
+        .content-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .content-container {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Карточки - улучшенный дизайн */
+        .card {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+        
+        /* Улучшенные карточки файлов и папок */
+        .file-card-enhanced,
+        .folder-card-enhanced {
+            background: var(--bs-body-bg, #ffffff);
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .file-card-enhanced:hover,
+        .folder-card-enhanced:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+            border-color: var(--bs-primary, #0d6efd);
+        }
+        
+        .file-card-header,
+        .folder-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+        }
+        
+        .file-card-icon-wrapper,
+        .folder-card-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .file-card-icon-wrapper {
+            background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+        }
+
+        .folder-card-icon-wrapper {
+            background: rgba(255, 193, 7, 0.15);
+        }
+        
+        .file-card-icon-wrapper i,
+        .folder-card-icon-wrapper i {
+            font-size: 1.5rem;
+        }
+        
+        .file-card-title,
+        .folder-card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            color: var(--bs-body-color, #1a1d21);
+        }
+        
+        .file-card-header .form-check-input,
+        .folder-card-header .form-check-input {
+            margin-top: 0;
+            margin-right: 0.5rem;
+            margin-left: 0;
+            flex-shrink: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+        
+        .file-card-info,
+        .folder-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-card-meta,
+        .folder-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .file-card-actions,
+        .folder-card-actions {
+            margin-top: 0.75rem;
+        }
+        
+        .btn-group-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .btn-group-grid .btn {
+            width: 100%;
+            margin-bottom: 0;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        @media (min-width: 768px) {
+            .btn-group-grid-desktop {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+        }
+        
+        .file-card-header .d-flex,
+        .folder-card-header .d-flex {
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+        }
+        
+        .file-card-title,
+        .folder-card-title {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media (min-width: 992px) {
+            .card {
+                margin-bottom: 1.5rem;
+            }
+        }
+
+        .card-body,
+        .card-header,
+        .card-footer {
+            overflow-x: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .card-header {
+            border-radius: 0.75rem 0.75rem 0 0;
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        @media (min-width: 768px) {
+            .card-body {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Изображения не должны выходить за рамки */
+        img {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Текст не должен выходить за рамки */
+        p, span, div, h1, h2, h3, h4, h5, h6 {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        /* Таблицы должны быть адаптивными */
+        .table {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            display: block;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Формы */
+        .form-control,
+        .form-select,
+        .input-group {
+            max-width: 100%;
+        }
+
+        /* Кнопки - улучшенный дизайн */
+        .btn {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn i,
+        .btn .fas,
+        .btn .fa {
+            font-size: 0.9em;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Группы кнопок на десктопе */
+        @media (min-width: 768px) {
+            .btn-group {
+                display: inline-flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .btn-group .btn {
+                margin-bottom: 0;
+            }
+        }
+
+        /* Навигация */
+        .navbar {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .navbar-brand,
+        .navbar-nav {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .nav-link {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Модальные окна */
+        .modal {
+            overflow-x: hidden;
+        }
+
+        .modal-content {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .modal-body {
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+
+        /* Списки */
+        .list-group-item {
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+
+        /* Прогресс бары */
+        .progress {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        /* ========== МОБИЛЬНАЯ АДАПТИВНОСТЬ ========== */
+        @media (max-width: 767.98px) {
+            /* Контейнеры на мобильных */
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .content-container {
+                padding: 0.75rem;
+            }
+
+            /* Навигация на мобильных */
+            .navbar-nav {
+                width: 100%;
+            }
+
+            .nav-link {
+                padding: 0.75rem 1rem;
+                width: 100%;
+            }
+
+            /* Карточки на мобильных */
+            .card {
+                margin-bottom: 1rem;
+            }
+
+            .card-body {
+                padding: 1rem;
+            }
+
+            /* Кнопки на мобильных */
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+
+            .btn-group {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn-group .btn {
+                width: 100%;
+            }
+
+            /* Таблицы на мобильных */
+            .table {
+                font-size: 0.875rem;
+            }
+
+            /* Формы на мобильных */
+            .input-group {
+                flex-wrap: wrap;
+            }
+
+            .input-group-text {
+                width: 100%;
+                justify-content: center;
+                border-radius: 0.375rem 0.375rem 0 0 !important;
+            }
+
+            .input-group .form-control {
+                border-radius: 0 0 0.375rem 0.375rem !important;
+            }
+
+            /* Модальные окна на мобильных */
+            .modal-dialog {
+                margin: 0.5rem;
+                max-width: calc(100% - 1rem);
+            }
+
+            .modal-content {
+                max-height: calc(100vh - 1rem);
+                overflow-y: auto;
+            }
+
+            /* Скрываем некоторые элементы на мобильных */
+            .d-none-mobile {
+                display: none !important;
+            }
+
+            /* Хлебные крошки */
+            .breadcrumb {
+                font-size: 0.875rem;
+                flex-wrap: wrap;
+            }
+
+            /* Заголовки */
+            h1 { font-size: 1.75rem; }
+            h2 { font-size: 1.5rem; }
+            h3 { font-size: 1.25rem; }
+            h4 { font-size: 1.1rem; }
+            h5 { font-size: 1rem; }
+            h6 { font-size: 0.9rem; }
+        }
+
+        /* Планшеты */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .container {
+                max-width: 100%;
+            }
+
+            .btn-group-vertical {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+        }
+
+        /* ========== УЛУЧШЕННОЕ ВЫРАВНИВАНИЕ ========== */
+        .row {
+            margin-left: -15px;
+            margin-right: -15px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        @media (min-width: 992px) {
+            .row {
+                margin-left: -20px;
+                margin-right: -20px;
+            }
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        @media (min-width: 992px) {
+            [class*="col-"] {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+        }
+
+        /* Flex утилиты */
+        .d-flex {
+            display: flex;
+        }
+
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+
+        .align-items-center {
+            align-items: center;
+        }
+
+        .justify-content-between {
+            justify-content: space-between;
+        }
+
+        .justify-content-center {
+            justify-content: center;
+        }
+
+        /* ========== ИСПРАВЛЕНИЕ ПРОБЛЕМ С ПЕРЕПОЛНЕНИЕМ ========== */
+        /* Видео и аудио */
+        video, audio {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Iframe */
+        iframe {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        /* Текстовые области */
+        textarea {
+            max-width: 100%;
+            resize: vertical;
+        }
+
+        /* Ссылки */
+        a {
+            word-break: break-word;
+        }
+
+        /* Код */
+        code, pre {
+            max-width: 100%;
+            overflow-x: auto;
+            word-wrap: break-word;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        /* ========== ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ========== */
+        /* Плавные переходы */
+        * {
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Улучшенная прокрутка */
+        * {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Убираем лишние отступы */
+        .mb-0 { margin-bottom: 0 !important; }
+        .mt-0 { margin-top: 0 !important; }
     </style>
 
     <!-- Добавим data-атрибуты для хранения данных -->
@@ -27,6 +653,7 @@
          data-background-image="{% if user.userprofile.background_image %}{{ user.userprofile.background_image.url }}{% endif %}"
          data-navbar-opacity="{{ user.userprofile.navbar_opacity }}"
          data-container-opacity="{{ user.userprofile.container_opacity }}"
+         data-video-player="{% if user.is_authenticated %}{{ user.userprofile.video_player|default:'plyr' }}{% else %}plyr{% endif %}"
          style="display: none;">
     </div>
 
@@ -140,24 +767,26 @@
     </script>
 
     <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/" style="max-width: calc(100% - 60px);">
                 {% if system_settings.site_logo %}
                     <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
-                         class="me-2" style="height: 32px;">
+                         class="me-2" style="height: 32px; max-width: 32px; object-fit: contain;">
                 {% endif %}
-                <span style="color: {{ system_settings.site_name_color }}">
+                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     {{ system_settings.site_name }}
                 </span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">{{ t.storage.my_files }}</a>
+                            <a class="nav-link" href="{% url 'dashboard' %}">
+                                <i class="fas fa-folder-open me-1"></i> {{ t.storage.my_files }}
+                            </a>
                         </li>
                         {% if user.is_superuser %}
                         <li class="nav-item">
@@ -175,12 +804,9 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'youtube_download' %}">
-                                <i class="fab fa-youtube"></i> {{ t.storage.youtube_download }}
+                            <a class="nav-link" href="{% url 'logout' %}">
+                                <i class="fas fa-sign-out-alt me-1"></i> {{ t.auth.logout }}
                             </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">{{ t.auth.logout }}</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
@@ -195,18 +821,22 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} content-container">
-                    {{ message }}
+    <div class="container-fluid px-3 px-md-4 mt-3 mt-md-4">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} content-container mb-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="content-container">
+                    {% block content %}
+                    {% endblock %}
                 </div>
-            {% endfor %}
-        {% endif %}
-        
-        <div class="content-container">
-            {% block content %}
-            {% endblock %}
+            </div>
         </div>
     </div>
 
@@ -312,11 +942,20 @@
     .btn-primary {
         background-color: var(--bs-primary) !important;
         border-color: var(--bs-primary) !important;
+        color: #ffffff !important;
     }
 
     .btn-primary:hover {
         background-color: var(--bs-link-hover-color) !important;
         border-color: var(--bs-link-hover-color) !important;
+        color: #ffffff !important;
+    }
+    
+    .btn-primary i,
+    .btn-primary svg,
+    .btn-primary .fas,
+    .btn-primary .fa {
+        color: #ffffff !important;
     }
 
     .btn-outline-primary {
@@ -539,6 +1178,23 @@
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
         border-bottom: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
     }
+    
+    /* Исключение для заголовков с bg-primary */
+    .card-header.bg-primary {
+        background-color: var(--bs-primary) !important;
+        color: #ffffff !important;
+    }
+    
+    .card-header.bg-primary h3,
+    .card-header.bg-primary h4,
+    .card-header.bg-primary h5,
+    .card-header.bg-primary p,
+    .card-header.bg-primary span,
+    .card-header.bg-primary i,
+    .card-header.bg-primary .fas,
+    .card-header.bg-primary .fa {
+        color: #ffffff !important;
+    }
 
     .modal-content {
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
@@ -559,6 +1215,35 @@
         background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(var(--bs-body-color-rgb), 0.1);
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1051;
+    }
+    
+    .dropdown-item {
+        padding: 0.625rem 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .dropdown-item:hover {
+        background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+        color: var(--bs-primary, #0d6efd);
+    }
+    
+    /* Улучшенные стили для dropdown кнопок */
+    .dropdown .btn-secondary {
+        background-color: var(--bs-secondary, #6c757d) !important;
+        border-color: var(--bs-secondary, #6c757d) !important;
+        color: white !important;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dropdown .btn-secondary:hover {
+        background-color: #5a6268 !important;
+        border-color: #5a6268 !important;
+        color: white !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
     /* Улучшенная читаемость для теной темы */
@@ -601,10 +1286,19 @@
                     box-shadow 0.3s ease;
     }
 
-    /* Улучшенная контрастность для теста */
-    .card,
-    .list-group-item,
-    .dropdown-menu {
+    /* Улучшенная контрастность для текста в светлой теме */
+    [data-bs-theme="light"] .card,
+    [data-bs-theme="light"] .list-group-item,
+    [data-bs-theme="light"] .dropdown-menu,
+    [data-bs-theme="light"] .card-body,
+    [data-bs-theme="light"] .modal-body {
+        color: #1a1d21 !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    [data-bs-theme="light"] .card,
+    [data-bs-theme="light"] .list-group-item,
+    [data-bs-theme="light"] .dropdown-menu {
         color: var(--bs-body-color);
     }
 
@@ -624,13 +1318,84 @@
     </style>
 
     <style>
+    /* Дополнительные исправления для модальных окон и других элементов */
+    .modal {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .modal-dialog {
+        max-width: calc(100% - 2rem);
+        margin: 1rem auto;
+    }
+
+    @media (max-width: 767.98px) {
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+
+        .modal-content {
+            max-height: calc(100vh - 1rem);
+            overflow-y: auto;
+        }
+
+        .modal-body {
+            padding: 1rem;
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+    }
+
+    /* Исправление для dropdown меню */
+    .dropdown-menu {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    @media (max-width: 767.98px) {
+        .dropdown-menu {
+            position: static !important;
+            float: none !important;
+            width: 100% !important;
+            margin-top: 0.5rem;
+        }
+    }
+
+    /* Исправление для единого плеера */
+    .unified-player {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .unified-player-content {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .unified-player-content video,
+    .unified-player-content audio,
+    .unified-player-content img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Исправление для таблиц */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
+    }
+
     /* Адаптивный цвет текста */
     body {
         position: relative;
     }
+    </style>
 
-    /* Функция для определения яркости фона и адаптации текста */
     <script>
+    /* Функция для определения яркости фона и адаптации текста */
     function updateTextColors() {
         // Получаем цвет фона (из изображения или установленного фона)
         const getBackgroundColor = (element) => {
@@ -686,7 +1451,7 @@
     document.addEventListener('DOMContentLoaded', updateTextColors);
 
     // Обновляем при изменении темы
-    const observer = new MutationObserver((mutations) => {
+    const themeObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.attributeName === 'data-bs-theme') {
                 updateTextColors();
@@ -694,7 +1459,7 @@
         });
     });
 
-    observer.observe(document.documentElement, {
+    themeObserver.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['data-bs-theme']
     });
@@ -703,6 +1468,7 @@
     window.addEventListener('resize', updateTextColors);
     </script>
 
+    <style>
     /* Стили для адаптивного текста */
     body > *:not(.card):not(.navbar):not(.modal) {
         transition: color 0.3s ease;
@@ -774,7 +1540,39 @@
 
     /* Улучшенная контрастность для текста */
     [data-bs-theme="light"] {
-        --text-color: #212529;
+        --text-color: #1a1d21;
+    }
+    
+    /* Дополнительные стили для улучшения читабельности в светлой теме */
+    [data-bs-theme="light"] body,
+    [data-bs-theme="light"] .content-container,
+    [data-bs-theme="light"] p,
+    [data-bs-theme="light"] span,
+    [data-bs-theme="light"] div:not(.card):not(.navbar):not(.modal) {
+        color: #1a1d21 !important;
+    }
+    
+    [data-bs-theme="light"] .text-muted {
+        color: #495057 !important;
+    }
+    
+    [data-bs-theme="light"] h1,
+    [data-bs-theme="light"] h2,
+    [data-bs-theme="light"] h3,
+    [data-bs-theme="light"] h4,
+    [data-bs-theme="light"] h5,
+    [data-bs-theme="light"] h6 {
+        color: #0d1117 !important;
+        font-weight: 600;
+    }
+    
+    [data-bs-theme="light"] .card-title {
+        color: #0d1117 !important;
+    }
+    
+    /* Исключение для заголовков с bg-primary - они должны быть белыми */
+    [data-bs-theme="light"] .card-header:not(.bg-primary) {
+        color: #0d1117 !important;
     }
 
     [data-bs-theme="dark"] {
@@ -916,7 +1714,7 @@
     });
 
     // Обновляем при изменении фона
-    const observer = new MutationObserver((mutations) => {
+    const backgroundObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && 
                 (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
@@ -925,7 +1723,7 @@
         });
     });
 
-    observer.observe(document.documentElement, {
+    backgroundObserver.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['style', 'class']
     });
@@ -1086,29 +1884,63 @@
 <script>
 // ========== ЕДИНЫЙ ПЛЕЕР - ОБЩИЕ ФУНКЦИИ ==========
 
-// Инициализация единого Plyr плеера
-function initUnifiedPlayer(selector, options = {}) {
-    // Получаем элемент медиа
+// Получаем выбранный проигрыватель из настроек пользователя
+function getVideoPlayerType() {
+    const playerType = document.getElementById('django-data')?.getAttribute('data-video-player');
+    return playerType || 'plyr';
+}
+
+// Инициализация нативного HTML5 проигрывателя
+function initNativePlayer(selector, options = {}) {
     const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
     
-    // Проверяем наличие source элементов с data-plyr-quality для автоматического определения качеств
-    let qualityOptions = [];
-    let qualityMapping = {}; // Определяем в правильном scope
+    if (!mediaElement) return null;
     
-    if (mediaElement) {
-        const qualitySources = mediaElement.querySelectorAll('source[data-plyr-quality]');
-        if (qualitySources.length > 0) {
-            qualitySources.forEach(source => {
-                const quality = source.getAttribute('data-plyr-quality');
-                if (quality && !qualityOptions.includes(quality)) {
-                    qualityOptions.push(quality);
-                }
-                // Создаем mapping между качествами и source элементами
-                qualityMapping[quality] = source.src;
-            });
-        }
+    // Добавляем стандартные атрибуты для HTML5 видео
+    if (mediaElement.tagName === 'VIDEO') {
+        mediaElement.setAttribute('controls', '');
+        mediaElement.setAttribute('preload', 'auto');
+        mediaElement.style.width = '100%';
+        mediaElement.style.height = '100%';
+        mediaElement.style.objectFit = 'fill';
     }
     
+    // Добавляем обработчики для предотвращения перезагрузки при перемотке
+    if (mediaElement.tagName === 'VIDEO' || mediaElement.tagName === 'AUDIO') {
+        let savedTime = 0;
+        
+        mediaElement.addEventListener('timeupdate', function() {
+            savedTime = mediaElement.currentTime;
+        });
+        
+        mediaElement.addEventListener('seeking', function(e) {
+            if (mediaElement.readyState >= 2) {
+                return;
+            }
+        });
+    }
+    
+    return {
+        media: mediaElement,
+        currentTime: 0,
+        paused: true,
+        play: () => mediaElement.play(),
+        pause: () => mediaElement.pause(),
+        destroy: () => {} // Пустая функция для совместимости
+    };
+}
+
+// Инициализация единого плеера (Plyr или Native)
+function initUnifiedPlayer(selector, options = {}) {
+    const playerType = getVideoPlayerType();
+    const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    
+    // Если выбран нативный проигрыватель, используем его
+    if (playerType === 'native') {
+        return initNativePlayer(selector, options);
+    }
+    
+    // По умолчанию используем Plyr
     const defaultOptions = {
         controls: [
             'play-large', 'play', 'progress', 'current-time', 'duration',
@@ -1123,69 +1955,7 @@ function initUnifiedPlayer(selector, options = {}) {
         resetOnEnd: false
     };
     
-    // Явно передаем настройки качества, если найдены source элементы с data-plyr-quality
-    if (qualityOptions.length > 1) {
-        // Сортируем качества в порядке убывания для правильного отображения
-        qualityOptions.sort((a, b) => parseInt(b) - parseInt(a));
-        
-        defaultOptions.quality = {
-            default: qualityOptions[0], // Самое высокое качество по умолчанию
-            options: qualityOptions,
-            forced: false,
-            onChange: null // Будет установлено после создания player
-        };
-        console.log('Setting up quality menu with options:', qualityOptions, 'mapping:', qualityMapping);
-    } else {
-        console.log('No quality options found or only one quality available');
-    }
-    
     const player = new Plyr(selector, { ...defaultOptions, ...options });
-    
-    // Устанавливаем onChange для качества после создания player
-    if (qualityOptions.length > 1 && qualityMapping && player && player.quality) {
-        // Обновляем onChange с правильным контекстом
-        player.quality.onChange = function(newQuality) {
-            const currentTime = player.currentTime;
-            const wasPlaying = !player.paused;
-            const videoElement = player.media;
-            
-            console.log('Quality changing to:', newQuality, 'at time:', currentTime);
-            
-            // Находим соответствующий source элемент
-            if (mediaElement && qualityMapping[newQuality]) {
-                const newSourceUrl = qualityMapping[newQuality];
-                
-                // Сохраняем позицию перед переключением
-                const restorePosition = function() {
-                    if (currentTime > 0 && currentTime < videoElement.duration) {
-                        videoElement.currentTime = currentTime;
-                        console.log('Position restored to:', currentTime);
-                    }
-                    if (wasPlaying) {
-                        videoElement.play().catch(e => console.error('Play error:', e));
-                    }
-                    videoElement.removeEventListener('canplay', restorePosition);
-                };
-                
-                videoElement.addEventListener('canplay', restorePosition, { once: true });
-                
-                // Переключаем источник через Plyr API
-                const currentSrc = videoElement.currentSrc || videoElement.src;
-                if (currentSrc !== newSourceUrl) {
-                    console.log('Switching source from', currentSrc, 'to', newSourceUrl);
-                    
-                    // Используем Plyr API для переключения источника
-                    player.source = {
-                        type: 'video',
-                        sources: [{
-                            src: newSourceUrl,
-                            type: 'video/mp4'
-                        }]
-                    };
-                }
-            }
-        };
-    }
     
     // Предотвращаем перезагрузку видео при перемотке
     if (player && player.media) {
@@ -1242,7 +2012,7 @@ function updatePlayerHeaderColor(headerSelector, titleSelector) {
 }
 
 // Создание HTML структуры единого плеера
-function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, availableQualities = [], fileId = null, publicToken = null) {
+function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, fileId = null) {
     const closeBtn = closeAction 
         ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
         : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
@@ -1251,36 +2021,21 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
         ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;"><i class="fas fa-download"></i></a>`
         : '';
     
+    // Определяем тип проигрывателя
+    const playerType = getVideoPlayerType();
+    
     let content = '';
     let playerClass = '';
     
     switch(type) {
         case 'video':
-            // Создаем source элементы для разных качеств, если они доступны
-            let sourcesHtml = '';
-            if (availableQualities && availableQualities.length > 1) {
-                // Добавляем source для каждого качества с data-plyr-quality атрибутом
-                availableQualities.forEach((quality) => {
-                    let qualityUrl;
-                    if (fileId) {
-                        qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
-                    } else if (publicToken) {
-                        qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
-                    } else {
-                        qualityUrl = url;
-                    }
-                    // Используем числовое значение для data-plyr-quality (Plyr автоматически добавит "p" при отображении)
-                    sourcesHtml += `<source src="${qualityUrl}" type="video/mp4" data-plyr-quality="${quality}" size="${quality}">`;
-                });
-            } else {
-                // Если качеств нет или только одно, используем оригинальный URL
-                sourcesHtml = `<source src="${url}" type="video/mp4">`;
-            }
-            
-            content = `<video class="plyr-video" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
-${sourcesHtml}
+            // Используем оригинальное качество видео
+            // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Plyr
+            const videoClass = playerType === 'native' ? 'native-video' : 'plyr-video';
+            content = `<video class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
+                <source src="${url}" type="video/mp4">
             </video>`;
-            playerClass = 'plyr-video';
+            playerClass = videoClass;
             break;
         case 'audio':
             content = `<audio class="plyr-audio" controls style="width: 100%;">
@@ -1290,6 +2045,37 @@ ${sourcesHtml}
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
+            break;
+        case 'text':
+            // Для текстовых файлов создаем редактор с номерами строк
+            const textId = 'text-content-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            const lineNumbersId = 'line-numbers-' + textId;
+            const editorId = 'editor-' + textId;
+            
+            content = `
+                <div class="text-editor-container" style="display: flex; width: 100%; height: 100%; overflow: hidden; position: relative;">
+                    <div id="${lineNumbersId}" class="line-numbers" style="flex-shrink: 0; width: 50px; padding: 10px 5px; background: rgba(245, 245, 245, 0.8); border-right: 1px solid rgba(221, 221, 221, 0.5); overflow: hidden; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; text-align: right; color: #999; user-select: none; position: relative; pointer-events: none;">1</div>
+                    <textarea id="${editorId}" style="flex: 1; width: 100%; height: 100%; padding: 10px; margin: 0; border: none; outline: none; background: var(--bs-body-bg, #ffffff); color: var(--bs-body-color, #000000); font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; resize: none; overflow-y: auto; overflow-x: auto; white-space: pre; tab-size: 4;">Загрузка...</textarea>
+                </div>
+                <div class="text-editor-toolbar" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000;">
+                    ${fileId ? `<button class="btn btn-sm btn-success" onclick="saveTextFile('${fileId}', '${editorId}', '${lineNumbersId}')" style="box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                        <i class="fas fa-save me-1"></i> Сохранить
+                    </button>` : ''}
+                </div>
+            `;
+            // Сохраняем данные для последующей загрузки
+            window._pendingTextLoad = window._pendingTextLoad || [];
+            window._pendingTextLoad.push({ 
+                id: textId, 
+                editorId: editorId,
+                lineNumbersId: lineNumbersId,
+                url: url,
+                fileId: fileId
+            });
+            break;
+        case 'document':
+            // Для документов используем iframe
+            content = `<iframe src="${url}" style="width: 100%; height: 100%; border: none;"></iframe>`;
             break;
     }
     
@@ -1310,49 +2096,531 @@ ${sourcesHtml}
         playerClass: playerClass
     };
 }
-
-// Функция для изменения качества видео (для авторизованных пользователей)
-function changeVideoQuality(videoElement, fileId, quality, originalUrl) {
-    if (!videoElement || !fileId) return;
-    
-    const qualityUrl = `/storage/video-quality/${fileId}/${quality}/`;
-    
-    // Обновляем src видео элемента
-    videoElement.src = qualityUrl;
-    
-    // Если используется Plyr, перезагружаем медиа
-    if (globalPlayer && globalPlayer.media) {
-        globalPlayer.source = {
-            type: 'video',
-            sources: [{
-                src: qualityUrl,
-                type: 'video/mp4'
-            }]
-        };
-    }
-}
-
-// Функция для изменения качества публичного видео
-function changePublicVideoQuality(videoElement, publicToken, quality, originalUrl) {
-    if (!videoElement || !publicToken) return;
-    
-    const qualityUrl = `/storage/public/video-quality/${publicToken}/${quality}/`;
-    
-    // Обновляем src видео элемента
-    videoElement.src = qualityUrl;
-    
-    // Если используется Plyr, перезагружаем медиа
-    const player = Plyr.get(videoElement);
-    if (player && player.media) {
-        player.source = {
-            type: 'video',
-            sources: [{
-                src: qualityUrl,
-                type: 'video/mp4'
-            }]
-        };
-    }
-}
 </script>
-</body>
-</html> 
+
+<!-- Система кастомных модальных окон -->
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customModalLabel">
+                    <i class="fas" id="customModalIcon"></i>
+                    <span id="customModalTitle"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="customModalMessage"></p>
+                <div id="customModalInputContainer" style="display: none;">
+                    <input type="text" class="form-control" id="customModalInput" placeholder="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="customModalCancel" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="customModalConfirm">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Стили для кастомных модальных окон */
+#customModal .modal-content {
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#customModal .modal-header {
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 1.25rem;
+}
+
+#customModal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+#customModalIcon {
+    font-size: 1.25rem;
+}
+
+#customModal .modal-body {
+    padding: 1.5rem;
+}
+
+#customModal .modal-footer {
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 1rem 1.25rem;
+}
+
+#customModalInputContainer {
+    margin-top: 1rem;
+}
+
+#customModalInput {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+#customModalInput:focus {
+    outline: none;
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Анимация появления */
+#customModal.modal.fade .modal-dialog {
+    transform: translate(0, -50px);
+    transition: transform 0.3s ease-out;
+}
+
+#customModal.modal.show .modal-dialog {
+    transform: none;
+}
+</style>
+
+<script>
+// Система кастомных модальных окон для замены alert, confirm, prompt
+
+// Переопределяем встроенные функции браузера
+const originalAlert = window.alert;
+const originalConfirm = window.confirm;
+const originalPrompt = window.prompt;
+
+// Функция для показа кастомного alert
+window.alert = function(message, title = 'Уведомление') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('customModalTitle');
+        const modalMessage = document.getElementById('customModalMessage');
+        const modalIcon = document.getElementById('customModalIcon');
+        const modalCancel = document.getElementById('customModalCancel');
+        const modalConfirm = document.getElementById('customModalConfirm');
+        const modalInputContainer = document.getElementById('customModalInputContainer');
+        const modalInput = document.getElementById('customModalInput');
+        
+        // Настройка для alert
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalIcon.className = 'fas fa-info-circle text-info';
+        modalInputContainer.style.display = 'none';
+        modalCancel.style.display = 'none';
+        modalConfirm.textContent = 'OK';
+        modalConfirm.className = 'btn btn-primary';
+        
+        // Обработчик подтверждения
+        const handleConfirm = () => {
+            modal.removeEventListener('hidden.bs.modal', handleClose);
+            modalConfirm.removeEventListener('click', handleConfirm);
+            resolve(true);
+        };
+        
+        const handleClose = () => {
+            modalConfirm.removeEventListener('click', handleConfirm);
+            resolve(true);
+        };
+        
+        modalConfirm.addEventListener('click', handleConfirm);
+        modal.addEventListener('hidden.bs.modal', handleClose);
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    });
+};
+
+// Функция для показа кастомного confirm (возвращает Promise)
+window.confirm = function(message, title = 'Подтверждение') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('customModalTitle');
+        const modalMessage = document.getElementById('customModalMessage');
+        const modalIcon = document.getElementById('customModalIcon');
+        const modalCancel = document.getElementById('customModalCancel');
+        const modalConfirm = document.getElementById('customModalConfirm');
+        const modalInputContainer = document.getElementById('customModalInputContainer');
+        
+        // Настройка для confirm
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalIcon.className = 'fas fa-question-circle text-warning';
+        modalInputContainer.style.display = 'none';
+        modalCancel.style.display = 'inline-block';
+        modalCancel.textContent = 'Отмена';
+        modalConfirm.textContent = 'Подтвердить';
+        modalConfirm.className = 'btn btn-primary';
+        
+        // Обработчики
+        const handleConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+        
+        const handleCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+        
+        const handleClose = () => {
+            cleanup();
+            resolve(false);
+        };
+        
+        const cleanup = () => {
+            modal.removeEventListener('hidden.bs.modal', handleClose);
+            modalConfirm.removeEventListener('click', handleConfirm);
+            modalCancel.removeEventListener('click', handleCancel);
+        };
+        
+        modalConfirm.addEventListener('click', handleConfirm);
+        modalCancel.addEventListener('click', handleCancel);
+        modal.addEventListener('hidden.bs.modal', handleClose);
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    });
+};
+
+// Функция для показа кастомного prompt
+window.prompt = function(message, defaultValue = '', title = 'Ввод') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('customModalTitle');
+        const modalMessage = document.getElementById('customModalMessage');
+        const modalIcon = document.getElementById('customModalIcon');
+        const modalCancel = document.getElementById('customModalCancel');
+        const modalConfirm = document.getElementById('customModalConfirm');
+        const modalInputContainer = document.getElementById('customModalInputContainer');
+        const modalInput = document.getElementById('customModalInput');
+        
+        // Настройка для prompt
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalIcon.className = 'fas fa-edit text-info';
+        modalInputContainer.style.display = 'block';
+        modalInput.value = defaultValue;
+        modalInput.placeholder = 'Введите значение...';
+        modalCancel.style.display = 'inline-block';
+        modalCancel.textContent = 'Отмена';
+        modalConfirm.textContent = 'OK';
+        modalConfirm.className = 'btn btn-primary';
+        
+        // Обработчики
+        const handleConfirm = () => {
+            const value = modalInput.value;
+            cleanup();
+            resolve(value);
+        };
+        
+        const handleCancel = () => {
+            cleanup();
+            resolve(null);
+        };
+        
+        const handleClose = () => {
+            cleanup();
+            resolve(null);
+        };
+        
+        const handleKeyPress = (e) => {
+            if (e.key === 'Enter') {
+                handleConfirm();
+            }
+        };
+        
+        const cleanup = () => {
+            modal.removeEventListener('hidden.bs.modal', handleClose);
+            modalConfirm.removeEventListener('click', handleConfirm);
+            modalCancel.removeEventListener('click', handleCancel);
+            modalInput.removeEventListener('keypress', handleKeyPress);
+        };
+        
+        modalConfirm.addEventListener('click', handleConfirm);
+        modalCancel.addEventListener('click', handleCancel);
+        modal.addEventListener('hidden.bs.modal', handleClose);
+        modalInput.addEventListener('keypress', handleKeyPress);
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Фокус на input после показа модального окна
+        setTimeout(() => {
+            modalInput.focus();
+            modalInput.select();
+        }, 300);
+     });
+ };
+ </script>
+
+ <style>
+ /* ========== ОБЩИЕ СТИЛИ ДЛЯ ФОРМ АУТЕНТИФИКАЦИИ (ВХОД/РЕГИСТРАЦИЯ) ========== */
+ 
+ /* Стили для форм аутентификации в светлой теме */
+ [data-bs-theme="light"] body {
+     background-color: #e9ecef !important;
+ }
+ 
+ [data-bs-theme="light"] .card {
+     background-color: #ffffff !important;
+     border-color: #ced4da !important;
+     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+ }
+ 
+ [data-bs-theme="light"] .card-body {
+     color: #1a1d21 !important;
+ }
+ 
+ [data-bs-theme="light"] .card-body h4 {
+     color: #0d1117 !important;
+     font-weight: 600;
+ }
+ 
+ [data-bs-theme="light"] .card-body p,
+ [data-bs-theme="light"] .card-body small,
+ [data-bs-theme="light"] .card-body label {
+     color: #1a1d21 !important;
+ }
+ 
+ [data-bs-theme="light"] .card-body .text-muted {
+     color: #495057 !important;
+ }
+ 
+ [data-bs-theme="light"] .card-body a {
+     color: #0d6efd !important;
+ }
+ 
+ [data-bs-theme="light"] .card-body a:hover {
+     color: #0a58ca !important;
+ }
+ 
+ /* Стили для формы ESUID */
+ .esuid-form .form-label {
+     margin-bottom: 0.5rem;
+ }
+ 
+ .esuid-form .form-label i {
+     font-size: 1rem;
+ }
+ 
+ .esuid-form .form-control {
+     border-width: 2px;
+     border-style: solid;
+     padding: 0.75rem;
+ }
+ 
+ [data-bs-theme="light"] .esuid-form .form-control {
+     background-color: #ffffff !important;
+     color: #1a1d21 !important;
+     border-color: #adb5bd !important;
+     width: 100%;
+     max-width: 100%;
+ }
+ 
+ [data-bs-theme="light"] .esuid-form .form-control:focus {
+     background-color: #ffffff !important;
+     color: #1a1d21 !important;
+     border-color: var(--bs-primary) !important;
+     border-width: 2px;
+     box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+ }
+ 
+ [data-bs-theme="dark"] .esuid-form .form-control {
+     border-width: 2px;
+     border-color: #495057 !important;
+ }
+ 
+ [data-bs-theme="dark"] .esuid-form .form-control:focus {
+     border-width: 2px;
+     border-color: var(--bs-primary) !important;
+ }
+ 
+ .esuid-form .d-flex.align-items-center {
+     gap: 0;
+ }
+ 
+ [data-bs-theme="light"] .form-label {
+     color: #1a1d21 !important;
+     font-weight: 500;
+ }
+ 
+ [data-bs-theme="light"] .btn-outline-secondary {
+     color: #495057 !important;
+     border-color: #ced4da !important;
+ }
+ 
+ [data-bs-theme="light"] .btn-outline-secondary:hover {
+     background-color: #e9ecef !important;
+     color: #1a1d21 !important;
+     border-color: #adb5bd !important;
+ }
+ 
+ /* Обеспечиваем читаемость текста кнопки */
+ [data-bs-theme="light"] .btn-primary,
+ .btn-primary {
+     color: #ffffff !important;
+ }
+ 
+ [data-bs-theme="light"] .btn-primary:hover,
+ .btn-primary:hover {
+     color: #ffffff !important;
+ }
+ 
+ [data-bs-theme="light"] .btn-primary i,
+ .btn-primary i {
+     color: #ffffff !important;
+ }
+ 
+ .card.border-primary {
+     border-width: 2px;
+ }
+ 
+ .card.border-primary .card-header {
+     border-bottom-width: 2px;
+ }
+ 
+ /* Контейнер карточки аутентификации с фиксированной максимальной шириной */
+ .login-card-container {
+     max-width: 450px;
+     width: 100%;
+     margin: 0 auto;
+ }
+ 
+ /* Мобильная адаптивность для форм аутентификации */
+ @media (max-width: 767.98px) {
+     .login-card-container {
+         max-width: 100%;
+         margin: 0;
+     }
+     
+     .login-card-container .card {
+         width: 100%;
+         border-radius: 0.5rem;
+         margin: 0;
+         padding: 0;
+         overflow: hidden;
+     }
+     
+     .login-card-container .card-header {
+         padding: 1rem !important;
+         border-radius: 0.5rem 0.5rem 0 0 !important;
+         width: calc(100% + 4px);
+         margin-left: -2px;
+         margin-right: -2px;
+         margin-top: -2px;
+         box-sizing: border-box;
+         border-left: none;
+         border-right: none;
+         border-top: none;
+     }
+     
+     .esuid-form .d-flex.align-items-center {
+         flex-direction: row;
+         align-items: center;
+     }
+ 
+     .esuid-form .d-flex.align-items-center .form-control {
+         width: 100%;
+         margin-bottom: 0;
+         flex: 1;
+         font-size: 16px !important;
+         padding: 0.75rem !important;
+         min-height: 44px;
+     }
+ 
+     .esuid-form .d-flex.align-items-center .btn {
+         width: auto;
+         flex-shrink: 0;
+         margin-left: 0.5rem;
+         font-size: 16px !important;
+         padding: 0.75rem !important;
+         min-width: 44px;
+         min-height: 44px;
+     }
+     
+     .esuid-form .form-label {
+         font-size: 14px !important;
+         margin-bottom: 0.5rem;
+     }
+     
+     .esuid-form .form-label i {
+         font-size: 1rem !important;
+     }
+     
+     .btn-primary.btn-lg {
+         font-size: 16px !important;
+         padding: 0.75rem 1.25rem !important;
+         min-height: 44px;
+     }
+     
+     .card-body {
+         padding: 1rem !important;
+     }
+     
+     .card-header {
+         padding: 1rem !important;
+     }
+     
+     h3 {
+         font-size: 1.25rem !important;
+     }
+     
+     h4 {
+         font-size: 1.1rem !important;
+     }
+     
+     p, small {
+         font-size: 13px !important;
+     }
+     
+     .fa-3x {
+         font-size: 2rem !important;
+     }
+     
+     /* Исправление масштаба для мобильной версии */
+     html {
+         -webkit-text-size-adjust: 100%;
+         -ms-text-size-adjust: 100%;
+         text-size-adjust: 100%;
+     }
+     
+     body {
+         font-size: 16px;
+     }
+ }
+ </style>
+
+ <script>
+ /* ========== ОБЩИЕ УТИЛИТЫ ДЛЯ ФОРМ АУТЕНТИФИКАЦИИ ========== */
+ 
+ /**
+  * Переключение видимости пароля в полях ввода
+  * @param {string} inputId - ID поля ввода с паролем
+  */
+ function togglePassword(inputId) {
+     const input = document.getElementById(inputId);
+     if (!input) return;
+     
+     const container = input.closest('.d-flex.align-items-center');
+     const button = container ? container.querySelector('button') : null;
+     const icon = button ? button.querySelector('i') : null;
+     
+     if (!icon) return;
+     
+     if (input.type === 'password') {
+         input.type = 'text';
+         icon.className = 'fas fa-eye-slash';
+     } else {
+         input.type = 'password';
+         icon.className = 'fas fa-eye';
+     }
+ }
+ 
+ // Делаем функцию доступной глобально
+ window.togglePassword = togglePassword;
+ </script>
+
+ </body>
+ </html>

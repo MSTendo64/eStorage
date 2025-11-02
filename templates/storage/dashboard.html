@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}{{ t.storage.my_files }} | {{ t.common.site_name }}{% endblock %}
+{% block title %}Мои файлы | {{ user.username }}{% endblock %}
 
 {% block content %}
 <style>
@@ -92,19 +92,110 @@
     transition: width 1s ease-in-out;
 }
 
+/* Стили для кнопки загрузки - квадратная с закругленными углами */
+.upload-btn-square {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.upload-btn-square:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.upload-btn-square i {
+    font-size: 1.25rem;
+    margin: 0 !important;
+}
+
+.upload-button-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+@media (max-width: 767.98px) {
+    .upload-btn-square {
+        width: 45px !important;
+        height: 45px !important;
+        min-width: 45px !important;
+        max-width: 45px !important;
+    }
+    
+    .upload-button-wrapper {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .storage-info {
+        width: 100%;
+    }
+}
+
+/* Управление видимостью контейнеров на десктопе */
+@media (min-width: 768px) {
+    /* Убеждаемся, что десктопный контейнер виден на десктопе */
+    #desktopFilesContainer {
+        display: block !important;
+    }
+    
+    /* Скрываем мобильный контейнер на десктопе */
+    #mobileFilesContainer {
+        display: none !important;
+    }
+}
+
+/* Улучшенные стили для десктопа */
+@media (min-width: 992px) {
+    .storage-info {
+        max-width: 600px;
+    }
+
+    .progress {
+        max-width: 400px;
+    }
+
+    .card {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-group {
+        gap: 0.75rem;
+    }
+
+    .btn {
+        min-width: 150px;
+        padding: 0.625rem 1.25rem;
+    }
+}
+
 /* Стили для мобильной версии */
 @media (max-width: 767.98px) {
     .btn-group-vertical .btn {
         text-align: left;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
     
     .card-title {
         font-size: 1rem;
-        word-break: break-all;
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
     
     .btn-sm {
         padding: .5rem 1rem;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
     
     .storage-info {
@@ -115,6 +206,267 @@
     .progress {
         width: 100% !important;
     }
+
+    /* Кнопки групповых операций */
+    #bulkDeleteBtn,
+    #bulkDownloadBtn,
+    #bulkArchiveBtn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Панель загрузки */
+    .upload-zone {
+        padding: 2rem 1rem !important;
+    }
+
+    /* Таблица файлов */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.5rem;
+        white-space: nowrap;
+    }
+
+    /* Файловые строки */
+    .file-row {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .file-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .file-actions .btn {
+        flex: 1;
+        min-width: calc(50% - 0.25rem);
+        margin-bottom: 0;
+    }
+
+    /* Хлебные крошки */
+    .breadcrumb {
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .breadcrumb-item {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+
+    /* Модальные окна */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    /* Дерево папок */
+    .folders-tree-container {
+        max-height: 300px;
+        font-size: 0.875rem;
+    }
+
+    /* Информация о хранилище */
+    .storage-info h5 {
+        font-size: 1rem;
+    }
+
+    .storage-info small {
+        font-size: 0.75rem;
+    }
+}
+
+/* Специфичные стили для dashboard (общие стили карточек в base.html) */
+.file-card-meta .badge,
+.folder-card-meta .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-group-grid-desktop .btn {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+}
+
+/* Специфичные стили для dropdown на dashboard (общие стили в base.html) */
+/* Убеждаемся, что родительские контейнеры не обрезают dropdown */
+#sortDropdown {
+    position: relative;
+}
+
+.dropdown.show {
+    overflow: visible;
+}
+
+/* Дополнительные стили для панели инструментов с dropdown */
+#sortDropdown + .dropdown-menu {
+    min-width: 200px;
+    position: absolute !important;
+}
+
+/* Убеждаемся, что flex-контейнер не обрезает dropdown */
+.d-flex.flex-wrap.gap-2 {
+    overflow: visible !important;
+}
+
+/* Адаптивность для мобильных - кнопки и сортировка */
+@media (max-width: 767.98px) {
+    /* Убеждаемся, что мобильный контейнер виден */
+    #mobileFilesContainer {
+        display: block !important;
+    }
+    
+    /* Скрываем десктопный контейнер на мобильных */
+    #desktopFilesContainer {
+        display: none !important;
+    }
+    
+    .file-card-enhanced {
+        padding: 0.875rem;
+    }
+
+    .file-card-header,
+    .folder-card-header {
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .file-card-icon-wrapper,
+    .folder-card-icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+
+    .file-card-icon-wrapper i,
+    .folder-card-icon-wrapper i {
+        font-size: 1.25rem;
+    }
+
+    .file-card-title,
+    .folder-card-title {
+        font-size: 0.9rem;
+    }
+
+    .file-card-meta,
+    .folder-card-meta {
+        font-size: 0.8rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .file-card-enhanced,
+    .folder-card-enhanced {
+        padding: 0.875rem;
+    }
+
+    .btn-group-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dropdown {
+        width: 100%;
+        order: -1;
+    }
+
+    .dropdown .btn-secondary {
+        width: 100%;
+        text-align: left;
+        justify-content: space-between;
+    }
+
+    .dropdown-menu {
+        width: 100%;
+        max-width: 100vw;
+        left: 0 !important;
+        right: 0 !important;
+    }
+
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+}
+
+/* Стили для дерева папок */
+.folders-tree-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 10px;
+    background-color: var(--bs-body-bg, #ffffff);
+}
+
+.folders-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.folders-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.folder-row {
+    transition: background-color 0.2s, color 0.2s;
+    border-radius: 0.25rem;
+}
+
+.folder-row:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.folder-row.bg-primary {
+    background-color: var(--bs-primary) !important;
+    color: white !important;
+}
+
+.folder-item {
+    margin-bottom: 2px;
+}
+
+.folder-name {
+    font-weight: 500;
+}
+
+.mounted-folder {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+.mounted-folder:hover {
+    background-color: rgba(40, 167, 69, 0.2) !important;
+}
+
+/* Вертикальное центрирование модального окна менеджера папок */
+#moveFilesModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 1rem);
+    margin: 0.5rem auto;
+}
+
+#moveFilesModal .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
 }
 </style>
 
@@ -146,10 +498,10 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="storage-info mb-3 mb-md-0">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                    <div class="storage-info mb-3 mb-md-0 flex-grow-1 me-md-4">
                         <h5 class="mb-2">{{ t.storage.storage_usage }}</h5>
-                        <div class="progress" style="height: 10px; width: 200px;">
+                        <div class="progress" style="height: 10px; max-width: 500px;">
                             <div class="progress-bar storage-progress-bar" role="progressbar" 
                                  data-value="{{ user.userprofile.get_storage_percent }}"
                                  aria-valuenow="{{ user.userprofile.get_storage_percent }}" 
@@ -157,19 +509,19 @@
                                  aria-valuemax="100">
                             </div>
                         </div>
-                        <small class="text-muted">
+                        <small class="text-muted d-block mt-1">
                             <span class="storage-used">{{ user.userprofile.get_used_storage_formatted }}</span> 
                             {{ t.storage.used_of }} 
                             <span class="storage-total">{{ user.userprofile.get_quota_formatted }}</span>
                             (<span class="storage-percent">{{ user.userprofile.get_storage_percent }}</span>%)
                         </small>
                     </div>
-                    <div>
+                    <div class="upload-button-wrapper">
                         <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline;">
                             {% csrf_token %}
                             <input type="file" id="fileInput" name="file" class="d-none" multiple>
-                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                                <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
+                            <button type="button" class="btn btn-primary upload-btn-square" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-plus"></i>
                             </button>
                         </form>
                     </div>
@@ -179,17 +531,19 @@
     </div>
 </div>
 
-<div class="d-none d-md-block mb-3">
-    <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
-        <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
-    </button>
-    <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
-        <i class="fas fa-download"></i> {{ t.storage.download_selected }}
-    </button>
-    <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
-        <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
-    </button>
-    <span class="ms-3" id="selectedCount"></span>
+<div class="mb-3">
+    <div class="btn-group w-100 w-md-auto flex-column flex-md-row gap-2 mb-2" role="group">
+        <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
+            <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
+        </button>
+        <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
+            <i class="fas fa-download"></i> {{ t.storage.download_selected }}
+        </button>
+        <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
+            <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
+        </button>
+    </div>
+    <span class="d-block d-md-inline mt-2 mt-md-0 ms-md-2" id="selectedCount"></span>
 </div>
 
 <div class="row">
@@ -206,7 +560,7 @@
                         {% csrf_token %}
                         <input type="file" id="fileInput" name="file" class="d-none" multiple>
                         <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
-                            {{ t.storage.select_files }}
+                            <i class="fas fa-folder-open me-2"></i>{{ t.storage.select_files }}
                         </button>
                     </form>
                 </div>
@@ -215,16 +569,49 @@
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Breadcrumbs навигация -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{% url 'dashboard' %}">
+                <i class="fas fa-home"></i> Главная
+            </a>
+        </li>
+        {% if current_folder %}
+            {% for breadcrumb in breadcrumbs %}
+                <li class="breadcrumb-item {% if forloop.last %}active{% endif %}">
+                    {% if not forloop.last %}
+                        <a href="{% url 'dashboard' %}?folder={{ breadcrumb.id }}">{{ breadcrumb.name }}</a>
+                    {% else %}
+                        {{ breadcrumb.name }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        {% endif %}
+    </ol>
+</nav>
+
+<!-- Панель инструментов и поиска (наверху для всех экранов) -->
+<div class="row" style="overflow: visible;">
+    <div class="col-md-12" style="overflow: visible; position: relative;">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2" style="position: relative; overflow: visible; z-index: 1;">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" onclick="toggleDropdown()">
+            <div class="d-flex flex-wrap gap-2 w-100 w-md-auto" style="overflow: visible; position: relative;">
+                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-share-alt me-1"></i> Доступы
+                </a>
+                <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
+                    <i class="fas fa-folder-plus me-1"></i> Создать папку
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
+                    <i class="fas fa-folder-open me-1"></i> Переместить в папку
+                </button>
+                <div class="dropdown" style="position: static;">
+                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid var(--bs-secondary); background-color: var(--bs-secondary); color: white;">
                         <i class="fas fa-sort me-2"></i>
                         <span id="sortLabel">Сортировка</span>
                     </button>
-                    <ul class="dropdown-menu" id="dropdownMenu" aria-labelledby="sortDropdown">
+                    <ul class="dropdown-menu dropdown-menu-end" id="dropdownMenu" aria-labelledby="sortDropdown" style="position: absolute; z-index: 1051;">
                     <!-- ваш список пунктов -->
                     <li><a class="dropdown-item" href="#" data-sort="date-desc" onclick="sortFiles('date', 'desc'); return false;">
                         <i class="fas fa-calendar-alt me-2"></i>По дате (новые сначала)
@@ -249,23 +636,22 @@
                 </div>
             
                 <script>
-                function toggleDropdown() {
-                    const dropdownMenu = document.getElementById('dropdownMenu');
-                    dropdownMenu.classList.toggle('show');
-                }
-            
-            // Закрытие dropdown при клике вне его
-                document.addEventListener('click', function(event) {
-                    const dropdown = document.querySelector('.dropdown');
-                    const isClickInside = dropdown.contains(event.target);
-                
-                    if (!isClickInside) {
-                        document.getElementById('dropdownMenu').classList.remove('show');
+                // Инициализация Bootstrap Dropdown
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sortDropdownElement = document.getElementById('sortDropdown');
+                    if (sortDropdownElement) {
+                        // Инициализируем Bootstrap Dropdown если он еще не инициализирован
+                        try {
+                            const dropdown = bootstrap.Dropdown.getInstance(sortDropdownElement) || new bootstrap.Dropdown(sortDropdownElement);
+                        } catch(e) {
+                            console.warn('Dropdown initialization warning:', e);
+                        }
                     }
                 });
                 </script>
             
         </div>
+        
         <div class="card mb-4">
             <div class="card-body">
                 <div class="input-group">
@@ -277,104 +663,307 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
-        {% if files %}
+<div class="row">
+    <div class="col-md-12">
+
+        {% if folders or files %}
             <!-- Десктопная в��сия (таблица) -->
-            <div class="d-none d-md-block">
-                <div class="files-container">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        <input type="checkbox" class="form-check-input" id="selectAll">
-                                    </th>
-                                    <th>{{ t.storage.file_list.table.filename }}</th>
-                                    <th>{{ t.storage.file_list.table.type }}</th>
-                                    <th>Размер</th>
-                                    <th>{{ t.storage.file_list.table.upload_date }}</th>
-                                    <th>{{ t.storage.file_list.table.actions }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for file in files %}
-                                    <tr class="file-row" 
-                                        data-filename="{{ file.filename|lower }}"
-                                        data-filesize="{{ file.file_size|default:0 }}"
-                                        data-uploaded="{{ file.uploaded_at|date:'U' }}">
-                                        <td>
-                                            <input type="checkbox" class="form-check-input file-checkbox" 
-                                                   value="{{ file.id }}" data-filename="{{ file.filename }}">
-                                        </td>
-                                        <td>{{ file.filename }}</td>
-                                        <td>{{ file.get_file_type_display }}</td>
-                                        <td class="file-size">{{ file.get_file_size_formatted|default:"—" }}</td>
-                                        <td data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}">{{ file.uploaded_at }}</td>
-                                        <td>
-                                            {% if file.is_image %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
-                                                </button>
-                                            {% elif file.is_video %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
-                                                </button>
-                                            {% elif file.is_audio %}
-                                                <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
-                                                    <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
-                                                </button>
-                                            {% elif file.is_archive %}
-                                                <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
-                                                    <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
-                                                </button>
-                                                <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
-                                                    <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
-                                                </button>
-                                            {% endif %}
-                                            <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
-                                                <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
-                                                <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
-                                            </button>
-                                            <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
-                                                    onclick="togglePublicity('{{ file.id }}', this)"
-                                                    data-public="{{ file.is_public|yesno:'true,false' }}">
-                                                <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
-                                                {% if file.is_public %}
-                                                    {{ t.storage.file_list.actions.public }}
-                                                {% else %}
-                                                    {{ t.storage.file_list.actions.private }}
-                                                {% endif %}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Чекбокс "Выбрать все" для десктопа -->
+            <div class="d-none d-md-block mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="selectAll">
+                    <label class="form-check-label" for="selectAll">
+                        {{ t.storage.file_list.select_all|default:"Выбрать все" }}
+                    </label>
                 </div>
+            </div>
+            
+            <!-- Десктопная версия (карточки) -->
+            <div class="d-none d-md-block" id="desktopFilesContainer">
+                <!-- Примонтированные папки -->
+                {% for mounted in mounted_folders %}
+                    <div class="folder-card-enhanced mb-3 mounted-folder-card" data-filename="{{ mounted.folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-mounted">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="mounted_{{ mounted.mounted.id }}" disabled>
+                                    <h6 class="folder-card-title mb-0">{{ mounted.folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-success">Примонтированная папка</span>
+                                    <span class="text-muted ms-2">{{ mounted.folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-user me-1"></i>{{ mounted.owner.username }}</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ mounted.mounted_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                {% if mounted.access.access_type == 'link' %}
+                                    <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-warning" onclick="unmountFolder({{ mounted.mounted.id }})">
+                                    <i class="fas fa-unlink"></i> Отмонтировать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                <!-- Обычные папки -->
+                {% for folder in folders %}
+                    <div class="folder-card-enhanced mb-3" data-filename="{{ folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-normal">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
+                                    <h6 class="folder-card-title mb-0">{{ folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-warning">Папка</span>
+                                    <span class="text-muted ms-2">{{ folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ folder.created_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                <a href="{% url 'dashboard' %}?folder={{ folder.id }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="showShareFolderModal({{ folder.id }})">
+                                    <i class="fas fa-share-alt"></i> Поделиться
+                                </button>
+                                {% for access in folder.shared_accesses.all %}
+                                    {% if access.owner == user %}
+                                        <button class="btn btn-sm btn-warning" onclick="showAccessSettings({{ access.id }})">
+                                            <i class="fas fa-cog"></i> Доступ
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="revokeAccess({{ folder.id }})">
+                                            <i class="fas fa-ban"></i> Отозвать
+                                        </button>
+                                    {% endif %}
+                                {% endfor %}
+                                <button class="btn btn-sm btn-info" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-edit"></i> Переименовать
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                <!-- Файлы -->
+                {% for file in files %}
+                    <div class="file-card-enhanced mb-3" 
+                         data-filename="{{ file.filename|lower }}"
+                         data-filesize="{{ file.file_size|default:0 }}"
+                         data-uploaded="{{ file.uploaded_at|date:'U' }}">
+                        <div class="file-card-header">
+                            <div class="file-card-icon-wrapper">
+                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }}"></i>
+                            </div>
+                            <div class="file-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input file-checkbox me-2" 
+                                           value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                    <h6 class="file-card-title mb-0">{{ file.filename }}</h6>
+                                </div>
+                                <div class="file-card-meta">
+                                    <span class="badge bg-secondary">{{ file.get_file_type_display }}</span>
+                                    <span class="text-muted ms-2">{{ file.get_file_size_formatted|default:"—" }}</span>
+                                    <span class="text-muted ms-2" data-sort-date="{{ file.uploaded_at|date:'Y-m-d H:i:s' }}"><i class="fas fa-clock me-1"></i>{{ file.uploaded_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-card-actions">
+                            <div class="btn-group-grid-desktop">
+                                {% if file.is_image %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_video %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                    </button>
+                                {% elif file.is_audio %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                    </button>
+                                {% elif file.is_archive %}
+                                    <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
+                                        <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
+                                        <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    </button>
+                                {% elif file.is_text %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_document %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_code %}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
+                                    <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
+                                    <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+                                </button>
+                                <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
+                                        onclick="togglePublicity('{{ file.id }}', this)"
+                                        data-public="{{ file.is_public|yesno:'true,false' }}">
+                                    <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                    {% if file.is_public %}
+                                        {{ t.storage.file_list.actions.public }}
+                                    {% else %}
+                                        {{ t.storage.file_list.actions.private }}
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
 
             <!-- Мобильная версия (карточки) -->
             <div class="d-md-none" id="mobileFilesContainer">
+                <!-- Примонтированные папки -->
+                {% for mounted in mounted_folders %}
+                    <div class="folder-card-enhanced mb-3 mounted-folder-card" data-filename="{{ mounted.folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-mounted">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="mounted_{{ mounted.mounted.id }}" disabled>
+                                    <h6 class="folder-card-title mb-0">{{ mounted.folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-success">Примонтированная папка</span>
+                                    <span class="text-muted ms-2">{{ mounted.folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-user me-1"></i>{{ mounted.owner.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid">
+                                {% if mounted.access.access_type == 'link' %}
+                                    <a href="{% url 'shared_folder_view' mounted.access.share_token %}" class="btn btn-sm btn-primary mb-1">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'dashboard' %}?shared_folder={{ mounted.folder.id }}" class="btn btn-sm btn-primary mb-1">
+                                        <i class="fas fa-folder-open"></i> Открыть
+                                    </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-warning mb-1" onclick="unmountFolder({{ mounted.mounted.id }})">
+                                    <i class="fas fa-unlink"></i> Отмонтировать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Обычные папки -->
+                {% for folder in folders %}
+                    <div class="folder-card-enhanced mb-3" data-filename="{{ folder.name|lower }}">
+                        <div class="folder-card-header">
+                            <div class="folder-card-icon-wrapper folder-icon-normal">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="folder-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input folder-checkbox me-2" 
+                                           value="folder_{{ folder.id }}" data-filename="{{ folder.name }}">
+                                    <h6 class="folder-card-title mb-0">{{ folder.name }}</h6>
+                                </div>
+                                <div class="folder-card-meta">
+                                    <span class="badge bg-warning">Папка</span>
+                                    <span class="text-muted ms-2">{{ folder.get_files_count }} файлов</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ folder.created_at|date:"d.m.Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="folder-card-actions">
+                            <div class="btn-group-grid">
+                                <a href="{% url 'dashboard' %}?folder={{ folder.id }}" class="btn btn-sm btn-primary mb-1">
+                                    <i class="fas fa-folder-open"></i> Открыть
+                                </a>
+                                <button class="btn btn-sm btn-success mb-1" onclick="showShareFolderModal({{ folder.id }})">
+                                    <i class="fas fa-share-alt"></i> Поделиться
+                                </button>
+                                {% for access in folder.shared_accesses.all %}
+                                    {% if access.owner == user %}
+                                        <button class="btn btn-sm btn-warning mb-1" onclick="showAccessSettings({{ access.id }})">
+                                            <i class="fas fa-cog"></i> Доступ
+                                        </button>
+                                        <button class="btn btn-sm btn-danger mb-1" onclick="revokeAccess({{ folder.id }})">
+                                            <i class="fas fa-ban"></i> Отозвать
+                                        </button>
+                                    {% endif %}
+                                {% endfor %}
+                                <button class="btn btn-sm btn-info mb-1" onclick="renameFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-edit"></i> Переименовать
+                                </button>
+                                <button class="btn btn-sm btn-danger mb-1" onclick="deleteFolder({{ folder.id }}, '{{ folder.name|escapejs }}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Файлы -->
                 {% for file in files %}
-                    <div class="card mb-3 file-card" 
+                    <div class="file-card-enhanced mb-3" 
                          data-filename="{{ file.filename|lower }}"
                          data-filesize="{{ file.file_size|default:0 }}"
                          data-uploaded="{{ file.uploaded_at|date:'U' }}">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-2">
-                                <input type="checkbox" class="form-check-input file-checkbox me-2" 
-                                       value="{{ file.id }}" data-filename="{{ file.filename }}">
-                                <h5 class="card-title mb-0">{{ file.filename }}</h5>
+                        <div class="file-card-header">
+                            <div class="file-card-icon-wrapper">
+                                <i class="fas {{ file.get_file_icon }} {{ file.get_file_icon_color }}"></i>
                             </div>
-                            <p class="card-text">
-                                <small class="text-muted">
-                                    {{ file.get_file_type_display }} • {{ file.get_file_size_formatted|default:"—" }} • {{ file.uploaded_at }}
-                                </small>
-                            </p>
-                            <div class="btn-group-vertical w-100">
+                            <div class="file-card-info">
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input file-checkbox me-2" 
+                                           value="{{ file.id }}" data-filename="{{ file.filename }}">
+                                    <h6 class="file-card-title mb-0">{{ file.filename }}</h6>
+                                </div>
+                                <div class="file-card-meta">
+                                    <span class="badge bg-secondary">{{ file.get_file_type_display }}</span>
+                                    <span class="text-muted ms-2">{{ file.get_file_size_formatted|default:"—" }}</span>
+                                    <span class="text-muted ms-2"><i class="fas fa-clock me-1"></i>{{ file.uploaded_at|date:"d.m.Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-card-actions">
+                            <div class="btn-group-grid">
                                 {% if file.is_image %}
                                     <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
                                         <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
@@ -393,6 +982,18 @@
                                     </button>
                                     <button class="btn btn-sm btn-warning mb-1" onclick="extractArchive('{{ file.id }}')">
                                         <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    </button>
+                                {% elif file.is_text %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_document %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    </button>
+                                {% elif file.is_code %}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
+                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
                                     </button>
                                 {% endif %}
                                 <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')">
@@ -633,6 +1234,89 @@
 // Функции для работы с плеером (showPreview, globalPlayer, initDragAndResize) находятся в file_viewer.html
 let zoom = null;
 
+// Функции для работы с общим доступом к папкам
+async function showShareFolderModal(folderId) {
+    window.location.href = `{% url 'share_folder_wizard' 0 %}`.replace('0', folderId);
+}
+
+async function unmountFolder(mountedId) {
+    const confirmed = await window.confirm('Вы уверены, что хотите отмонтировать эту папку?', 'Подтверждение отмонтирования');
+    if (!confirmed) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'unmount_folder' 0 %}`.replace('0', mountedId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отмонтировании папки: ' + error.message);
+    }
+}
+
+async function revokeAccess(folderId) {
+    const confirmed = await window.confirm('Вы уверены, что хотите отозвать доступ к этой папке у всех пользователей?', 'Подтверждение отзыва доступа');
+    if (!confirmed) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`{% url 'revoke_folder_access' 0 %}`.replace('0', folderId), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Доступ успешно отозван!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при отзыве доступа: ' + error.message);
+    }
+}
+
+function showAccessSettings(accessId) {
+    // Можно создать модальное окно или перенаправить на страницу настроек
+    alert('Функция настройки модификаторов доступа будет добавлена в следующем обновлении');
+}
+
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
@@ -736,8 +1420,9 @@ document.getElementById('archiveSearch').addEventListener('input', function(e) {
     });
 });
 
-function extractArchive(fileId) {
-    if (!confirm('Вы уверены, что хотите распаковать этот архив?')) {
+async function extractArchive(fileId) {
+    const confirmed = await window.confirm('Вы уверены, что хотите распаковать этот архив?', 'Подтверждение распаковки');
+    if (!confirmed) {
         return;
     }
     
@@ -873,8 +1558,9 @@ function updateBulkButtons() {
     selectedCount.textContent = count > 0 ? `Выбрано файлв: ${count}` : '';
 }
 
-function bulkDelete() {
-    if (!confirm('Вы уверены, что хотите удалить выбранные файлы?')) {
+async function bulkDelete() {
+    const confirmed = await window.confirm('Вы уверены, что хотите удалить выбранные файлы?', 'Подтверждение удаления');
+    if (!confirmed) {
         return;
     }
     
@@ -920,7 +1606,8 @@ function bulkDownload() {
     csrf.value = csrfToken;
     form.appendChild(csrf);
     
-    selectedFiles.forEach(id => {
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
+    selectedItems.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'file_ids[]';
@@ -937,10 +1624,11 @@ function bulkDownload() {
 }
 
 function bulkArchive() {
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
     const formData = new FormData();
-    selectedFiles.forEach(id => formData.append('file_ids[]', id));
+    selectedItems.forEach(id => formData.append('file_ids[]', id));
     
-    showLoading('Создание ахива...');
+    showLoading('Создание архива...');
     
     const csrfToken = getCsrfToken();
     fetch('/storage/bulk-archive/', {
@@ -956,12 +1644,12 @@ function bulkArchive() {
             location.reload();
         } else {
             hideLoading();
-            alert('Ошибка при создании архива');
+            alert('Ошибка при создании архива: ' + (data.error || data.message || 'Неизвестная ошибка'));
         }
     })
     .catch(error => {
         hideLoading();
-        alert('Ошибка при создании архива');
+        alert('Ошибка при создании архива: ' + error.message);
     });
 }
 
@@ -1129,8 +1817,9 @@ function toggleUploadPanel() {
     }
 }
 
-function deleteFile(fileId, fileName) {
-    if (!confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`)) {
+async function deleteFile(fileId, fileName) {
+    const confirmed = await window.confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`, 'Подтверждение удаления');
+    if (!confirmed) {
         return;
     }
     
@@ -1217,12 +1906,12 @@ function sortFiles(type, order) {
         sortLabel.textContent = sortLabels[`${type}-${order}`] || 'Сортировка';
     }
     
-    // Сортируем строки таблицы (десктопная версия)
-    const tbody = document.querySelector('tbody');
-    if (tbody) {
-        const rows = Array.from(tbody.querySelectorAll('tr.file-row'));
+    // Сортируем карточки десктопной версии - включая папки и файлы
+    const desktopContainer = document.getElementById('desktopFilesContainer');
+    if (desktopContainer) {
+        const cards = Array.from(desktopContainer.querySelectorAll('.file-card-enhanced, .folder-card-enhanced'));
         
-        rows.sort((a, b) => {
+        cards.sort((a, b) => {
             let aValue, bValue;
             
             if (type === 'name') {
@@ -1243,14 +1932,14 @@ function sortFiles(type, order) {
             return 0;
         });
         
-        // Перемещаем отсортированные строки обратно в таблицу
-        rows.forEach(row => tbody.appendChild(row));
+        // Перемещаем отсортированные карточки обратно в контейнер
+        cards.forEach(card => desktopContainer.appendChild(card));
     }
     
-    // Сортируем карточки (мобильная версия)
+    // Сортируем карточки (мобильная версия) - включая папки и файлы
     const mobileContainer = document.getElementById('mobileFilesContainer');
     if (mobileContainer) {
-        const cards = Array.from(mobileContainer.querySelectorAll('.file-card'));
+        const cards = Array.from(mobileContainer.querySelectorAll('.file-card-enhanced, .folder-card-enhanced'));
         
         cards.sort((a, b) => {
             let aValue, bValue;
@@ -1278,28 +1967,36 @@ function sortFiles(type, order) {
     }
 }
 
-// Добавим функцию поиска файлов (обновленная с учетом сортировки)
+// Добавим функцию поиска файлов и папок (обновленная с учетом сортировки)
 const fileSearch = document.getElementById('fileSearch');
 if (fileSearch) {
     fileSearch.addEventListener('input', function(e) {
         const searchText = e.target.value.toLowerCase();
-        const fileRows = document.querySelectorAll('tbody tr.file-row');
+        
+        // Десктопная версия - карточки
+        const desktopCards = document.querySelectorAll('#desktopFilesContainer .file-card-enhanced, #desktopFilesContainer .folder-card-enhanced');
+        
+        // Мобильная версия - карточки
+        const mobileCards = document.querySelectorAll('#mobileFilesContainer .file-card-enhanced, #mobileFilesContainer .folder-card-enhanced');
+        
         let visibleCount = 0;
         
-        fileRows.forEach(row => {
-            const fileName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        // Фильтруем десктопные карточки
+        desktopCards.forEach(card => {
+            const titleElement = card.querySelector('.file-card-title, .folder-card-title');
+            const fileName = titleElement ? titleElement.textContent.toLowerCase() : '';
             if (fileName.includes(searchText)) {
-                row.style.display = '';
+                card.style.display = '';
                 visibleCount++;
             } else {
-                row.style.display = 'none';
+                card.style.display = 'none';
             }
         });
         
-        // Также скрываем/показываем карточки в мобильной версии
-        const fileCards = document.querySelectorAll('.file-card');
-        fileCards.forEach(card => {
-            const fileName = card.querySelector('.card-title').textContent.toLowerCase();
+        // Фильтруем мобильные карточки
+        mobileCards.forEach(card => {
+            const titleElement = card.querySelector('.file-card-title, .folder-card-title');
+            const fileName = titleElement ? titleElement.textContent.toLowerCase() : '';
             if (fileName.includes(searchText)) {
                 card.style.display = '';
             } else {
@@ -1307,8 +2004,8 @@ if (fileSearch) {
             }
         });
         
-        // Обновляем отображние "Нет файлов" если ничего не найдено
-        const noFilesMessage = document.querySelector('.table-responsive + p');
+        // Обновляем отображение "Нет файлов" если ничего не найдено
+        const noFilesMessage = document.querySelector('#desktopFilesContainer + p, #mobileFilesContainer + p');
         if (noFilesMessage) {
             if (visibleCount === 0) {
                 noFilesMessage.textContent = 'Файлы не найдены';
@@ -1878,5 +2575,402 @@ function processUploadQueue(success) {
         });
     }
 }
+
+// Функции для работы с папками
+async function showCreateFolderModal() {
+    const name = await window.prompt('Введите имя новой папки:', '', 'Создание папки');
+    if (!name || !name.trim()) {
+        return;
+    }
+    
+    createFolder(name.trim());
+}
+
+async function createFolder(name) {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    {% if current_folder %}
+    formData.append('parent_id', {{ current_folder.id }});
+    {% endif %}
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch('{% url "create_folder" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при создании папки: ' + error.message);
+    }
+}
+
+async function renameFolder(folderId, currentName) {
+    const newName = await window.prompt('Введите новое имя папки:', currentName, 'Переименование папки');
+    if (!newName || !newName.trim() || newName.trim() === currentName) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('name', newName.trim());
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch(`/storage/folder/rename/${folderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при переименовании папки: ' + error.message);
+    }
+}
+
+async function deleteFolder(folderId, folderName) {
+    const confirmed = await window.confirm(`Вы уверены, что хотите удалить папку "${folderName}"? Папка должна быть пустой.`, 'Подтверждение удаления');
+    if (!confirmed) {
+        return;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch(`/storage/folder/delete/${folderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        alert('Ошибка при удалении папки: ' + error.message);
+    }
+}
+
+async function showMoveFilesModal() {
+    const selectedItems = getSelectedItems(); // Получаем и файлы, и папки
+    if (selectedItems.length === 0) {
+        alert('Выберите файлы или папки для перемещения');
+        return;
+    }
+    
+    // Определяем что выбрано
+    const selectedFiles = selectedItems.filter(item => !item.startsWith('folder_'));
+    const selectedFolders = selectedItems.filter(item => item.startsWith('folder_'));
+    
+    // Загружаем дерево папок
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{% url "get_folders_tree" %}', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('Ошибка при загрузке папок: ' + (data.error || data.message || 'Неизвестная ошибка'));
+            return;
+        }
+        
+        // Создаем модальное окно
+        const modalHtml = `
+            <div class="modal fade" id="moveFilesModal" tabindex="-1" aria-labelledby="moveFilesModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="moveFilesModalLabel">
+                                <i class="fas fa-folder-open me-2"></i>Выберите папку для перемещения
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <button class="btn btn-outline-primary btn-sm" onclick="selectFolderForMove(null)">
+                                    <i class="fas fa-home me-1"></i>Корневая папка
+                                </button>
+                            </div>
+                            <div id="foldersTree" class="folders-tree-container">
+                                ${renderFoldersTreeHTML(data.folders, 0)}
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    ${selectedFiles.length > 0 ? `Выбрано файлов: <strong>${selectedFiles.length}</strong>` : ''}
+                                    ${selectedFolders.length > 0 ? `${selectedFiles.length > 0 ? ', ' : ''}Выбрано папок: <strong>${selectedFolders.length}</strong>` : ''}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmMoveFiles()" id="confirmMoveBtn" disabled>
+                                <i class="fas fa-arrow-right me-1"></i>Переместить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Удаляем существующий модал, если есть
+        const existingModal = document.getElementById('moveFilesModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        window.selectedFolderId = null;
+        window.selectedFilesForMove = selectedFiles;
+        window.selectedFoldersForMove = selectedFolders;
+        const modal = new bootstrap.Modal(document.getElementById('moveFilesModal'));
+        modal.show();
+        
+    } catch (error) {
+        alert('Ошибка при загрузке папок: ' + error.message);
+    }
+}
+
+function renderFoldersTreeHTML(folders, depth) {
+    if (!folders || folders.length === 0) {
+        return '<p class="text-muted mb-0"><small>Папки не найдены</small></p>';
+    }
+    
+    let html = '<ul class="folders-tree" style="margin-left: ' + (depth * 20) + 'px;">';
+    
+    folders.forEach(folder => {
+        const hasChildren = folder.children && folder.children.length > 0;
+        html += `
+            <li class="folder-item" data-folder-id="${folder.id}">
+                <div class="folder-row d-flex align-items-center p-2 mb-1 rounded" 
+                     onclick="selectFolderForMove(${folder.id}, this)" 
+                     style="cursor: pointer; transition: background-color 0.2s;">
+                    <i class="fas ${hasChildren ? 'fa-folder' : 'fa-folder'} text-warning me-2"></i>
+                    <span class="folder-name flex-grow-1">${escapeHtml(folder.name)}</span>
+                    ${hasChildren ? '<i class="fas fa-chevron-down text-muted"></i>' : ''}
+                </div>
+                ${hasChildren ? renderFoldersTreeHTML(folder.children, depth + 1) : ''}
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    return html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function selectFolderForMove(folderId, element) {
+    window.selectedFolderId = folderId;
+    
+    // Обновляем визуальное выделение
+    document.querySelectorAll('.folder-row').forEach(row => {
+        row.classList.remove('bg-primary', 'text-white');
+        row.style.backgroundColor = '';
+        row.style.color = '';
+    });
+    
+    if (element) {
+        element.classList.add('bg-primary', 'text-white');
+    } else {
+        // Выделяем кнопку "Корневая папка"
+        const rootBtn = document.querySelector('[onclick*="selectFolderForMove(null)"]');
+        if (rootBtn) {
+            rootBtn.classList.add('active');
+        }
+    }
+    
+    // Активируем кнопку "Переместить"
+    const confirmBtn = document.getElementById('confirmMoveBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+    }
+}
+
+async function confirmMoveFiles() {
+    const selectedFiles = window.selectedFilesForMove || [];
+    const selectedFolders = window.selectedFoldersForMove || [];
+    
+    if (selectedFiles.length === 0 && selectedFolders.length === 0) {
+        alert('Выберите файлы или папки для перемещения');
+        return;
+    }
+    
+    const folderId = window.selectedFolderId;
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('Ошибка: не удалось получить CSRF токен');
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirmMoveBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Перемещение...';
+    }
+    
+    const formData = new FormData();
+    selectedFiles.forEach(fileId => {
+        formData.append('file_ids[]', fileId);
+    });
+    selectedFolders.forEach(folderIdStr => {
+        formData.append('folder_ids[]', folderIdStr);
+    });
+    if (folderId) {
+        formData.append('target_folder_id', folderId);
+    }
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    try {
+        const response = await fetch('{% url "move_files" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('moveFilesModal')).hide();
+            setTimeout(() => {
+                location.reload();
+            }, 300);
+        } else {
+            alert('Ошибка: ' + (data.error || data.message || 'Неизвестная ошибка'));
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Переместить';
+            }
+        }
+    } catch (error) {
+        alert('Ошибка при перемещении: ' + error.message);
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Переместить';
+        }
+    }
+}
+
+
+function getSelectedFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getSelectedItems() {
+    // Получаем все выбранные элементы (и файлы, и папки)
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+    const folderCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
+    
+    const items = [];
+    fileCheckboxes.forEach(cb => items.push(cb.value));
+    folderCheckboxes.forEach(cb => items.push(cb.value)); // Папки уже имеют префикс "folder_"
+    
+    return items;
+}
+
+// Обновляем обработчики для включения папок в выбор
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.file-checkbox, .folder-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkButtons();
+        });
+    }
+    
+    // Обновляем обработчики для чекбоксов
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('file-checkbox') || e.target.classList.contains('folder-checkbox')) {
+            updateBulkButtons();
+            updateSelectAll();
+        }
+    });
+});
+
+function updateBulkButtons() {
+    const selectedCount = document.querySelectorAll('.file-checkbox:checked, .folder-checkbox:checked').length;
+    const moveBtn = document.getElementById('moveFilesBtn');
+    if (moveBtn) {
+        moveBtn.disabled = selectedCount === 0;
+    }
+    // Обновляем другие кнопки массовых операций
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
+    const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
+    if (bulkDeleteBtn) bulkDeleteBtn.disabled = selectedCount === 0;
+    if (bulkDownloadBtn) bulkDownloadBtn.disabled = selectedCount === 0;
+    if (bulkArchiveBtn) bulkArchiveBtn.disabled = selectedCount === 0;
+}
+
+function updateSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        const checkboxes = document.querySelectorAll('.file-checkbox, .folder-checkbox');
+        const checked = document.querySelectorAll('.file-checkbox:checked, .folder-checkbox:checked');
+        selectAll.checked = checkboxes.length > 0 && checkboxes.length === checked.length;
+    }
+}
+
 </script>
 {% endblock %} 

@@ -156,4 +156,3 @@ def check_file(request):
         'chunked': filesize > settings.LARGE_FILE_SIZE_THRESHOLD,
         'chunk_size': settings.CHUNKED_UPLOAD_CHUNK_SIZE
     })
-

@@ -45,23 +45,36 @@ html {
 #previewModal .modal-dialog {
     display: flex;
     align-items: center;
-    min-height: calc(100vh - 60px);
-    margin: 30px auto;
+    margin: auto;
     position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vw;
+    max-width: 1200px;
+    height: auto;
+    max-height: 85vh;
+    min-height: 300px;
+    min-width: 400px;
 }
 
 #previewModal .modal-content {
-    max-height: 90vh;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     overflow: hidden;
     position: relative;
 }
 
 #previewModal .modal-body {
     overflow: auto;
-    max-height: calc(90vh - 120px);
+    max-height: calc(100% - 60px);
+    height: calc(100% - 60px);
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 0.5rem;
 }
 
 .draggable-header {
@@ -113,6 +126,84 @@ html {
 .modal.show .modal-dialog {
     transform: none;
 }
+
+/* Мобильные устройства - нормальный размер модального окна */
+@media (max-width: 767.98px) {
+    #previewModal .modal-dialog {
+        margin: 1rem auto;
+        width: calc(100% - 2rem);
+        max-width: 400px;
+        height: auto;
+        max-height: calc(100vh - 2rem);
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    #previewModal .modal-content {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0.75rem;
+    }
+    
+    #previewModal .modal-body {
+        max-height: calc(100vh - 150px);
+        padding: 0.75rem;
+        overflow: auto;
+    }
+    
+    #previewContent {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    #previewContent img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+    
+    #previewContent video {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    #previewContent audio {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .plyr {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    .plyr video {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .plyr-audio {
+        width: 100%;
+        height: auto;
+    }
+}
 {% endif %}
 
 .resize-handle {
@@ -130,6 +221,14 @@ html {
     border-style: solid;
     border-width: 0 0 10px 10px;
     border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+}
+
+/* Скрываем resize-handle для аудио */
+#previewContent audio ~ .resize-handle,
+.plyr-audio ~ .resize-handle,
+.unified-player-content:has(audio) .resize-handle {
+    display: none !important;
+    pointer-events: none !important;
 }
 </style>
 
@@ -151,12 +250,13 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
     // Минимальные размеры с учетом шапки и элементов управления плеера
     const headerHeight = 24;
     const controlsHeight = 80;
-    const minWidth = 400;
-    const minHeight = headerHeight + controlsHeight + 200;
+    const isMobile = window.innerWidth <= 767.98;
+    const minWidth = isMobile ? window.innerWidth * 0.9 : 400;
+    const minHeight = isMobile ? window.innerHeight * 0.7 : headerHeight + controlsHeight + 200;
     
     // Максимальные размеры
-    const maxWidth = window.innerWidth * 0.95;
-    const maxHeight = window.innerHeight * 0.95;
+    const maxWidth = window.innerWidth * (isMobile ? 0.98 : 0.95);
+    const maxHeight = window.innerHeight * (isMobile ? 0.98 : 0.95);
     
     newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
     newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
@@ -283,11 +383,164 @@ const modalResizeState = {
     activeResizeHandle: null
 };
 
+// Функция для обновления номеров строк
+function updateLineNumbers(textarea, lineNumbersDiv) {
+    if (!textarea || !lineNumbersDiv) return;
+    
+    const lines = textarea.value.split('\n');
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 21;
+    const paddingTop = parseFloat(window.getComputedStyle(textarea).paddingTop) || 10;
+    const paddingBottom = parseFloat(window.getComputedStyle(textarea).paddingBottom) || 10;
+    
+    // Сохраняем текущий scrollTop перед обновлением
+    const scrollTop = textarea.scrollTop;
+    
+    // Обновляем номера строк
+    let numbersHtml = '';
+    for (let i = 1; i <= lines.length; i++) {
+        numbersHtml += `<div style="height: ${lineHeight}px; line-height: ${lineHeight}px; min-height: ${lineHeight}px;">${i}</div>`;
+    }
+    
+    // Обновляем HTML
+    lineNumbersDiv.innerHTML = numbersHtml || '<div>1</div>';
+    
+    // Устанавливаем padding для соответствия textarea
+    lineNumbersDiv.style.paddingTop = paddingTop + 'px';
+    lineNumbersDiv.style.paddingBottom = paddingBottom + 'px';
+    
+    // Устанавливаем высоту контейнера номеров строк равной высоте textarea
+    // Это гарантирует, что все номера строк будут видны при прокрутке
+    const textareaScrollHeight = textarea.scrollHeight;
+    lineNumbersDiv.style.height = textareaScrollHeight + 'px';
+    lineNumbersDiv.style.minHeight = textareaScrollHeight + 'px';
+    
+    // Синхронизируем прокрутку через transform (scrollTop больше не используется)
+    // Номера строк теперь синхронизируются через transform в обработчике scroll
+}
+
+// Функция для сохранения текстового файла
+async function saveTextFile(fileId, editorId, lineNumbersId) {
+    if (!fileId) {
+        alert('Ошибка: ID файла не указан');
+        return;
+    }
+    
+    const editor = document.getElementById(editorId);
+    if (!editor) {
+        alert('Ошибка: редактор не найден');
+        return;
+    }
+    
+    const content = editor.value;
+    const button = event?.target?.closest('button') || document.querySelector(`button[onclick*="${editorId}"]`);
+    
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
+    }
+    
+    try {
+        // Получаем CSRF токен
+        let csrfToken;
+        try {
+            const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfElement && csrfElement.value) {
+                csrfToken = csrfElement.value;
+            } else {
+                // Получаем из cookie
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                csrfToken = getCookie('csrftoken');
+            }
+        } catch(e) {
+            alert('Ошибка: не удалось получить CSRF токен');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+            return;
+        }
+        
+        if (!csrfToken) {
+            alert('Ошибка: CSRF токен не найден. Перезагрузите страницу.');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`/storage/save-text/${fileId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (button) {
+                button.innerHTML = '<i class="fas fa-check me-1"></i> Сохранено';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-primary');
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                    button.disabled = false;
+                }, 2000);
+            }
+            // Можно показать уведомление
+            console.log('Файл успешно сохранен');
+        } else {
+            alert('Ошибка при сохранении: ' + (data.message || 'Неизвестная ошибка'));
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+            }
+        }
+    } catch (error) {
+        alert('Ошибка при сохранении: ' + error.message);
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-save me-1"></i> Сохранить';
+        }
+    }
+}
+
 async function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     const modalDialog = document.getElementById('previewModalDialog');
     const modalContent = document.getElementById('previewModalContent');
     const previewContent = document.getElementById('previewContent');
+    
+    // Сохраняем тип файла в глобальную переменную для использования в initDragAndResize
+    window._currentPreviewType = type;
+    
+    // Сохраняем исходный title страницы
+    const originalTitle = document.title;
+    
+    // Изменяем title на "Просмотр {имя файла}"
+    document.title = `Просмотр ${filename}`;
     
     // Очищаем предыдущий плеер если он существует
     if (globalPlayer) {
@@ -299,55 +552,90 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         globalPlayer = null;
     }
     
-    // Получаем метаданные и доступные качества для видео
-    let availableQualities = [];
-    if (type === 'video' && fileId) {
-        try {
-            const metadataResponse = await fetch(`/storage/metadata/${fileId}/`);
-            const metadataData = await metadataResponse.json();
-            if (metadataData.success && metadataData.metadata.available_qualities) {
-                availableQualities = metadataData.metadata.available_qualities;
-            }
-        } catch(e) {
-            console.error('Error loading video metadata:', e);
+    // Создаем единую структуру плеера
+    const playerData = createUnifiedPlayerHTML(type, url, filename, null, null, fileId);
+    previewContent.innerHTML = playerData.html;
+    
+    // Загружаем текстовые файлы после вставки в DOM
+    if (type === 'text' && window._pendingTextLoad && window._pendingTextLoad.length > 0) {
+        const pending = window._pendingTextLoad.pop();
+        if (pending) {
+            (async () => {
+                try {
+                    const response = await fetch(pending.url);
+                    const text = await response.text();
+                    const editor = document.getElementById(pending.editorId);
+                    const lineNumbers = document.getElementById(pending.lineNumbersId);
+                    
+                    if (editor) {
+                        editor.value = text;
+                        updateLineNumbers(editor, lineNumbers);
+                        
+                        // Синхронизируем стили прокрутки - делаем line-numbers без прокрутки, синхронизируем через transform
+                        lineNumbers.style.overflow = 'hidden';
+                        lineNumbers.style.pointerEvents = 'none';
+                        
+                        // Функция синхронизации прокрутки
+                        const syncScroll = () => {
+                            if (lineNumbers) {
+                                // Используем transform для синхронизации прокрутки
+                                lineNumbers.style.transform = `translateY(-${editor.scrollTop}px)`;
+                                // Устанавливаем высоту контейнера для правильного отображения всех номеров
+                                const scrollHeight = editor.scrollHeight;
+                                lineNumbers.style.height = scrollHeight + 'px';
+                                lineNumbers.style.minHeight = scrollHeight + 'px';
+                            }
+                        };
+                        
+                        // Добавляем обработчики для обновления номеров строк
+                        editor.addEventListener('input', () => {
+                            updateLineNumbers(editor, lineNumbers);
+                            syncScroll();
+                        });
+                        
+                        // Синхронизируем прокрутку в реальном времени
+                        editor.addEventListener('scroll', syncScroll);
+                        
+                        editor.addEventListener('keyup', () => {
+                            updateLineNumbers(editor, lineNumbers);
+                            syncScroll();
+                        });
+                        
+                        editor.addEventListener('paste', () => {
+                            setTimeout(() => {
+                                updateLineNumbers(editor, lineNumbers);
+                                syncScroll();
+                            }, 10);
+                        });
+                        
+                        // Обработчик изменения размера textarea для обновления высоты номеров строк
+                        const resizeObserver = new ResizeObserver(() => {
+                            if (lineNumbers) {
+                                updateLineNumbers(editor, lineNumbers);
+                                syncScroll();
+                            }
+                        });
+                        resizeObserver.observe(editor);
+                        
+                        // Первоначальная синхронизация
+                        setTimeout(() => {
+                            updateLineNumbers(editor, lineNumbers);
+                            syncScroll();
+                        }, 100);
+                    }
+                } catch(e) {
+                    const editor = document.getElementById(pending.editorId);
+                    if (editor) editor.value = 'Ошибка загрузки файла: ' + e.message;
+                }
+            })();
         }
     }
     
-    // Создаем единую структуру плеера с поддержкой качества
-    const playerData = createUnifiedPlayerHTML(type, url, filename, null, null, availableQualities, fileId);
-    previewContent.innerHTML = playerData.html;
-    
-    // Инициализируем Plyr для видео/аудио с поддержкой качества
+    // Инициализируем Plyr для видео/аудио
     if (playerData.playerClass) {
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
-            // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
             globalPlayer = initUnifiedPlayer(playerElement);
-            
-            // Слушаем событие изменения качества и сохраняем позицию воспроизведения
-            if (type === 'video' && availableQualities.length > 1 && fileId) {
-                // Добавляем слушатель на сам видео элемент, а не на playerElement
-                if (playerElement && playerElement.tagName === 'VIDEO') {
-                    playerElement.addEventListener('qualitychange', (e) => {
-                        const quality = e.detail.quality;
-                        // quality может быть строкой "720p" или числом 720, нормализуем
-                        const qualityNum = typeof quality === 'string' ? parseInt(quality.replace('p', '')) : quality;
-                        // Сохраняем текущую позицию перед изменением качества
-                        const currentTime = globalPlayer.currentTime;
-                        console.log('Quality changed to:', quality, 'Current time:', currentTime);
-                        
-                        // Восстанавливаем позицию после загрузки нового источника
-                        if (globalPlayer && globalPlayer.media) {
-                            globalPlayer.media.addEventListener('loadedmetadata', function restoreTime() {
-                                if (globalPlayer && currentTime > 0) {
-                                    globalPlayer.currentTime = currentTime;
-                                    globalPlayer.media.removeEventListener('loadedmetadata', restoreTime);
-                                }
-                            }, { once: true });
-                        }
-                    });
-                }
-            }
         }
     }
     
@@ -365,11 +653,76 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         modalDialog.style.top = '50%';
         modalDialog.style.transform = 'translate(-50%, -50%)';
         modalDialog.style.margin = '0';
-        modalDialog.style.width = 'auto';
-        modalDialog.style.maxWidth = 'none';
-        modalContent.style.width = '';
-        modalContent.style.height = '';
-        modalContent.style.maxWidth = '';
+        
+        // Определяем, мобильное устройство или нет
+        const isMobile = window.innerWidth <= 767.98;
+        
+        // Для текстовых файлов устанавливаем размер квадрата
+        if (type === 'text') {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            // На мобильных используем больше пространства
+            const sizeRatio = isMobile ? 0.95 : 0.5;
+            const size = Math.min(viewportWidth * sizeRatio, viewportHeight * sizeRatio);
+            
+            modalDialog.style.width = size + 'px';
+            modalDialog.style.height = size + 'px';
+            modalDialog.style.maxWidth = size + 'px';
+            modalDialog.style.maxHeight = size + 'px';
+            modalDialog.style.minWidth = size + 'px';
+            modalDialog.style.minHeight = size + 'px';
+            
+            modalContent.style.width = size + 'px';
+            modalContent.style.height = size + 'px';
+            modalContent.style.maxWidth = size + 'px';
+            modalContent.style.maxHeight = size + 'px';
+        } else {
+            // На мобильных используем нормальный размер (не на весь экран)
+            if (isMobile) {
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const maxWidth = Math.min(400, viewportWidth - 32);
+                const maxHeight = viewportHeight - 32;
+                modalDialog.style.width = maxWidth + 'px';
+                modalDialog.style.maxWidth = maxWidth + 'px';
+                modalDialog.style.height = 'auto';
+                modalDialog.style.maxHeight = maxHeight + 'px';
+                modalContent.style.width = '100%';
+                modalContent.style.height = 'auto';
+                modalContent.style.maxWidth = '100%';
+                modalContent.style.maxHeight = maxHeight + 'px';
+            } else {
+                // Для десктопа используем нормальный размер проигрывателя
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const maxWidth = Math.min(1200, viewportWidth * 0.7);
+                const maxHeight = viewportHeight * 0.85;
+                
+                // Для видео используем соотношение 16:9, для других файлов - адаптивно
+                if (type === 'video') {
+                    const videoHeight = maxWidth / (16 / 9);
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = Math.min(videoHeight, maxHeight) + 'px';
+                    modalDialog.style.maxHeight = maxHeight + 'px';
+                } else if (type === 'audio') {
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = 'auto';
+                    modalDialog.style.maxHeight = '300px';
+                } else {
+                    modalDialog.style.width = maxWidth + 'px';
+                    modalDialog.style.maxWidth = maxWidth + 'px';
+                    modalDialog.style.height = Math.min(maxWidth * 0.75, maxHeight) + 'px';
+                    modalDialog.style.maxHeight = maxHeight + 'px';
+                }
+                
+                modalContent.style.width = '100%';
+                modalContent.style.height = '100%';
+                modalContent.style.maxWidth = '100%';
+                modalContent.style.maxHeight = '100%';
+            }
+        }
     }
     
     modal.show();
@@ -385,6 +738,12 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     
     // Очищаем при закрытии модального окна
     document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        // Восстанавливаем исходный title страницы
+        document.title = originalTitle;
+        
+        // Очищаем глобальную переменную типа файла
+        window._currentPreviewType = null;
+        
         previewContent.innerHTML = '';
         modalResizeState.isResizing = false;
         modalResizeState.activeResizeHandle = null;
@@ -415,6 +774,22 @@ function initDragAndResize() {
     const resizeHandles = document.querySelectorAll('#previewModal .resize-handle');
     
     if (!modalDialog || !modalContent || !header) return;
+    
+    // Получаем тип файла из глобальной переменной
+    const fileType = window._currentPreviewType || '';
+    
+    // Отключаем изменение размера для аудио
+    if (fileType === 'audio') {
+        // Скрываем resize-handle для аудио
+        resizeHandles.forEach(handle => {
+            if (handle) {
+                handle.style.display = 'none';
+                handle.style.pointerEvents = 'none';
+            }
+        });
+        // Не инициализируем resize для аудио
+        return;
+    }
     
     // Обновляем цвет текста периодически и при изменениях
     updateTitleColor();
@@ -450,8 +825,8 @@ function initDragAndResize() {
     modalDialog.style.transform = 'translate(-50%, -50%)';
     modalDialog.style.margin = '0';
     
-    // Инициализация изменения размера используя общую функцию
-    if (modalContent) {
+    // Инициализация изменения размера используя общую функцию (только если не аудио)
+    if (modalContent && fileType !== 'audio') {
         initResizeForElement(modalContent, modalResizeState, true);
     }
 }
@@ -524,55 +899,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     {% endif %}
     
     if (playerElement) {
-        // Получаем метаданные и доступные качества для видео
-        let availableQualities = [];
-        if (playerType === 'video' && fileToken) {
-            try {
-                const metadataResponse = await fetch(`/storage/public/metadata/${fileToken}/`);
-                const metadataData = await metadataResponse.json();
-                if (metadataData.success && metadataData.metadata.available_qualities) {
-                    availableQualities = metadataData.metadata.available_qualities;
-                }
-            } catch(e) {
-                console.error('Error loading video metadata:', e);
-            }
-        }
-        
-        // Создаем единую структуру плеера с поддержкой качества
-        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', availableQualities, null, fileToken);
+        // Создаем единую структуру плеера
+        const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', null);
         playerElement.innerHTML = playerData.html;
         
-        // Инициализируем Plyr для видео/аудио с поддержкой качества
+        // Инициализируем Plyr для видео/аудио
         if (playerData.playerClass) {
             const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
             if (mediaElement) {
-                // Plyr автоматически создаст меню качества из source элементов с data-plyr-quality
                 const player = initUnifiedPlayer(mediaElement);
-                
-                // Слушаем событие изменения качества и сохраняем позицию воспроизведения
-                if (playerType === 'video' && availableQualities.length > 1 && fileToken) {
-                    // Добавляем слушатель на сам видео элемент
-                    if (mediaElement && mediaElement.tagName === 'VIDEO') {
-                        mediaElement.addEventListener('qualitychange', (e) => {
-                            const quality = e.detail.quality;
-                            // quality может быть строкой "720p" или числом 720, нормализуем
-                            const qualityNum = typeof quality === 'string' ? parseInt(quality.replace('p', '')) : quality;
-                            // Сохраняем текущую позицию перед изменением качества
-                            const currentTime = player.currentTime;
-                            console.log('Quality changed to:', quality, 'Current time:', currentTime);
-                            
-                            // Восстанавливаем позицию после загрузки нового источника
-                            if (player && player.media) {
-                                player.media.addEventListener('loadedmetadata', function restoreTime() {
-                                    if (player && currentTime > 0) {
-                                        player.currentTime = currentTime;
-                                        player.media.removeEventListener('loadedmetadata', restoreTime);
-                                    }
-                                }, { once: true });
-                            }
-                        });
-                    }
-                }
             }
         }
         

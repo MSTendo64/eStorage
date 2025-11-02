@@ -5,6 +5,9 @@
 <form method="post">
     {% csrf_token %}
     <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Режим разработчика</h5>
+        </div>
         <div class="card-body">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="developer_mode" name="developer_mode" 
@@ -16,6 +19,30 @@
             </small>
         </div>
     </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Видео проигрыватель</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Выберите проигрыватель для видео</label>
+                <select name="video_player" class="form-select">
+                    <option value="plyr" {% if user.userprofile.video_player == 'plyr' or not user.userprofile.video_player %}selected{% endif %}>
+                        Plyr - Расширенный проигрыватель с дополнительными функциями
+                    </option>
+                    <option value="native" {% if user.userprofile.video_player == 'native' %}selected{% endif %}>
+                        HTML5 - Стандартный нативный браузерный проигрыватель
+                    </option>
+                </select>
+                <small class="text-muted d-block mt-2">
+                    Plyr предлагает более современный интерфейс и дополнительные настройки. 
+                    HTML5 - это стандартный проигрыватель браузера без дополнительных зависимостей.
+                </small>
+            </div>
+        </div>
+    </div>
+    
     <button type="submit" class="btn btn-primary">Сохранить</button>
 </form>
 {% endblock %} 

@@ -3,9 +3,9 @@
 {% block title %}Вход | Eventshock Storage{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card border-primary">
+<div class="row justify-content-center mx-0">
+    <div class="col-12">
+        <div class="card border-primary login-card-container">
             <div class="card-header bg-primary text-white">
                 <h3 class="text-center mb-0">
                     <i class="fas fa-key me-2"></i>
@@ -26,28 +26,28 @@
                 <form method="post" class="esuid-form">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="username" class="form-label">Имя пользователя или Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-user"></i>
-                            </span>
+                        <label for="username" class="form-label d-flex align-items-center">
+                            <i class="fas fa-user me-2"></i>
+                            Имя пользователя или Email
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Пароль</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="fas fa-lock"></i>
-                            </span>
+                        <label for="password" class="form-label d-flex align-items-center">
+                            <i class="fas fa-lock me-2"></i>
+                            Пароль
+                        </label>
+                        <div class="d-flex align-items-center">
                             <input type="password" class="form-control" id="password" name="password" required>
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                            <button class="btn btn-outline-secondary ms-2" type="button" onclick="togglePassword('password')" style="flex-shrink: 0;">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
                             <i class="fas fa-sign-in-alt me-2"></i>
                             Войти
                         </button>
@@ -63,38 +63,10 @@
 </div>
 
 <style>
-.esuid-form .input-group-text {
-    background-color: var(--bs-primary);
-    color: white;
-    border-color: var(--bs-primary);
-}
-
-.esuid-form .form-control:focus {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
-}
-
-.card.border-primary {
-    border-width: 2px;
-}
-
-.card.border-primary .card-header {
-    border-bottom-width: 2px;
-}
+/* Специфичные стили для страницы входа (общие стили в base.html) */
 </style>
 
 <script>
-function togglePassword(inputId) {
-    const input = document.getElementById(inputId);
-    const icon = input.nextElementSibling.querySelector('i');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fas fa-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'fas fa-eye';
-    }
-}
+// Функция togglePassword доступна из base.html
 </script>
 {% endblock %} 
