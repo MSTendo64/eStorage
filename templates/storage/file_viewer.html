@@ -527,6 +527,437 @@ async function saveTextFile(fileId, editorId, lineNumbersId) {
     }
 }
 
+// ========== АДАПТИВНОЕ ПЕРЕКЛЮЧЕНИЕ БИТРЕЙТА ==========
+
+/**
+ * Инициализация адаптивного переключения качества для видео и аудио
+ */
+async function initAdaptiveBitrate(mediaElement, type, fileId) {
+    if (!mediaElement || !fileId) return;
+    
+    try {
+        // Определяем, является ли это публичным файлом (проверяем по URL)
+        const originalUrl = mediaElement.getAttribute('data-original-url') || mediaElement.src;
+        const isPublic = originalUrl.includes('/public/');
+        let fileToken = null;
+        
+        if (isPublic) {
+            // Извлекаем token из URL
+            const urlMatch = originalUrl.match(/\/public\/([^\/]+)/);
+            if (urlMatch) {
+                fileToken = urlMatch[1];
+            }
+        }
+        
+        // Получаем метаданные файла с доступными качествами
+        const metadataUrl = isPublic && fileToken 
+            ? `/storage/public/metadata/${fileToken}/`
+            : `/storage/metadata/${fileId}/`;
+        const metadataResponse = await fetch(metadataUrl);
+        const metadataData = await metadataResponse.json();
+        
+        if (!metadataData.success || !metadataData.metadata) {
+            console.warn('Не удалось получить метаданные для адаптивного качества');
+            return;
+        }
+        
+        const metadata = metadataData.metadata;
+        const availableQualities = metadata.available_qualities || [];
+        const originalHeight = metadata.height;
+        
+        if (availableQualities.length <= 1) {
+            console.log('Доступно только одно качество, адаптивное переключение не требуется');
+            return;
+        }
+        
+        // Создаем адаптивный менеджер качества
+        const adaptiveManager = new AdaptiveBitrateManager(
+            mediaElement,
+            fileId,
+            type,
+            availableQualities,
+            originalHeight,
+            isPublic,
+            fileToken
+        );
+        
+        adaptiveManager.start();
+        
+        // Сохраняем менеджер для очистки при закрытии
+        mediaElement._adaptiveManager = adaptiveManager;
+        
+    } catch (error) {
+        console.error('Ошибка инициализации адаптивного качества:', error);
+    }
+}
+
+/**
+ * Класс для управления адаптивным битрейтом
+ */
+class AdaptiveBitrateManager {
+    constructor(mediaElement, fileId, type, availableQualities, originalHeight, isPublic = false, fileToken = null) {
+        this.mediaElement = mediaElement;
+        this.fileId = fileId;
+        this.fileToken = fileToken;
+        this.isPublic = isPublic;
+        this.type = type;
+        this.availableQualities = availableQualities.sort((a, b) => b - a); // Сортируем от высокого к низкому
+        this.originalHeight = originalHeight;
+        this.currentQuality = originalHeight;
+        this.currentQualityIndex = this.availableQualities.indexOf(originalHeight);
+        if (this.currentQualityIndex === -1) {
+            this.currentQualityIndex = 0; // Начинаем с самого высокого качества
+        }
+        
+        // Метрики производительности
+        this.networkSpeed = null; // байт/сек
+        this.bufferHealth = 100; // процент заполненности буфера
+        this.lastBufferedEnd = 0;
+        this.lastMeasurementTime = Date.now();
+        this.lastSpeedMeasurement = 0;
+        
+        // Интервалы проверки
+        this.checkInterval = null;
+        this.speedCheckInterval = null;
+        
+        // Пороги для переключения качества
+        this.BUFFER_THRESHOLD_LOW = 20; // Переключаемся на более низкое качество, если буфер < 20%
+        this.BUFFER_THRESHOLD_HIGH = 80; // Переключаемся на более высокое качество, если буфер > 80%
+        this.SPEED_THRESHOLD_LOW = 50000; // 50 KB/s - переключаемся на более низкое качество
+        this.SPEED_THRESHOLD_HIGH = 500000; // 500 KB/s - можно переключаться на более высокое качество
+    }
+    
+    /**
+     * Начинает мониторинг и адаптивное переключение качества
+     */
+    start() {
+        // Начинаем с измерения скорости загрузки
+        this.startSpeedMeasurement();
+        
+        // Начинаем мониторинг буфера каждые 2 секунды
+        this.checkInterval = setInterval(() => {
+            this.checkAndAdjustQuality();
+        }, 2000);
+        
+        // Обработчики событий для отслеживания загрузки
+        this.mediaElement.addEventListener('progress', () => {
+            this.updateSpeedMeasurement();
+        });
+        
+        this.mediaElement.addEventListener('waiting', () => {
+            // Видео остановилось из-за нехватки данных - понижаем качество
+            if (this.currentQualityIndex < this.availableQualities.length - 1) {
+                this.decreaseQuality();
+            }
+        });
+        
+        this.mediaElement.addEventListener('canplaythrough', () => {
+            // Буфер заполнен - можно попробовать повысить качество
+            if (this.bufferHealth > this.BUFFER_THRESHOLD_HIGH && 
+                this.networkSpeed > this.SPEED_THRESHOLD_HIGH &&
+                this.currentQualityIndex > 0) {
+                this.increaseQuality();
+            }
+        });
+    }
+    
+    /**
+     * Останавливает мониторинг
+     */
+    stop() {
+        if (this.checkInterval) {
+            clearInterval(this.checkInterval);
+            this.checkInterval = null;
+        }
+        if (this.speedCheckInterval) {
+            clearInterval(this.speedCheckInterval);
+            this.speedCheckInterval = null;
+        }
+    }
+    
+    /**
+     * Начинает измерение скорости загрузки
+     */
+    startSpeedMeasurement() {
+        this.lastBufferedEnd = 0;
+        this.lastMeasurementTime = Date.now();
+        
+        // Измеряем скорость загрузки через загрузку небольшого фрагмента
+        this.measureNetworkSpeed();
+        
+        this.speedCheckInterval = setInterval(() => {
+            this.updateSpeedMeasurement();
+            // Повторяем измерение скорости каждые 10 секунд
+            if (Date.now() - this.lastSpeedMeasurement > 10000) {
+                this.measureNetworkSpeed();
+            }
+        }, 2000);
+    }
+    
+    /**
+     * Измеряет скорость сети через загрузку фрагмента файла
+     */
+    async measureNetworkSpeed() {
+        try {
+            let qualityUrl;
+            if (this.type === 'video') {
+                if (this.isPublic && this.fileToken) {
+                    qualityUrl = `/storage/public/video-quality/${this.fileToken}/${this.currentQuality}/`;
+                } else {
+                    qualityUrl = `/storage/video-quality/${this.fileId}/${this.currentQuality}/`;
+                }
+            } else {
+                qualityUrl = this.mediaElement.getAttribute('data-original-url');
+            }
+            
+            const startTime = Date.now();
+            const response = await fetch(qualityUrl, {
+                method: 'HEAD',
+                headers: { 'Range': 'bytes=0-1048576' } // Запрашиваем первые 1MB для измерения
+            });
+            
+            const endTime = Date.now();
+            const contentLength = response.headers.get('content-length') || response.headers.get('content-range');
+            
+            if (contentLength) {
+                // Если есть Range, извлекаем общий размер
+                const totalSize = contentLength.includes('/') 
+                    ? parseInt(contentLength.split('/')[1])
+                    : parseInt(contentLength);
+                
+                // Запрашиваем небольшой фрагмент для точного измерения
+                const testResponse = await fetch(qualityUrl, {
+                    headers: { 'Range': 'bytes=0-1048576' } // 1MB для теста
+                });
+                
+                const testData = await testResponse.blob();
+                const testTime = Date.now() - startTime;
+                
+                if (testTime > 0 && testData.size > 0) {
+                    // Скорость в байтах в секунду
+                    const measuredSpeed = (testData.size / testTime) * 1000;
+                    
+                    // Используем скользящее среднее для сглаживания
+                    if (this.networkSpeed) {
+                        this.networkSpeed = (this.networkSpeed * 0.7) + (measuredSpeed * 0.3);
+                    } else {
+                        this.networkSpeed = measuredSpeed;
+                    }
+                    
+                    this.lastSpeedMeasurement = Date.now();
+                }
+            }
+        } catch (e) {
+            console.warn('Ошибка измерения скорости сети:', e);
+        }
+    }
+    
+    /**
+     * Обновляет измерение скорости загрузки на основе буфера
+     */
+    updateSpeedMeasurement() {
+        if (!this.mediaElement.buffered || this.mediaElement.buffered.length === 0) return;
+        
+        try {
+            const bufferedEnd = this.mediaElement.buffered.end(this.mediaElement.buffered.length - 1);
+            const currentTime = this.mediaElement.currentTime;
+            const bufferDuration = bufferedEnd - currentTime;
+            
+            // Вычисляем здоровье буфера
+            const idealBuffer = 10; // Идеальный буфер 10 секунд
+            this.bufferHealth = Math.min(100, (bufferDuration / idealBuffer) * 100);
+            
+            // Оцениваем скорость на основе роста буфера
+            const now = Date.now();
+            const timeDelta = (now - this.lastMeasurementTime) / 1000;
+            
+            if (timeDelta > 0.5 && bufferedEnd > this.lastBufferedEnd) {
+                // Приблизительная оценка скорости на основе роста буфера
+                const bufferGrowth = bufferedEnd - this.lastBufferedEnd;
+                // Предполагаем средний битрейт около 2 Мбит/с для видео (250 KB/s)
+                const estimatedBytesPerSecond = bufferGrowth * 250000;
+                const estimatedSpeed = estimatedBytesPerSecond / timeDelta;
+                
+                if (this.networkSpeed) {
+                    // Обновляем с небольшой коррекцией на основе буфера
+                    this.networkSpeed = (this.networkSpeed * 0.9) + (estimatedSpeed * 0.1);
+                }
+            }
+            
+            this.lastBufferedEnd = bufferedEnd;
+            this.lastMeasurementTime = now;
+        } catch (e) {
+            console.warn('Ошибка обновления измерения скорости:', e);
+        }
+    }
+    
+    /**
+     * Проверяет условия и при необходимости переключает качество
+     */
+    checkAndAdjustQuality() {
+        if (!this.mediaElement.buffered || this.mediaElement.buffered.length === 0) return;
+        
+        try {
+            const bufferedEnd = this.mediaElement.buffered.end(this.mediaElement.buffered.length - 1);
+            const currentTime = this.mediaElement.currentTime;
+            const bufferDuration = bufferedEnd - currentTime;
+            const idealBuffer = 10;
+            this.bufferHealth = Math.min(100, (bufferDuration / idealBuffer) * 100);
+            
+            // Логика переключения качества
+            const shouldDecrease = this.bufferHealth < this.BUFFER_THRESHOLD_LOW || 
+                                   (this.networkSpeed && this.networkSpeed < this.SPEED_THRESHOLD_LOW);
+            
+            const shouldIncrease = this.bufferHealth > this.BUFFER_THRESHOLD_HIGH && 
+                                  this.networkSpeed > this.SPEED_THRESHOLD_HIGH &&
+                                  this.currentQualityIndex > 0;
+            
+            if (shouldDecrease && this.currentQualityIndex < this.availableQualities.length - 1) {
+                this.decreaseQuality();
+            } else if (shouldIncrease && this.currentQualityIndex > 0) {
+                // Не повышаем качество слишком часто
+                const timeSinceLastChange = Date.now() - (this.lastQualityChange || 0);
+                if (timeSinceLastChange > 5000) { // Минимум 5 секунд между повышениями
+                    this.increaseQuality();
+                }
+            }
+        } catch (e) {
+            console.warn('Ошибка проверки качества:', e);
+        }
+    }
+    
+    /**
+     * Понижает качество
+     */
+    async decreaseQuality() {
+        if (this.currentQualityIndex >= this.availableQualities.length - 1) return;
+        
+        const newQualityIndex = this.currentQualityIndex + 1;
+        const newQuality = this.availableQualities[newQualityIndex];
+        
+        if (newQuality === this.currentQuality) return; // Уже установлено это качество
+        
+        await this.switchQuality(newQuality, newQualityIndex);
+    }
+    
+    /**
+     * Повышает качество
+     */
+    async increaseQuality() {
+        if (this.currentQualityIndex <= 0) return;
+        
+        const newQualityIndex = this.currentQualityIndex - 1;
+        const newQuality = this.availableQualities[newQualityIndex];
+        
+        if (newQuality === this.currentQuality) return; // Уже установлено это качество
+        
+        await this.switchQuality(newQuality, newQualityIndex);
+    }
+    
+    /**
+     * Переключает качество видео/аудио
+     */
+    async switchQuality(quality, qualityIndex) {
+        try {
+            const currentTime = this.mediaElement.currentTime;
+            const wasPlaying = !this.mediaElement.paused;
+            
+            // Получаем новый URL для качества
+            let qualityUrl;
+            if (this.type === 'video') {
+                if (this.isPublic && this.fileToken) {
+                    qualityUrl = `/storage/public/video-quality/${this.fileToken}/${quality}/`;
+                } else {
+                    qualityUrl = `/storage/video-quality/${this.fileId}/${quality}/`;
+                }
+            } else {
+                // Для аудио пока используем оригинал (если нет API для аудио качества)
+                qualityUrl = this.mediaElement.getAttribute('data-original-url');
+                return; // Для аудио пока не переключаем
+            }
+            
+            // Сохраняем текущий source и создаем новый
+            const currentSource = this.mediaElement.querySelector('source');
+            if (!currentSource) return;
+            
+            // Сохраняем ссылку на глобальный плеер для обновления
+            const playerInstance = window.globalPlayer;
+            
+            // Создаем новый source с новым качеством
+            const newSource = document.createElement('source');
+            newSource.src = qualityUrl;
+            newSource.type = this.type === 'video' ? 'video/mp4' : 'audio/mpeg';
+            
+            // Заменяем source
+            currentSource.parentNode.removeChild(currentSource);
+            this.mediaElement.appendChild(newSource);
+            
+            // Если используется Plyr, обновляем source через API
+            if (playerInstance && playerInstance.media) {
+                try {
+                    // Обновляем source в Plyr
+                    if (typeof playerInstance.source === 'object' || typeof playerInstance.load === 'function') {
+                        // Используем метод load для обновления source
+                        this.mediaElement.src = qualityUrl;
+                        if (playerInstance.load) {
+                            playerInstance.load();
+                        }
+                    } else {
+                        // Прямое обновление через media element
+                        this.mediaElement.load();
+                    }
+                } catch (e) {
+                    console.warn('Ошибка обновления Plyr source:', e);
+                    this.mediaElement.load();
+                }
+            } else {
+                // Для нативного плеера просто перезагружаем
+                this.mediaElement.load();
+            }
+            
+            // Восстанавливаем позицию воспроизведения после загрузки
+            const restorePosition = () => {
+                const mediaEl = playerInstance?.media || this.mediaElement;
+                if (mediaEl) {
+                    mediaEl.currentTime = currentTime;
+                    if (wasPlaying) {
+                        const playPromise = mediaEl.play();
+                        if (playPromise) {
+                            playPromise.catch(e => console.warn('Ошибка воспроизведения:', e));
+                        }
+                    }
+                }
+            };
+            
+            if (playerInstance && typeof playerInstance.on === 'function') {
+                // Для Plyr используем событие ready или loadedmetadata
+                const handler = () => {
+                    restorePosition();
+                    playerInstance.off('ready', handler);
+                    playerInstance.off('loadedmetadata', handler);
+                };
+                playerInstance.on('ready', handler);
+                playerInstance.on('loadedmetadata', handler);
+            } else {
+                // Для нативного плеера
+                this.mediaElement.addEventListener('loadeddata', function handler() {
+                    restorePosition();
+                    this.removeEventListener('loadeddata', handler);
+                });
+            }
+            
+            this.currentQuality = quality;
+            this.currentQualityIndex = qualityIndex;
+            this.lastQualityChange = Date.now();
+            
+            console.log(`Качество переключено на ${quality}p (индекс: ${qualityIndex})`);
+            
+        } catch (error) {
+            console.error('Ошибка переключения качества:', error);
+        }
+    }
+}
+
 async function showPreview(url, type, fileId = null, filename = 'Просмотр файла') {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     const modalDialog = document.getElementById('previewModalDialog');
@@ -636,6 +1067,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
             globalPlayer = initUnifiedPlayer(playerElement);
+            
+            // Инициализируем адаптивное качество для видео и аудио
+            if ((type === 'video' || type === 'audio') && fileId) {
+                initAdaptiveBitrate(playerElement, type, fileId);
+            }
         }
     }
     
@@ -743,6 +1179,15 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         
         // Очищаем глобальную переменную типа файла
         window._currentPreviewType = null;
+        
+        // Останавливаем адаптивные менеджеры качества
+        const mediaElements = previewContent.querySelectorAll('video, audio');
+        mediaElements.forEach(element => {
+            if (element._adaptiveManager) {
+                element._adaptiveManager.stop();
+                element._adaptiveManager = null;
+            }
+        });
         
         previewContent.innerHTML = '';
         modalResizeState.isResizing = false;

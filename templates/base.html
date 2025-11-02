@@ -1868,19 +1868,28 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
     
     switch(type) {
         case 'video':
-            // Используем оригинальное качество видео
+            // Для видео используем адаптивное качество
             // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Plyr
             const videoClass = playerType === 'native' ? 'native-video' : 'plyr-video';
-            content = `<video class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
+            const videoId = 'adaptive-video-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            content = `<video id="${videoId}" class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;" ${fileId ? `data-file-id="${fileId}"` : ''} data-original-url="${url}">
                 <source src="${url}" type="video/mp4">
             </video>`;
             playerClass = videoClass;
+            // Сохраняем данные для адаптивного качества
+            window._pendingAdaptiveVideo = window._pendingAdaptiveVideo || [];
+            window._pendingAdaptiveVideo.push({ id: videoId, fileId: fileId, originalUrl: url });
             break;
         case 'audio':
-            content = `<audio class="plyr-audio" controls style="width: 100%;">
+            // Для аудио также используем адаптивное качество
+            const audioId = 'adaptive-audio-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            content = `<audio id="${audioId}" class="plyr-audio" controls style="width: 100%;" ${fileId ? `data-file-id="${fileId}"` : ''} data-original-url="${url}">
                 <source src="${url}" type="audio/mpeg">
             </audio>`;
             playerClass = 'plyr-audio';
+            // Сохраняем данные для адаптивного качества аудио
+            window._pendingAdaptiveAudio = window._pendingAdaptiveAudio || [];
+            window._pendingAdaptiveAudio.push({ id: audioId, fileId: fileId, originalUrl: url });
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
