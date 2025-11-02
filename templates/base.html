@@ -10,6 +10,33 @@
     <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
     <style>
+        /* ========== ГЛОБАЛЬНЫЕ СТИЛИ И ПРЕДОТВРАЩЕНИЕ ПЕРЕПОЛНЕНИЯ ========== */
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Предотвращение горизонтального скролла */
+        .container,
+        .container-fluid,
+        .row,
+        [class*="col-"] {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
         /* Базовые стили */
         :root {
             --bs-body-bg: #e9ecef;
@@ -64,6 +91,327 @@
             scrollbar-width: none !important;
             -ms-overflow-style: none !important;
         }
+
+        /* ========== ЕДИНЫЕ СТИЛИ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ ========== */
+        /* Контейнеры должны быть ограничены */
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding-left: 15px;
+            padding-right: 15px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Контент контейнеры */
+        .content-container {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+
+        /* Карточки */
+        .card {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .card-body,
+        .card-header,
+        .card-footer {
+            overflow-x: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Изображения не должны выходить за рамки */
+        img {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Текст не должен выходить за рамки */
+        p, span, div, h1, h2, h3, h4, h5, h6 {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        /* Таблицы должны быть адаптивными */
+        .table {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            display: block;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Формы */
+        .form-control,
+        .form-select,
+        .input-group {
+            max-width: 100%;
+        }
+
+        /* Кнопки */
+        .btn {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Навигация */
+        .navbar {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .navbar-brand,
+        .navbar-nav {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .nav-link {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Модальные окна */
+        .modal {
+            overflow-x: hidden;
+        }
+
+        .modal-content {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .modal-body {
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+
+        /* Списки */
+        .list-group-item {
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+
+        /* Прогресс бары */
+        .progress {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        /* ========== МОБИЛЬНАЯ АДАПТИВНОСТЬ ========== */
+        @media (max-width: 767.98px) {
+            /* Контейнеры на мобильных */
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .content-container {
+                padding: 0.75rem;
+            }
+
+            /* Навигация на мобильных */
+            .navbar-nav {
+                width: 100%;
+            }
+
+            .nav-link {
+                padding: 0.75rem 1rem;
+                width: 100%;
+            }
+
+            /* Карточки на мобильных */
+            .card {
+                margin-bottom: 1rem;
+            }
+
+            .card-body {
+                padding: 1rem;
+            }
+
+            /* Кнопки на мобильных */
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+
+            .btn-group {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn-group .btn {
+                width: 100%;
+            }
+
+            /* Таблицы на мобильных */
+            .table {
+                font-size: 0.875rem;
+            }
+
+            /* Формы на мобильных */
+            .input-group {
+                flex-wrap: wrap;
+            }
+
+            .input-group-text {
+                width: 100%;
+                justify-content: center;
+                border-radius: 0.375rem 0.375rem 0 0 !important;
+            }
+
+            .input-group .form-control {
+                border-radius: 0 0 0.375rem 0.375rem !important;
+            }
+
+            /* Модальные окна на мобильных */
+            .modal-dialog {
+                margin: 0.5rem;
+                max-width: calc(100% - 1rem);
+            }
+
+            .modal-content {
+                max-height: calc(100vh - 1rem);
+                overflow-y: auto;
+            }
+
+            /* Скрываем некоторые элементы на мобильных */
+            .d-none-mobile {
+                display: none !important;
+            }
+
+            /* Хлебные крошки */
+            .breadcrumb {
+                font-size: 0.875rem;
+                flex-wrap: wrap;
+            }
+
+            /* Заголовки */
+            h1 { font-size: 1.75rem; }
+            h2 { font-size: 1.5rem; }
+            h3 { font-size: 1.25rem; }
+            h4 { font-size: 1.1rem; }
+            h5 { font-size: 1rem; }
+            h6 { font-size: 0.9rem; }
+        }
+
+        /* Планшеты */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .container {
+                max-width: 100%;
+            }
+
+            .btn-group-vertical {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+        }
+
+        /* ========== УЛУЧШЕННОЕ ВЫРАВНИВАНИЕ ========== */
+        .row {
+            margin-left: -15px;
+            margin-right: -15px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* Flex утилиты */
+        .d-flex {
+            display: flex;
+        }
+
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+
+        .align-items-center {
+            align-items: center;
+        }
+
+        .justify-content-between {
+            justify-content: space-between;
+        }
+
+        .justify-content-center {
+            justify-content: center;
+        }
+
+        /* ========== ИСПРАВЛЕНИЕ ПРОБЛЕМ С ПЕРЕПОЛНЕНИЕМ ========== */
+        /* Видео и аудио */
+        video, audio {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Iframe */
+        iframe {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        /* Текстовые области */
+        textarea {
+            max-width: 100%;
+            resize: vertical;
+        }
+
+        /* Ссылки */
+        a {
+            word-break: break-word;
+        }
+
+        /* Код */
+        code, pre {
+            max-width: 100%;
+            overflow-x: auto;
+            word-wrap: break-word;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        /* ========== ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ========== */
+        /* Плавные переходы */
+        * {
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Улучшенная прокрутка */
+        * {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Убираем лишние отступы */
+        .mb-0 { margin-bottom: 0 !important; }
+        .mt-0 { margin-top: 0 !important; }
     </style>
 
     <!-- Добавим data-атрибуты для хранения данных -->
@@ -185,17 +533,17 @@
     </script>
 
     <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/" style="max-width: calc(100% - 60px);">
                 {% if system_settings.site_logo %}
                     <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
-                         class="me-2" style="height: 32px;">
+                         class="me-2" style="height: 32px; max-width: 32px; object-fit: contain;">
                 {% endif %}
-                <span style="color: {{ system_settings.site_name_color }}">
+                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     {{ system_settings.site_name }}
                 </span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -240,10 +588,10 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container-fluid px-3 px-md-4 mt-3 mt-md-4">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} content-container">
+                <div class="alert alert-{{ message.tags }} content-container mb-3">
                     {{ message }}
                 </div>
             {% endfor %}
@@ -704,13 +1052,84 @@
     </style>
 
     <style>
+    /* Дополнительные исправления для модальных окон и других элементов */
+    .modal {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .modal-dialog {
+        max-width: calc(100% - 2rem);
+        margin: 1rem auto;
+    }
+
+    @media (max-width: 767.98px) {
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+
+        .modal-content {
+            max-height: calc(100vh - 1rem);
+            overflow-y: auto;
+        }
+
+        .modal-body {
+            padding: 1rem;
+            overflow-x: hidden;
+            word-wrap: break-word;
+        }
+    }
+
+    /* Исправление для dropdown меню */
+    .dropdown-menu {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    @media (max-width: 767.98px) {
+        .dropdown-menu {
+            position: static !important;
+            float: none !important;
+            width: 100% !important;
+            margin-top: 0.5rem;
+        }
+    }
+
+    /* Исправление для единого плеера */
+    .unified-player {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .unified-player-content {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .unified-player-content video,
+    .unified-player-content audio,
+    .unified-player-content img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Исправление для таблиц */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
+    }
+
     /* Адаптивный цвет текста */
     body {
         position: relative;
     }
+    </style>
 
-    /* Функция для определения яркости фона и адаптации текста */
     <script>
+    /* Функция для определения яркости фона и адаптации текста */
     function updateTextColors() {
         // Получаем цвет фона (из изображения или установленного фона)
         const getBackgroundColor = (element) => {
@@ -783,6 +1202,7 @@
     window.addEventListener('resize', updateTextColors);
     </script>
 
+    <style>
     /* Стили для адаптивного текста */
     body > *:not(.card):not(.navbar):not(.modal) {
         transition: color 0.3s ease;

@@ -96,15 +96,20 @@
 @media (max-width: 767.98px) {
     .btn-group-vertical .btn {
         text-align: left;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
     
     .card-title {
         font-size: 1rem;
-        word-break: break-all;
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
     
     .btn-sm {
         padding: .5rem 1rem;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
     
     .storage-info {
@@ -114,6 +119,88 @@
     
     .progress {
         width: 100% !important;
+    }
+
+    /* Кнопки групповых операций */
+    #bulkDeleteBtn,
+    #bulkDownloadBtn,
+    #bulkArchiveBtn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Панель загрузки */
+    .upload-zone {
+        padding: 2rem 1rem !important;
+    }
+
+    /* Таблица файлов */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.5rem;
+        white-space: nowrap;
+    }
+
+    /* Файловые строки */
+    .file-row {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .file-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .file-actions .btn {
+        flex: 1;
+        min-width: calc(50% - 0.25rem);
+        margin-bottom: 0;
+    }
+
+    /* Хлебные крошки */
+    .breadcrumb {
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .breadcrumb-item {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+
+    /* Модальные окна */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    /* Дерево папок */
+    .folders-tree-container {
+        max-height: 300px;
+        font-size: 0.875rem;
+    }
+
+    /* Информация о хранилище */
+    .storage-info h5 {
+        font-size: 1rem;
+    }
+
+    .storage-info small {
+        font-size: 0.75rem;
     }
 }
 
@@ -212,9 +299,9 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="storage-info mb-3 mb-md-0">
+                    <div class="storage-info mb-3 mb-md-0 w-100">
                         <h5 class="mb-2">{{ t.storage.storage_usage }}</h5>
-                        <div class="progress" style="height: 10px; width: 200px;">
+                        <div class="progress" style="height: 10px; width: 100%; max-width: 100%;">
                             <div class="progress-bar storage-progress-bar" role="progressbar" 
                                  data-value="{{ user.userprofile.get_storage_percent }}"
                                  aria-valuenow="{{ user.userprofile.get_storage_percent }}" 
@@ -222,18 +309,18 @@
                                  aria-valuemax="100">
                             </div>
                         </div>
-                        <small class="text-muted">
+                        <small class="text-muted d-block mt-1">
                             <span class="storage-used">{{ user.userprofile.get_used_storage_formatted }}</span> 
                             {{ t.storage.used_of }} 
                             <span class="storage-total">{{ user.userprofile.get_quota_formatted }}</span>
                             (<span class="storage-percent">{{ user.userprofile.get_storage_percent }}</span>%)
                         </small>
                     </div>
-                    <div>
-                        <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline;">
+                    <div class="w-100 w-md-auto">
+                        <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: inline; width: 100%;">
                             {% csrf_token %}
                             <input type="file" id="fileInput" name="file" class="d-none" multiple>
-                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            <button type="button" class="btn btn-primary w-100 w-md-auto" onclick="document.getElementById('fileInput').click()">
                                 <i class="fas fa-plus me-2"></i>{{ t.storage.upload }}
                             </button>
                         </form>
@@ -244,17 +331,19 @@
     </div>
 </div>
 
-<div class="d-none d-md-block mb-3">
-    <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
-        <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
-    </button>
-    <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
-        <i class="fas fa-download"></i> {{ t.storage.download_selected }}
-    </button>
-    <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
-        <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
-    </button>
-    <span class="ms-3" id="selectedCount"></span>
+<div class="mb-3">
+    <div class="d-flex flex-column flex-md-row gap-2 mb-2">
+        <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
+            <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
+        </button>
+        <button class="btn btn-primary" onclick="bulkDownload()" disabled id="bulkDownloadBtn">
+            <i class="fas fa-download"></i> {{ t.storage.download_selected }}
+        </button>
+        <button class="btn btn-success" onclick="bulkArchive()" disabled id="bulkArchiveBtn">
+            <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
+        </button>
+    </div>
+    <span class="d-block d-md-inline" id="selectedCount"></span>
 </div>
 
 <div class="row">
