@@ -92,6 +92,30 @@
     transition: width 1s ease-in-out;
 }
 
+/* Улучшенные стили для десктопа */
+@media (min-width: 992px) {
+    .storage-info {
+        max-width: 600px;
+    }
+
+    .progress {
+        max-width: 400px;
+    }
+
+    .card {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-group {
+        gap: 0.75rem;
+    }
+
+    .btn {
+        min-width: 150px;
+        padding: 0.625rem 1.25rem;
+    }
+}
+
 /* Стили для мобильной версии */
 @media (max-width: 767.98px) {
     .btn-group-vertical .btn {
@@ -332,7 +356,7 @@
 </div>
 
 <div class="mb-3">
-    <div class="d-flex flex-column flex-md-row gap-2 mb-2">
+    <div class="btn-group w-100 w-md-auto flex-column flex-md-row gap-2 mb-2" role="group">
         <button class="btn btn-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
             <i class="fas fa-trash"></i> {{ t.storage.delete_selected }}
         </button>
@@ -343,7 +367,7 @@
             <i class="fas fa-archive"></i> {{ t.storage.archive_selected }}
         </button>
     </div>
-    <span class="d-block d-md-inline" id="selectedCount"></span>
+    <span class="d-block d-md-inline mt-2 mt-md-0 ms-md-2" id="selectedCount"></span>
 </div>
 
 <div class="row">

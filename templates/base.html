@@ -103,6 +103,21 @@
             margin-right: auto;
         }
 
+        /* Ограничение ширины на десктопе */
+        @media (min-width: 992px) {
+            .container-fluid {
+                max-width: 1400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .content-container {
+                max-width: 1400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
         /* Контент контейнеры */
         .content-container {
             width: 100%;
@@ -113,12 +128,32 @@
             border-radius: 0.5rem;
         }
 
-        /* Карточки */
+        @media (min-width: 768px) {
+            .content-container {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Карточки - улучшенный дизайн */
         .card {
             width: 100%;
             max-width: 100%;
             overflow-x: hidden;
             overflow-y: auto;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        @media (min-width: 992px) {
+            .card {
+                margin-bottom: 1.5rem;
+            }
         }
 
         .card-body,
@@ -127,6 +162,22 @@
             overflow-x: hidden;
             word-wrap: break-word;
             overflow-wrap: break-word;
+        }
+
+        .card-header {
+            border-radius: 0.75rem 0.75rem 0 0;
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        @media (min-width: 768px) {
+            .card-body {
+                padding: 1.5rem;
+            }
         }
 
         /* Изображения не должны выходить за рамки */
@@ -163,11 +214,48 @@
             max-width: 100%;
         }
 
-        /* Кнопки */
+        /* Кнопки - улучшенный дизайн */
         .btn {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn i,
+        .btn .fas,
+        .btn .fa {
+            font-size: 0.9em;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Группы кнопок на десктопе */
+        @media (min-width: 768px) {
+            .btn-group {
+                display: inline-flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .btn-group .btn {
+                margin-bottom: 0;
+            }
         }
 
         /* Навигация */
@@ -335,11 +423,25 @@
             flex-wrap: wrap;
         }
 
+        @media (min-width: 992px) {
+            .row {
+                margin-left: -20px;
+                margin-right: -20px;
+            }
+        }
+
         [class*="col-"] {
             padding-left: 15px;
             padding-right: 15px;
             width: 100%;
             max-width: 100%;
+        }
+
+        @media (min-width: 992px) {
+            [class*="col-"] {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
         }
 
         /* Flex утилиты */
@@ -589,17 +691,21 @@
     </nav>
 
     <div class="container-fluid px-3 px-md-4 mt-3 mt-md-4">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} content-container mb-3">
-                    {{ message }}
+        <div class="row justify-content-center">
+            <div class="col-12">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} content-container mb-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="content-container">
+                    {% block content %}
+                    {% endblock %}
                 </div>
-            {% endfor %}
-        {% endif %}
-        
-        <div class="content-container">
-            {% block content %}
-            {% endblock %}
+            </div>
         </div>
     </div>
 
@@ -1185,7 +1291,7 @@
     document.addEventListener('DOMContentLoaded', updateTextColors);
 
     // Обновляем при изменении темы
-    const observer = new MutationObserver((mutations) => {
+    const themeObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.attributeName === 'data-bs-theme') {
                 updateTextColors();
@@ -1193,7 +1299,7 @@
         });
     });
 
-    observer.observe(document.documentElement, {
+    themeObserver.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['data-bs-theme']
     });
@@ -1448,7 +1554,7 @@
     });
 
     // Обновляем при изменении фона
-    const observer = new MutationObserver((mutations) => {
+    const backgroundObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && 
                 (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
@@ -1457,7 +1563,7 @@
         });
     });
 
-    observer.observe(document.documentElement, {
+    backgroundObserver.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['style', 'class']
     });
