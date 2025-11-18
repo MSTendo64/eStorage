@@ -251,7 +251,7 @@ def _parse_range_header(range_header, file_size):
 
 @login_required
 def download_file(request, token):
-    """Скачивание файла по токену с поддержкой Range-запросов"""
+    """Скачивание файла по токену - отдает файл напрямую через nginx (X-Accel-Redirect)"""
     try:
         download_token = DownloadToken.objects.get(token=token)
         if not download_token.is_valid():
@@ -262,57 +262,27 @@ def download_file(request, token):
         
         if not os.path.exists(file_path):
             raise Http404("Файл не найден на диске")
-            
-        file_size = os.path.getsize(file_path)
+        
+        # Получаем относительный путь от MEDIA_ROOT для X-Accel-Redirect
+        # file.file хранит путь вида "1/filename.ext" относительно MEDIA_ROOT
+        internal_path = f"/protected_media/{file.file.name}"
+        
+        # Создаем ответ с X-Accel-Redirect
+        # Nginx перехватит этот заголовок и отдаст файл напрямую
+        response = HttpResponse()
+        response['X-Accel-Redirect'] = internal_path
+        response['Content-Type'] = 'application/octet-stream'
+        
+        # Content-Disposition: attachment - файл будет скачан
         encoded_filename = quote(file.filename)
-        
-        # Поддержка Range-запросов для возобновления загрузки
-        range_header = request.META.get('HTTP_RANGE')
-        start, end = _parse_range_header(range_header, file_size) if range_header else (None, None)
-        
-        if start is not None and end is not None:
-            # Частичный контент (206)
-            content_length = end - start + 1
-            response = StreamingHttpResponse(
-                _file_iterator(file_path, start, end),
-                status=206,
-                content_type='application/octet-stream'
-            )
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-            response['Content-Length'] = content_length
-            response['Accept-Ranges'] = 'bytes'
-        else:
-            # Полный файл (200)
-            response = StreamingHttpResponse(
-                _file_iterator(file_path),
-                content_type='application/octet-stream'
-            )
-            response['Content-Length'] = file_size
-            response['Accept-Ranges'] = 'bytes'
-        
-        # Добавляем заголовки для предотвращения кэширования и таймаутов
         response['Content-Disposition'] = (
             f'attachment; filename="{encoded_filename}"; '
             f'filename*=UTF-8\'\'{encoded_filename}'
         )
+        response['Accept-Ranges'] = 'bytes'
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
-        
-        # Для больших файлов отключаем буферизацию на уровне WSGI/веб-сервера
-        # Это критически важно для предотвращения таймаутов
-        response['X-Accel-Buffering'] = 'no'  # Для nginx - отключает буферизацию
-        response['X-Sendfile-Type'] = 'X-Sendfile'  # Для Apache
-        
-        # Дополнительные заголовки для предотвращения таймаутов
-        # Connection: keep-alive помогает поддерживать соединение
-        response['Connection'] = 'keep-alive'
-        
-        # Для очень больших файлов добавляем специальные заголовки
-        if file_size > 50 * 1024 * 1024:  # > 50MB
-            # Указываем, что это долгий запрос
-            response['X-Accel-Limit-Rate'] = '0'  # Отключаем лимит скорости для nginx
-            logger.info(f"Starting download of large file: {file.filename} ({file_size / (1024 * 1024):.2f} MB)")
         
         # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
         
