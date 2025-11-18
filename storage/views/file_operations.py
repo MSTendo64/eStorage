@@ -1,13 +1,10 @@
-"""
-Операции с файлами: загрузка, удаление, скачивание
-"""
 import os
 from typing import Optional
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
-from django.http import Http404, JsonResponse, FileResponse, HttpResponse
+from django.http import Http404, JsonResponse, FileResponse, HttpResponse, StreamingHttpResponse
 from django.urls import reverse
 from urllib.parse import quote
 
@@ -172,9 +169,56 @@ def delete_file(request, file_id):
     return redirect('dashboard')
 
 
+def _file_iterator(file_path, start=0, end=None, chunk_size=8192):
+    """Генератор для чтения файла по частям с поддержкой Range-запросов"""
+    with open(file_path, 'rb') as f:
+        f.seek(start)
+        remaining = end - start + 1 if end else None
+        while True:
+            if remaining is not None and remaining <= 0:
+                break
+            chunk_size_to_read = min(chunk_size, remaining) if remaining else chunk_size
+            chunk = f.read(chunk_size_to_read)
+            if not chunk:
+                break
+            if remaining is not None:
+                remaining -= len(chunk)
+            yield chunk
+
+
+def _parse_range_header(range_header, file_size):
+    """Парсит HTTP Range заголовок"""
+    if not range_header:
+        return None, None
+    
+    try:
+        # Формат: "bytes=start-end"
+        range_match = range_header.replace('bytes=', '').split('-')
+        start = int(range_match[0]) if range_match[0] else None
+        end = int(range_match[1]) if range_match[1] else None
+        
+        if start is None:
+            # Запрос последних N байт
+            start = file_size - end
+            end = file_size - 1
+        elif end is None:
+            # Запрос от start до конца
+            end = file_size - 1
+        else:
+            # Запрос конкретного диапазона
+            end = min(end, file_size - 1)
+        
+        if start < 0 or end < start or start >= file_size:
+            return None, None
+            
+        return start, end
+    except (ValueError, IndexError):
+        return None, None
+
+
 @login_required
 def download_file(request, token):
-    """Скачивание файла по токену"""
+    """Скачивание файла по токену с поддержкой Range-запросов"""
     try:
         download_token = DownloadToken.objects.get(token=token)
         if not download_token.is_valid():
@@ -182,11 +226,37 @@ def download_file(request, token):
             
         file = download_token.file
         file_path = file.file.path
+        
+        if not os.path.exists(file_path):
+            raise Http404("Файл не найден на диске")
+            
+        file_size = os.path.getsize(file_path)
         encoded_filename = quote(file.filename)
         
-        # Отдаем файл напрямую без копирования
-        response = FileResponse(open(file_path, 'rb'))
-        response['Content-Type'] = 'application/octet-stream'
+        # Поддержка Range-запросов для возобновления загрузки
+        range_header = request.META.get('HTTP_RANGE')
+        start, end = _parse_range_header(range_header, file_size) if range_header else (None, None)
+        
+        if start is not None and end is not None:
+            # Частичный контент (206)
+            content_length = end - start + 1
+            response = StreamingHttpResponse(
+                _file_iterator(file_path, start, end),
+                status=206,
+                content_type='application/octet-stream'
+            )
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            response['Content-Length'] = content_length
+            response['Accept-Ranges'] = 'bytes'
+        else:
+            # Полный файл (200)
+            response = StreamingHttpResponse(
+                _file_iterator(file_path),
+                content_type='application/octet-stream'
+            )
+            response['Content-Length'] = file_size
+            response['Accept-Ranges'] = 'bytes'
+        
         response['Content-Disposition'] = (
             f'attachment; filename="{encoded_filename}"; '
             f'filename*=UTF-8\'\'{encoded_filename}'
