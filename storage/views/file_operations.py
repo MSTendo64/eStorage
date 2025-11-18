@@ -348,7 +348,7 @@ def generate_download_link(request, file_id):
 
 @login_required
 def raw_file(request, token):
-    """Прямая ссылка на файл (открывается в браузере, а не скачивается)"""
+    """Прямая ссылка на файл - отдает файл напрямую через nginx (X-Accel-Redirect)"""
     try:
         download_token = DownloadToken.objects.get(token=token)
         if not download_token.is_valid():
@@ -359,65 +359,44 @@ def raw_file(request, token):
         
         if not os.path.exists(file_path):
             raise Http404("Файл не найден на диске")
-            
-        file_size = os.path.getsize(file_path)
-        encoded_filename = quote(file.filename)
+        
+        # Получаем относительный путь от MEDIA_ROOT для X-Accel-Redirect
+        # file.file хранит путь вида "1/filename.ext" относительно MEDIA_ROOT
+        internal_path = f"/protected_media/{file.file.name}"
+        
+        # Создаем ответ с X-Accel-Redirect
+        # Nginx перехватит этот заголовок и отдаст файл напрямую
+        response = HttpResponse()
+        response['X-Accel-Redirect'] = internal_path
+        response['Content-Type'] = 'application/octet-stream'
         
         # Определяем Content-Type на основе типа файла
-        content_type = 'application/octet-stream'
         if file.is_image:
             if file.filename.lower().endswith(('.jpg', '.jpeg')):
-                content_type = 'image/jpeg'
+                response['Content-Type'] = 'image/jpeg'
             elif file.filename.lower().endswith('.png'):
-                content_type = 'image/png'
+                response['Content-Type'] = 'image/png'
             elif file.filename.lower().endswith('.gif'):
-                content_type = 'image/gif'
+                response['Content-Type'] = 'image/gif'
             elif file.filename.lower().endswith('.webp'):
-                content_type = 'image/webp'
+                response['Content-Type'] = 'image/webp'
             else:
-                content_type = 'image/*'
+                response['Content-Type'] = 'image/*'
         elif file.is_video:
-            content_type = 'video/mp4'
+            response['Content-Type'] = 'video/mp4'
         elif file.is_audio:
-            content_type = 'audio/mpeg'
+            response['Content-Type'] = 'audio/mpeg'
         elif file.is_text or file.is_code:
-            content_type = 'text/plain; charset=utf-8'
+            response['Content-Type'] = 'text/plain; charset=utf-8'
         elif file.is_document:
             if file.filename.lower().endswith('.pdf'):
-                content_type = 'application/pdf'
-        
-        # Поддержка Range-запросов
-        range_header = request.META.get('HTTP_RANGE')
-        start, end = _parse_range_header(range_header, file_size) if range_header else (None, None)
-        
-        if start is not None and end is not None:
-            # Частичный контент (206)
-            content_length = end - start + 1
-            response = StreamingHttpResponse(
-                _file_iterator(file_path, start, end),
-                status=206,
-                content_type=content_type
-            )
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-            response['Content-Length'] = content_length
-            response['Accept-Ranges'] = 'bytes'
-        else:
-            # Полный файл (200)
-            response = StreamingHttpResponse(
-                _file_iterator(file_path),
-                content_type=content_type
-            )
-            response['Content-Length'] = file_size
-            response['Accept-Ranges'] = 'bytes'
+                response['Content-Type'] = 'application/pdf'
         
         # Content-Disposition: inline - файл откроется в браузере
+        encoded_filename = quote(file.filename)
         response['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
+        response['Accept-Ranges'] = 'bytes'
         response['Cache-Control'] = 'public, max-age=3600'
-        
-        # Для больших файлов отключаем буферизацию
-        if file_size > 10 * 1024 * 1024:  # > 10MB
-            response['X-Accel-Buffering'] = 'no'
-            response['Connection'] = 'keep-alive'
         
         return response
             
