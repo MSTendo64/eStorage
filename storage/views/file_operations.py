@@ -65,13 +65,16 @@ def dashboard(request):
                     pass
             
             # Создание записи в БД
-            UserFile.objects.create(
+            file = UserFile.objects.create(
                 user=request.user,
                 file=f'{request.user.id}/{filename}',
                 filename=filename,
                 file_size=uploaded_file.size,
                 folder=folder
             )
+            
+            # Создаем токен для скачивания при загрузке файла
+            generate_download_token(file)
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return create_json_response(True, SUCCESS_FILE_UPLOADED)
@@ -175,12 +178,13 @@ def download_file(request, token):
     try:
         download_token = DownloadToken.objects.get(token=token)
         if not download_token.is_valid():
-            raise Http404("Ссылка устарела или уже была использована")
+            raise Http404("Ссылка устарела")
             
         file = download_token.file
         file_path = file.file.path
         encoded_filename = quote(file.filename)
         
+        # Отдаем файл напрямую без копирования
         response = FileResponse(open(file_path, 'rb'))
         response['Content-Type'] = 'application/octet-stream'
         response['Content-Disposition'] = (
@@ -188,9 +192,7 @@ def download_file(request, token):
             f'filename*=UTF-8\'\'{encoded_filename}'
         )
         
-        # Помечаем токен как использованный
-        download_token.is_used = True
-        download_token.save()
+        # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
         
         return response
             
@@ -201,22 +203,21 @@ def download_file(request, token):
         raise Http404(f"Ошибка при скачивании файла: {str(e)}")
 
 
-def generate_download_token(file: UserFile) -> str:
-    """Генерирует токен для скачивания файла"""
-    token = DownloadToken.objects.create(file=file)
-    return token.token
+def generate_download_token(file: UserFile) -> DownloadToken:
+    """Получает или создает валидный токен для скачивания файла"""
+    return DownloadToken.get_or_create_valid_token(file)
 
 
 @login_required
 def generate_download_link(request, file_id):
-    """Генерирует ссылку для скачивания файла"""
+    """Получает или создает ссылку для скачивания файла"""
     try:
         file = UserFile.objects.get(id=file_id, user=request.user)
-        token = generate_download_token(file)
+        download_token = generate_download_token(file)
         
         return create_json_response(
             True,
-            data={'download_url': f'/storage/download/{token}/'}
+            data={'download_url': f'/storage/download/{download_token.token}/'}
         )
         
     except UserFile.DoesNotExist:

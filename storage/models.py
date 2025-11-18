@@ -359,20 +359,36 @@ class UserFile(models.Model):
 
 class DownloadToken(models.Model):
     token = models.CharField(max_length=64, unique=True)
-    file = models.ForeignKey(UserFile, on_delete=models.CASCADE)
+    file = models.ForeignKey(UserFile, on_delete=models.CASCADE, related_name='download_tokens')
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
-    is_used = models.BooleanField(default=False)
+    is_used = models.BooleanField(default=False)  # Оставляем для обратной совместимости, но не используем
 
     def save(self, *args, **kwargs):
         if not self.token:
             self.token = uuid.uuid4().hex
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=30)
+            self.expires_at = timezone.now() + timedelta(days=1)
         super().save(*args, **kwargs)
 
     def is_valid(self):
-        return not self.is_used and self.expires_at > timezone.now()
+        """Проверяет, действителен ли токен (не проверяет is_used, так как токен может использоваться многократно)"""
+        return self.expires_at > timezone.now()
+    
+    @classmethod
+    def get_or_create_valid_token(cls, file):
+        """Получает валидный токен для файла или создает новый, если его нет или он устарел"""
+        # Ищем последний валидный токен для файла
+        valid_token = cls.objects.filter(
+            file=file,
+            expires_at__gt=timezone.now()
+        ).order_by('-created_at').first()
+        
+        if valid_token:
+            return valid_token
+        
+        # Если валидного токена нет, создаем новый
+        return cls.objects.create(file=file)
 
 class YouTubeVideo(models.Model):
     title = models.CharField(max_length=255)

@@ -11,7 +11,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from eventshock_auth.models import UserProfile
 
-from ..models import UserFile
+from ..models import UserFile, DownloadToken
 from ..helpers import ensure_user_folder_exists, generate_unique_filename
 
 logger = logging.getLogger(__name__)
@@ -112,12 +112,15 @@ def upload_chunk(request, filename):
             file_size = os.path.getsize(final_path) if os.path.exists(final_path) else 0
             
             # Создаем запись в БД
-            UserFile.objects.create(
+            file = UserFile.objects.create(
                 user=request.user,
                 file=db_file_path,
                 filename=unique_filename,
                 file_size=file_size
             )
+            
+            # Создаем токен для скачивания при загрузке файла
+            DownloadToken.get_or_create_valid_token(file)
             
             return JsonResponse({'status': 'complete', 'filename': unique_filename})
         

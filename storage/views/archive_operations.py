@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 
-from ..models import UserFile
+from ..models import UserFile, DownloadToken
 from ..helpers import ensure_user_folder_exists, create_json_response
 from ..constants import ERROR_FILE_NOT_FOUND, TEMP_FOLDER_PREFIX, CLEANUP_DELAY
 
@@ -90,12 +90,15 @@ def extract_archive(request, file_id):
                     shutil.move(src_path, dst_path)
                     file_size = os.path.getsize(dst_path) if os.path.exists(dst_path) else 0
                     
-                    UserFile.objects.create(
+                    file = UserFile.objects.create(
                         user=request.user,
                         file=f'{request.user.id}/{unique_filename}',
                         filename=filename,
                         file_size=file_size
                     )
+                    
+                    # Создаем токен для скачивания при загрузке файла
+                    DownloadToken.get_or_create_valid_token(file)
             
             # Запускаем отложенное удаление временной папки
             delayed_folder_cleanup(temp_extract_folder)

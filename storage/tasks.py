@@ -2,7 +2,7 @@ import yt_dlp
 import os
 import logging
 from django.conf import settings
-from .models import UserFile, DownloadTask
+from .models import UserFile, DownloadTask, DownloadToken
 from django.utils import timezone
 import subprocess
 
@@ -104,6 +104,9 @@ class VideoDownloader:
                     duration=info.get('duration', 0),
                     thumbnail_url=info.get('thumbnail', '')
                 )
+                
+                # Создаем токен для скачивания при загрузке файла
+                DownloadToken.get_or_create_valid_token(file)
                 
                 self.task.status = 'completed'
                 self.task.completed_at = timezone.now()

@@ -9,7 +9,7 @@ from django.conf import settings
 from django.http import JsonResponse, FileResponse
 from django.utils import timezone
 
-from ..models import UserFile, Folder
+from ..models import UserFile, Folder, DownloadToken
 from ..helpers import ensure_user_folder_exists, create_json_response, get_file_path
 
 logger = __import__('logging').getLogger(__name__)
@@ -185,12 +185,15 @@ def bulk_archive(request):
         file_size = os.path.getsize(archive_path) if os.path.exists(archive_path) else 0
         
         # Создаем новый файл в БД
-        UserFile.objects.create(
+        file = UserFile.objects.create(
             user=request.user,
             file=f'{request.user.id}/{archive_name}',
             filename=archive_name,
             file_size=file_size
         )
+        
+        # Создаем токен для скачивания при загрузке файла
+        DownloadToken.get_or_create_valid_token(file)
         
         return create_json_response(
             True,
