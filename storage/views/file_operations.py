@@ -174,20 +174,23 @@ def _file_iterator(file_path, start=0, end=None, chunk_size=None):
     # Определяем оптимальный размер чанка в зависимости от размера файла
     if chunk_size is None:
         file_size = os.path.getsize(file_path)
-        # Для больших файлов (>100MB) используем больший чанк (2MB)
-        # Для средних (10-100MB) - 1MB, для маленьких - 256KB
+        # Для больших файлов (>100MB) используем больший чанк (4MB)
+        # Для средних (10-100MB) - 2MB, для маленьких - 512KB
+        # Увеличенные чанки помогают избежать таймаутов
         if file_size > 100 * 1024 * 1024:  # > 100MB
-            chunk_size = 2 * 1024 * 1024  # 2MB
+            chunk_size = 4 * 1024 * 1024  # 4MB
         elif file_size > 10 * 1024 * 1024:  # > 10MB
-            chunk_size = 1024 * 1024  # 1MB
+            chunk_size = 2 * 1024 * 1024  # 2MB
         else:
-            chunk_size = 256 * 1024  # 256KB
+            chunk_size = 512 * 1024  # 512KB
     
-    # Используем контекстный менеджер для гарантированного закрытия файла
-    # Файл будет открыт на время работы генератора
-    with open(file_path, 'rb') as f:
+    # Открываем файл в бинарном режиме
+    # Важно: файл должен оставаться открытым на время работы генератора
+    f = open(file_path, 'rb')
+    try:
         f.seek(start)
         remaining = end - start + 1 if end else None
+        bytes_yielded = 0
         
         while True:
             if remaining is not None and remaining <= 0:
@@ -199,10 +202,21 @@ def _file_iterator(file_path, start=0, end=None, chunk_size=None):
             if not chunk:
                 break
             
+            bytes_yielded += len(chunk)
             if remaining is not None:
                 remaining -= len(chunk)
             
+            # Отправляем чанк
             yield chunk
+            
+            # Логируем прогресс для больших файлов (каждые 50MB)
+            if bytes_yielded % (50 * 1024 * 1024) == 0:
+                logger.debug(f"Downloaded {bytes_yielded / (1024 * 1024):.2f} MB from {file_path}")
+                
+    finally:
+        # Закрываем файл только после завершения генератора
+        if not f.closed:
+            f.close()
 
 
 def _parse_range_header(range_header, file_size):
@@ -285,10 +299,20 @@ def download_file(request, token):
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
         
-        # Для больших файлов отключаем буферизацию на уровне WSGI
-        if file_size > 10 * 1024 * 1024:  # > 10MB
-            response['X-Accel-Buffering'] = 'no'  # Для nginx
-            response['X-Sendfile-Type'] = 'X-Sendfile'  # Для Apache
+        # Для больших файлов отключаем буферизацию на уровне WSGI/веб-сервера
+        # Это критически важно для предотвращения таймаутов
+        response['X-Accel-Buffering'] = 'no'  # Для nginx - отключает буферизацию
+        response['X-Sendfile-Type'] = 'X-Sendfile'  # Для Apache
+        
+        # Дополнительные заголовки для предотвращения таймаутов
+        # Connection: keep-alive помогает поддерживать соединение
+        response['Connection'] = 'keep-alive'
+        
+        # Для очень больших файлов добавляем специальные заголовки
+        if file_size > 50 * 1024 * 1024:  # > 50MB
+            # Указываем, что это долгий запрос
+            response['X-Accel-Limit-Rate'] = '0'  # Отключаем лимит скорости для nginx
+            logger.info(f"Starting download of large file: {file.filename} ({file_size / (1024 * 1024):.2f} MB)")
         
         # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
         
