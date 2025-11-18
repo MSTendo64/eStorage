@@ -830,6 +830,9 @@
                                 <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
                                     <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
                                 </button>
+                                <button class="btn btn-sm btn-info" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')">
+                                    <i class="fas fa-link"></i> Прямая ссылка
+                                </button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
                                     <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
                                 </button>
@@ -998,6 +1001,9 @@
                                 {% endif %}
                                 <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')">
                                     <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                </button>
+                                <button class="btn btn-sm btn-info mb-1" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')">
+                                    <i class="fas fa-link"></i> Прямая ссылка
                                 </button>
                                 <button class="btn btn-sm btn-danger mb-1" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
                                     <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
@@ -1884,6 +1890,108 @@ function downloadFile(fileId) {
     .finally(() => {
         setTimeout(hideLoading, 1000);
     });
+}
+
+// Функция получения прямой ссылки на файл
+function getRawLink(fileId, filename) {
+    showLoading('Получение прямой ссылки...');
+    
+    const csrfToken = getCsrfToken();
+    fetch(`/storage/get-raw-link/${fileId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success && data.raw_url) {
+            // Создаем модальное окно для отображения ссылки
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.display = 'block';
+            modal.setAttribute('tabindex', '-1');
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Прямая ссылка на файл: ${filename}</h5>
+                            <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="rawLinkInput" value="${data.raw_url}" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyRawLink()">
+                                    <i class="fas fa-copy"></i> Копировать
+                                </button>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Эта ссылка действительна 1 день. Файл откроется в браузере.
+                            </div>
+                            <div class="d-grid gap-2">
+                                <a href="${data.raw_url}" target="_blank" class="btn btn-primary">
+                                    <i class="fas fa-external-link-alt"></i> Открыть в новой вкладке
+                                </a>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Закрыть</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем затемнение фона
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            
+            document.body.appendChild(backdrop);
+            document.body.appendChild(modal);
+            
+            // Закрытие по клику на backdrop
+            backdrop.addEventListener('click', () => {
+                modal.remove();
+                backdrop.remove();
+            });
+            
+            // Выделяем текст в input
+            document.getElementById('rawLinkInput').select();
+        } else {
+            alert('Ошибка при получении прямой ссылки: ' + (data.message || 'Неизвестная ошибка'));
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        alert('Ошибка при получении прямой ссылки');
+    });
+}
+
+// Функция копирования прямой ссылки в буфер обмена
+function copyRawLink() {
+    const input = document.getElementById('rawLinkInput');
+    input.select();
+    input.setSelectionRange(0, 99999); // Для мобильных устройств
+    
+    try {
+        document.execCommand('copy');
+        
+        // Показываем уведомление об успешном копировании
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    } catch (err) {
+        alert('Не удалось скопировать ссылку. Скопируйте вручную.');
+    }
 }
 
 // Функция сортировки файлов

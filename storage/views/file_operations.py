@@ -347,6 +347,107 @@ def generate_download_link(request, file_id):
 
 
 @login_required
+def raw_file(request, token):
+    """Прямая ссылка на файл (открывается в браузере, а не скачивается)"""
+    try:
+        download_token = DownloadToken.objects.get(token=token)
+        if not download_token.is_valid():
+            raise Http404("Ссылка устарела")
+            
+        file = download_token.file
+        file_path = file.file.path
+        
+        if not os.path.exists(file_path):
+            raise Http404("Файл не найден на диске")
+            
+        file_size = os.path.getsize(file_path)
+        encoded_filename = quote(file.filename)
+        
+        # Определяем Content-Type на основе типа файла
+        content_type = 'application/octet-stream'
+        if file.is_image:
+            if file.filename.lower().endswith(('.jpg', '.jpeg')):
+                content_type = 'image/jpeg'
+            elif file.filename.lower().endswith('.png'):
+                content_type = 'image/png'
+            elif file.filename.lower().endswith('.gif'):
+                content_type = 'image/gif'
+            elif file.filename.lower().endswith('.webp'):
+                content_type = 'image/webp'
+            else:
+                content_type = 'image/*'
+        elif file.is_video:
+            content_type = 'video/mp4'
+        elif file.is_audio:
+            content_type = 'audio/mpeg'
+        elif file.is_text or file.is_code:
+            content_type = 'text/plain; charset=utf-8'
+        elif file.is_document:
+            if file.filename.lower().endswith('.pdf'):
+                content_type = 'application/pdf'
+        
+        # Поддержка Range-запросов
+        range_header = request.META.get('HTTP_RANGE')
+        start, end = _parse_range_header(range_header, file_size) if range_header else (None, None)
+        
+        if start is not None and end is not None:
+            # Частичный контент (206)
+            content_length = end - start + 1
+            response = StreamingHttpResponse(
+                _file_iterator(file_path, start, end),
+                status=206,
+                content_type=content_type
+            )
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            response['Content-Length'] = content_length
+            response['Accept-Ranges'] = 'bytes'
+        else:
+            # Полный файл (200)
+            response = StreamingHttpResponse(
+                _file_iterator(file_path),
+                content_type=content_type
+            )
+            response['Content-Length'] = file_size
+            response['Accept-Ranges'] = 'bytes'
+        
+        # Content-Disposition: inline - файл откроется в браузере
+        response['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
+        response['Cache-Control'] = 'public, max-age=3600'
+        
+        # Для больших файлов отключаем буферизацию
+        if file_size > 10 * 1024 * 1024:  # > 10MB
+            response['X-Accel-Buffering'] = 'no'
+            response['Connection'] = 'keep-alive'
+        
+        return response
+            
+    except DownloadToken.DoesNotExist:
+        raise Http404("Ссылка недействительна")
+    except Exception as e:
+        logger.error(f"Error serving raw file: {e}")
+        raise Http404(f"Ошибка при получении файла: {str(e)}")
+
+
+@login_required
+def get_raw_link(request, file_id):
+    """Получает прямую ссылку на файл"""
+    try:
+        file = UserFile.objects.get(id=file_id, user=request.user)
+        download_token = generate_download_token(file)
+        
+        # Получаем полный URL
+        raw_url = request.build_absolute_uri(f'/storage/raw/{download_token.token}/')
+        
+        return create_json_response(
+            True,
+            data={'raw_url': raw_url}
+        )
+        
+    except UserFile.DoesNotExist:
+        return create_json_response(False, ERROR_FILE_NOT_FOUND, status=404)
+
+
+@login_required
 def save_text_file(request, file_id):
     """Сохранение изменений в текстовом файле"""
     try:

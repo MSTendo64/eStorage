@@ -5,6 +5,8 @@ from .api import youtube
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('download/<str:token>/', views.download_file, name='download_file'),
+    path('raw/<str:token>/', views.raw_file, name='raw_file'),
+    path('get-raw-link/<int:file_id>/', views.get_raw_link, name='get_raw_link'),
     path('delete/<int:file_id>/', views.delete_file, name='delete_file'),
     path('generate-link/<int:file_id>/', views.generate_download_link, name='generate_download_link'),
     path('save-text/<int:file_id>/', views.save_text_file, name='save_text_file'),
