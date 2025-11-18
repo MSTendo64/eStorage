@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.css" rel="stylesheet">
     <style>
         /* ========== ГЛОБАЛЬНЫЕ СТИЛИ И ПРЕДОТВРАЩЕНИЕ ПЕРЕПОЛНЕНИЯ ========== */
         * {
@@ -1811,10 +1810,25 @@
                 if (storageBar) {
                     storageBar.style.setProperty('--target-width', `${data.percent}%`);
                     storageBar.classList.add('animate');
-                    document.querySelector('.storage-percent').textContent = `${data.percent}%`;
-                    document.querySelector('.storage-used').textContent = data.used_formatted;
-                    document.querySelector('.storage-total').textContent = data.quota_formatted;
                 }
+                
+                const storagePercent = document.querySelector('.storage-percent');
+                if (storagePercent) {
+                    storagePercent.textContent = `${data.percent}%`;
+                }
+                
+                const storageUsed = document.querySelector('.storage-used');
+                if (storageUsed) {
+                    storageUsed.textContent = data.used_formatted;
+                }
+                
+                const storageTotal = document.querySelector('.storage-total');
+                if (storageTotal) {
+                    storageTotal.textContent = data.quota_formatted;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении статистики хранилища:', error);
             });
     }
 
@@ -2487,6 +2501,13 @@ window.prompt = function(message, defaultValue = '', title = 'Ввод') {
      width: 100%;
      margin: 0 auto;
  }
+ 
+/* Убираем все эффекты hover для карточек аутентификации */
+.login-card-container .card:hover {
+    transform: none !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: none !important;
+}
  
  /* Мобильная адаптивность для форм аутентификации */
  @media (max-width: 767.98px) {

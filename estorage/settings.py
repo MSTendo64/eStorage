@@ -141,33 +141,6 @@ CORS_ALLOW_HEADERS = [
 ]
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
-# YouTube download settings
-YOUTUBE_DOWNLOAD_SETTINGS = {
-    'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
-    'postprocessors': [{
-        'key': 'FFmpegVideoConvertor',
-        'preferedformat': 'mp4',
-    }],
-    'prefer_ffmpeg': True,
-    'keepvideo': True,
-    'outtmpl': '%(title)s.%(ext)s',
-    'format_sort': [
-        'res:1080',
-        'fps:30',
-        'codec:h264',
-        'size',
-        'br',
-        'asr'
-    ],
-    'nocheckcertificate': True,
-    'no_warnings': True,
-    'quiet': True,
-    'socket_timeout': 30,
-    'retries': 10,
-    'ignoreerrors': True,
-    'noplaylist': True,
-}
-
 # Video quality requirements
 VIDEO_QUALITY_REQUIREMENTS = {
     'min_fps': 30,

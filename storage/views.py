@@ -27,11 +27,6 @@ from .views import (
     bulk_archive,
     # Public operations
     toggle_file_publicity,
-    # YouTube operations
-    get_video_info,
-    download_progress,
-    download_youtube_video,
-    video_list,
     # Chunk upload
     upload_chunk,
     check_file,
@@ -62,10 +57,6 @@ __all__ = [
     'bulk_download',
     'bulk_archive',
     'toggle_file_publicity',
-    'get_video_info',
-    'download_progress',
-    'download_youtube_video',
-    'video_list',
     'upload_chunk',
     'check_file',
     'storage_stats',

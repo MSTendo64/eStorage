@@ -359,49 +359,33 @@ class UserFile(models.Model):
 
 class DownloadToken(models.Model):
     token = models.CharField(max_length=64, unique=True)
-    file = models.ForeignKey(UserFile, on_delete=models.CASCADE)
+    file = models.ForeignKey(UserFile, on_delete=models.CASCADE, related_name='download_tokens')
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
-    is_used = models.BooleanField(default=False)
+    is_used = models.BooleanField(default=False)  # Оставляем для обратной совместимости, но не используем
 
     def save(self, *args, **kwargs):
         if not self.token:
             self.token = uuid.uuid4().hex
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=30)
+            self.expires_at = timezone.now() + timedelta(days=1)
         super().save(*args, **kwargs)
 
     def is_valid(self):
-        return not self.is_used and self.expires_at > timezone.now()
-
-class YouTubeVideo(models.Model):
-    title = models.CharField(max_length=255)
-    url = models.URLField()
-    file_path = models.FileField(upload_to='youtube_videos/')
-    downloaded_at = models.DateTimeField(auto_now_add=True)
+        """Проверяет, действителен ли токен (не проверяет is_used, так как токен может использоваться многократно)"""
+        return self.expires_at > timezone.now()
     
-    def __str__(self):
-        return self.title
-
-class DownloadTask(models.Model):
-    STATUS_CHOICES = [
-        ('pending', 'В очереди'),
-        ('processing', 'Загрузка'),
-        ('completed', 'Заве��шено'),
-        ('failed', 'Ошибка')
-    ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    url = models.URLField()
-    format_id = models.CharField(max_length=50, null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    progress = models.FloatField(default=0)
-    speed = models.FloatField(default=0)
-    error = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    file = models.ForeignKey(UserFile, on_delete=models.SET_NULL, null=True, blank=True)
-    
-    class Meta:
-        ordering = ['-created_at']
+    @classmethod
+    def get_or_create_valid_token(cls, file):
+        """Получает валидный токен для файла или создает новый, если его нет или он устарел"""
+        # Ищем последний валидный токен для файла
+        valid_token = cls.objects.filter(
+            file=file,
+            expires_at__gt=timezone.now()
+        ).order_by('-created_at').first()
+        
+        if valid_token:
+            return valid_token
+        
+        # Если валидного токена нет, создаем новый
+        return cls.objects.create(file=file)

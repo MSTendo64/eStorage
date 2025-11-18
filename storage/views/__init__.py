@@ -8,7 +8,9 @@ from .file_operations import (
     download_file,
     generate_download_link,
     generate_download_token,
-    save_text_file
+    save_text_file,
+    raw_file,
+    get_raw_link
 )
 from .archive_operations import (
     get_archive_contents,
@@ -29,12 +31,6 @@ from .bulk_operations import (
 )
 from .public_operations import (
     toggle_file_publicity
-)
-from .youtube_operations import (
-    get_video_info,
-    download_progress,
-    download_youtube_video,
-    video_list
 )
 from .chunk_upload import (
     upload_chunk,
@@ -78,6 +74,8 @@ __all__ = [
     'generate_download_link',
     'generate_download_token',
     'save_text_file',
+    'raw_file',
+    'get_raw_link',
     # Archive operations
     'get_archive_contents',
     'extract_archive',
@@ -94,11 +92,6 @@ __all__ = [
     'bulk_archive',
     # Public operations
     'toggle_file_publicity',
-    # YouTube operations
-    'get_video_info',
-    'download_progress',
-    'download_youtube_video',
-    'video_list',
     # Chunk upload
     'upload_chunk',
     'check_file',
