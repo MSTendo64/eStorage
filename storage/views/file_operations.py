@@ -316,15 +316,29 @@ def generate_download_link(request, file_id):
         return create_json_response(False, ERROR_FILE_NOT_FOUND, status=404)
 
 
-@login_required
-def raw_file(request, token):
+def raw_file(request, filename):
     """Прямая ссылка на файл - отдает файл напрямую через nginx (X-Accel-Redirect)"""
     try:
+        # Получаем токен из query параметра
+        token = request.GET.get('token')
+        if not token:
+            raise Http404("Токен не указан")
+        
         download_token = DownloadToken.objects.get(token=token)
         if not download_token.is_valid():
             raise Http404("Ссылка устарела")
             
         file = download_token.file
+        
+        # Проверяем, что имя файла в URL соответствует реальному имени файла
+        # Декодируем имя файла из URL (может быть закодировано)
+        from urllib.parse import unquote
+        decoded_filename = unquote(filename)
+        
+        # Сравниваем имена файлов (без учета регистра и с учетом возможных вариантов кодирования)
+        if file.filename.lower() != decoded_filename.lower():
+            raise Http404("Имя файла не совпадает")
+        
         file_path = file.file.path
         
         if not os.path.exists(file_path):
@@ -384,8 +398,11 @@ def get_raw_link(request, file_id):
         file = UserFile.objects.get(id=file_id, user=request.user)
         download_token = generate_download_token(file)
         
-        # Получаем полный URL
-        raw_url = request.build_absolute_uri(f'/storage/raw/{download_token.token}/')
+        # Кодируем имя файла для URL
+        encoded_filename = quote(file.filename)
+        
+        # Получаем полный URL с именем файла (токен в query параметре)
+        raw_url = request.build_absolute_uri(f'/storage/raw/{encoded_filename}?token={download_token.token}')
         
         return create_json_response(
             True,
