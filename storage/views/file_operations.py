@@ -169,20 +169,39 @@ def delete_file(request, file_id):
     return redirect('dashboard')
 
 
-def _file_iterator(file_path, start=0, end=None, chunk_size=8192):
+def _file_iterator(file_path, start=0, end=None, chunk_size=None):
     """Генератор для чтения файла по частям с поддержкой Range-запросов"""
+    # Определяем оптимальный размер чанка в зависимости от размера файла
+    if chunk_size is None:
+        file_size = os.path.getsize(file_path)
+        # Для больших файлов (>100MB) используем больший чанк (2MB)
+        # Для средних (10-100MB) - 1MB, для маленьких - 256KB
+        if file_size > 100 * 1024 * 1024:  # > 100MB
+            chunk_size = 2 * 1024 * 1024  # 2MB
+        elif file_size > 10 * 1024 * 1024:  # > 10MB
+            chunk_size = 1024 * 1024  # 1MB
+        else:
+            chunk_size = 256 * 1024  # 256KB
+    
+    # Используем контекстный менеджер для гарантированного закрытия файла
+    # Файл будет открыт на время работы генератора
     with open(file_path, 'rb') as f:
         f.seek(start)
         remaining = end - start + 1 if end else None
+        
         while True:
             if remaining is not None and remaining <= 0:
                 break
+            
             chunk_size_to_read = min(chunk_size, remaining) if remaining else chunk_size
             chunk = f.read(chunk_size_to_read)
+            
             if not chunk:
                 break
+            
             if remaining is not None:
                 remaining -= len(chunk)
+            
             yield chunk
 
 
@@ -257,10 +276,19 @@ def download_file(request, token):
             response['Content-Length'] = file_size
             response['Accept-Ranges'] = 'bytes'
         
+        # Добавляем заголовки для предотвращения кэширования и таймаутов
         response['Content-Disposition'] = (
             f'attachment; filename="{encoded_filename}"; '
             f'filename*=UTF-8\'\'{encoded_filename}'
         )
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        
+        # Для больших файлов отключаем буферизацию на уровне WSGI
+        if file_size > 10 * 1024 * 1024:  # > 10MB
+            response['X-Accel-Buffering'] = 'no'  # Для nginx
+            response['X-Sendfile-Type'] = 'X-Sendfile'  # Для Apache
         
         # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
         
