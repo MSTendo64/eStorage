@@ -32,12 +32,6 @@ from .bulk_operations import (
 from .public_operations import (
     toggle_file_publicity
 )
-from .youtube_operations import (
-    get_video_info,
-    download_progress,
-    download_youtube_video,
-    video_list
-)
 from .chunk_upload import (
     upload_chunk,
     check_file
@@ -98,11 +92,6 @@ __all__ = [
     'bulk_archive',
     # Public operations
     'toggle_file_publicity',
-    # YouTube operations
-    'get_video_info',
-    'download_progress',
-    'download_youtube_video',
-    'video_list',
     # Chunk upload
     'upload_chunk',
     'check_file',

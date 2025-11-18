@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-from .api import youtube
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
@@ -19,14 +18,8 @@ urlpatterns = [
     path('bulk-download/', views.bulk_download, name='bulk_download'),
     path('bulk-archive/', views.bulk_archive, name='bulk_archive'),
     path('stats/', views.storage_stats, name='storage_stats'),
-    path('youtube/download/', views.download_youtube_video, name='youtube_download'),
-    path('youtube/preview/', views.get_video_info, name='youtube_preview'),
-    path('youtube/progress/', views.download_progress, name='youtube_progress'),
-    path('youtube/videos/', views.video_list, name='video_list'),
     path('check-file/', views.check_file, name='check_file'),
     path('upload-chunk/<str:filename>/', views.upload_chunk, name='upload_chunk'),
-    path('api/yt-download/', youtube.youtube_download, name='api_youtube_download'),
-    path('api/yt-task/<int:task_id>/', youtube.task_status, name='api_task_status'),
     path('metadata/<int:file_id>/', views.get_file_metadata, name='get_file_metadata'),
     path('video-quality/<int:file_id>/<int:quality>/', views.get_video_quality, name='get_video_quality'),
     path('public/video-quality/<str:token>/<int:quality>/', views.get_public_video_quality, name='get_public_video_quality'),

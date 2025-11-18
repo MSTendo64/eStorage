@@ -50,7 +50,6 @@
                 "archive": "Archive",
                 "other": "Other"
             },
-            "youtube_download": "Download from YouTube",
             "file_list": {
                 "title": "My Files",
                 "search_placeholder": "Search files by name...",
