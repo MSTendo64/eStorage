@@ -8,7 +8,9 @@ from .file_operations import (
     download_file,
     generate_download_link,
     generate_download_token,
-    save_text_file
+    save_text_file,
+    raw_file,
+    get_raw_link
 )
 from .archive_operations import (
     get_archive_contents,
@@ -78,6 +80,8 @@ __all__ = [
     'generate_download_link',
     'generate_download_token',
     'save_text_file',
+    'raw_file',
+    'get_raw_link',
     # Archive operations
     'get_archive_contents',
     'extract_archive',
