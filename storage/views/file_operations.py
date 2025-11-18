@@ -330,18 +330,24 @@ def raw_file(request, filename):
             
         file = download_token.file
         
-        # Проверяем, что имя файла в URL соответствует реальному имени файла
-        # Декодируем имя файла из URL (может быть закодировано)
-        from urllib.parse import unquote
-        decoded_filename = unquote(filename)
+        # Токен уже обеспечивает безопасность, поэтому проверка имени файла необязательна
+        # Но логируем для отладки, если имена не совпадают
+        from urllib.parse import unquote, unquote_plus
+        decoded_filename = unquote_plus(filename)
+        if decoded_filename == filename:
+            decoded_filename = unquote(filename)
         
-        # Сравниваем имена файлов (без учета регистра и с учетом возможных вариантов кодирования)
+        # Логируем несоответствие имен (но не блокируем доступ)
         if file.filename.lower() != decoded_filename.lower():
-            raise Http404("Имя файла не совпадает")
+            logger.debug(
+                f"Filename in URL differs from DB for token {token[:8]}...: "
+                f"URL='{decoded_filename}' vs DB='{file.filename}'"
+            )
         
         file_path = file.file.path
         
         if not os.path.exists(file_path):
+            logger.error(f"File not found on disk: {file_path} for file_id={file.id}")
             raise Http404("Файл не найден на диске")
         
         # Получаем относительный путь от MEDIA_ROOT для X-Accel-Redirect
@@ -386,8 +392,10 @@ def raw_file(request, filename):
             
     except DownloadToken.DoesNotExist:
         raise Http404("Ссылка недействительна")
+    except Http404:
+        raise
     except Exception as e:
-        logger.error(f"Error serving raw file: {e}")
+        logger.error(f"Error serving raw file: {e}", exc_info=True)
         raise Http404(f"Ошибка при получении файла: {str(e)}")
 
 
@@ -399,7 +407,9 @@ def get_raw_link(request, file_id):
         download_token = generate_download_token(file)
         
         # Кодируем имя файла для URL
-        encoded_filename = quote(file.filename)
+        # Используем safe='' чтобы закодировать все специальные символы
+        # Но оставляем слэши, так как они могут быть частью пути
+        encoded_filename = quote(file.filename, safe='')
         
         # Получаем полный URL с именем файла (токен в query параметре)
         raw_url = request.build_absolute_uri(f'/storage/raw/{encoded_filename}?token={download_token.token}')
