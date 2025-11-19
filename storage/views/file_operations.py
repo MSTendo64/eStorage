@@ -6,7 +6,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, JsonResponse, FileResponse, HttpResponse, StreamingHttpResponse
 from django.urls import reverse
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
+import requests
 
 from ..models import UserFile, DownloadToken, Folder, MountedFolder, SharedFolderAccess
 from ..helpers import (
@@ -493,5 +494,166 @@ def save_text_file(request, file_id):
         return create_json_response(False, ERROR_FILE_NOT_FOUND, status=404)
     except Exception as e:
         logger.error(f"Error in save_text_file: {e}")
+        return create_json_response(False, f'Ошибка: {str(e)}', status=500)
+
+
+@login_required
+def upload_from_url(request):
+    """Загрузка файла по URL"""
+    if request.method != 'POST':
+        return create_json_response(False, 'Неверный метод запроса', status=405)
+    
+    try:
+        # Получаем URL из POST или JSON
+        if request.content_type == 'application/json':
+            import json
+            data = json.loads(request.body)
+            file_url = data.get('url', '').strip()
+            folder_id = data.get('folder_id', None)
+        else:
+            file_url = request.POST.get('url', '').strip()
+            folder_id = request.POST.get('folder_id', None)
+        
+        if not file_url:
+            return create_json_response(False, 'URL не указан', status=400)
+        
+        # Валидация URL
+        try:
+            parsed_url = urlparse(file_url)
+            if not parsed_url.scheme or not parsed_url.netloc:
+                return create_json_response(False, 'Некорректный URL', status=400)
+        except Exception as e:
+            return create_json_response(False, f'Ошибка при проверке URL: {str(e)}', status=400)
+        
+        # Получаем текущую папку для загрузки
+        folder = None
+        if folder_id:
+            try:
+                folder = Folder.objects.get(id=folder_id, user=request.user)
+            except Folder.DoesNotExist:
+                pass
+        
+        # Скачиваем файл
+        try:
+            # Устанавливаем таймаут и заголовки для запроса
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            # Делаем HEAD запрос для проверки размера файла (если поддерживается)
+            content_length = None
+            try:
+                head_response = requests.head(file_url, headers=headers, timeout=10, allow_redirects=True)
+                content_length = head_response.headers.get('Content-Length')
+            except requests.exceptions.RequestException:
+                # Если HEAD запрос не поддерживается, пропускаем проверку размера
+                # Размер будет проверен во время загрузки
+                pass
+            
+            if content_length:
+                file_size = int(content_length)
+                # Проверяем размер файла
+                if file_size > settings.MAX_FILE_SIZE:
+                    max_size_mb = settings.MAX_FILE_SIZE / (1024 * 1024)
+                    return create_json_response(
+                        False, 
+                        f'Файл слишком большой. Максимальный размер: {max_size_mb:.0f}MB', 
+                        status=400
+                    )
+                
+                # Проверяем квоту хранилища
+                quota_error = validate_storage_quota(request.user, file_size, request)
+                if quota_error:
+                    return quota_error
+            
+            # Скачиваем файл
+            response = requests.get(file_url, headers=headers, timeout=300, stream=True, allow_redirects=True)
+            response.raise_for_status()
+            
+            # Получаем имя файла из URL или заголовков
+            filename = None
+            content_disposition = response.headers.get('Content-Disposition', '')
+            if 'filename=' in content_disposition:
+                try:
+                    filename = content_disposition.split('filename=')[1].strip('"\'')
+                except:
+                    pass
+            
+            if not filename:
+                # Извлекаем имя файла из URL
+                path = urlparse(file_url).path
+                filename = os.path.basename(path) or 'downloaded_file'
+                # Если нет расширения, пытаемся определить из Content-Type
+                if '.' not in filename:
+                    content_type = response.headers.get('Content-Type', '')
+                    if 'image' in content_type:
+                        filename += '.jpg'
+                    elif 'pdf' in content_type:
+                        filename += '.pdf'
+                    elif 'text' in content_type:
+                        filename += '.txt'
+            
+            # Подготовка папки пользователя
+            user_folder = ensure_user_folder_exists(request.user.id)
+            
+            # Генерация уникального имени файла
+            filename = generate_unique_filename(user_folder, filename)
+            file_path = os.path.join(user_folder, filename)
+            
+            # Сохранение файла
+            downloaded_size = 0
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        # Проверяем размер во время загрузки
+                        if downloaded_size > settings.MAX_FILE_SIZE:
+                            os.remove(file_path)
+                            return create_json_response(
+                                False, 
+                                f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                                status=400
+                            )
+            
+            # Получаем реальный размер файла
+            actual_size = os.path.getsize(file_path)
+            
+            # Создание записи в БД
+            file = UserFile.objects.create(
+                user=request.user,
+                file=f'{request.user.id}/{filename}',
+                filename=filename,
+                file_size=actual_size,
+                folder=folder
+            )
+            
+            # Создаем токен для скачивания при загрузке файла
+            generate_download_token(file)
+            
+            return create_json_response(
+                True, 
+                'Файл успешно загружен по URL',
+                data={'filename': filename, 'file_id': file.id}
+            )
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error downloading file from URL {file_url}: {e}")
+            return create_json_response(
+                False, 
+                f'Ошибка при скачивании файла: {str(e)}', 
+                status=500
+            )
+        except Exception as e:
+            logger.error(f"Error uploading file from URL {file_url}: {e}")
+            return create_json_response(
+                False, 
+                f'Ошибка при загрузке файла: {str(e)}', 
+                status=500
+            )
+    
+    except Exception as e:
+        logger.error(f"Error in upload_from_url: {e}")
         return create_json_response(False, f'Ошибка: {str(e)}', status=500)
 

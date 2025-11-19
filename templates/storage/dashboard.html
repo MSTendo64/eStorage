@@ -603,6 +603,9 @@
                 <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
                     <i class="fas fa-folder-plus me-1"></i> Создать папку
                 </button>
+                <button class="btn btn-info btn-sm" onclick="showUploadFromUrlModal()">
+                    <i class="fas fa-link me-1"></i> Загрузить по URL
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
                     <i class="fas fa-folder-open me-1"></i> Переместить в папку
                 </button>
@@ -1070,6 +1073,41 @@
     </div>
 </div>
 
+<!-- Модальное окно для загрузки по URL -->
+<div class="modal fade" id="uploadFromUrlModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-link me-2"></i>
+                    Загрузить файл по URL
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadFromUrlForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="fileUrl" class="form-label">URL файла</label>
+                        <input type="url" class="form-control" id="fileUrl" 
+                               placeholder="https://example.com/path/to/file.ext" required>
+                        <div class="form-text">
+                            Введите полную ссылку на файл для загрузки
+                        </div>
+                    </div>
+                    <div id="uploadUrlError" class="alert alert-danger d-none" role="alert"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="uploadFromUrl()">
+                    <i class="fas fa-download me-1"></i> Загрузить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Добавьте стили -->
 <style>
 .archive-item {
@@ -1243,6 +1281,94 @@ let zoom = null;
 // Функции для работы с общим доступом к папкам
 async function showShareFolderModal(folderId) {
     window.location.href = `{% url 'share_folder_wizard' 0 %}`.replace('0', folderId);
+}
+
+// Функция для открытия модального окна загрузки по URL
+function showUploadFromUrlModal() {
+    const modal = new bootstrap.Modal(document.getElementById('uploadFromUrlModal'));
+    document.getElementById('fileUrl').value = '';
+    document.getElementById('uploadUrlError').classList.add('d-none');
+    modal.show();
+}
+
+// Функция для загрузки файла по URL
+async function uploadFromUrl() {
+    const urlInput = document.getElementById('fileUrl');
+    const fileUrl = urlInput.value.trim();
+    const errorDiv = document.getElementById('uploadUrlError');
+    
+    // Скрываем предыдущие ошибки
+    errorDiv.classList.add('d-none');
+    
+    if (!fileUrl) {
+        errorDiv.textContent = 'Пожалуйста, введите URL файла';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Валидация URL
+    try {
+        const url = new URL(fileUrl);
+        if (!url.protocol.startsWith('http')) {
+            errorDiv.textContent = 'URL должен начинаться с http:// или https://';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+    } catch (e) {
+        errorDiv.textContent = 'Некорректный URL';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Получаем текущую папку из URL, если есть
+    const urlParams = new URLSearchParams(window.location.search);
+    const folderId = urlParams.get('folder');
+    
+    // Показываем индикатор загрузки
+    showLoading('Загрузка файла по URL...');
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        hideLoading();
+        errorDiv.textContent = 'Ошибка: не удалось получить CSRF токен';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    try {
+        const response = await fetch('{% url "upload_from_url" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                url: fileUrl,
+                folder_id: folderId ? parseInt(folderId) : null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideLoading();
+            // Закрываем модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFromUrlModal'));
+            if (modal) {
+                modal.hide();
+            }
+            // Обновляем страницу для отображения нового файла
+            location.reload();
+        } else {
+            hideLoading();
+            errorDiv.textContent = data.error || data.message || 'Ошибка при загрузке файла';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        hideLoading();
+        errorDiv.textContent = 'Ошибка при загрузке файла: ' + error.message;
+        errorDiv.classList.remove('d-none');
+    }
 }
 
 async function unmountFolder(mountedId) {
