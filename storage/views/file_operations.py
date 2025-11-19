@@ -1,6 +1,7 @@
 import os
 import json
-from typing import Optional
+import re
+from typing import Optional, Tuple
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.conf import settings
@@ -8,7 +9,7 @@ from django.contrib import messages
 from django.http import Http404, JsonResponse, FileResponse, HttpResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, parse_qs
 import requests
 
 from ..models import UserFile, DownloadToken, Folder, MountedFolder, SharedFolderAccess
@@ -499,6 +500,70 @@ def save_text_file(request, file_id):
         return create_json_response(False, f'Ошибка: {str(e)}', status=500)
 
 
+def extract_google_drive_file_id(url: str) -> Optional[str]:
+    """
+    Извлекает ID файла из различных форматов Google Drive ссылок
+    
+    Поддерживаемые форматы:
+    - https://drive.google.com/file/d/FILE_ID/view
+    - https://drive.google.com/file/d/FILE_ID/edit
+    - https://drive.google.com/open?id=FILE_ID
+    - https://drive.google.com/uc?id=FILE_ID
+    - https://docs.google.com/document/d/FILE_ID/edit (для Google Docs)
+    """
+    patterns = [
+        r'/file/d/([a-zA-Z0-9_-]+)',
+        r'/open\?id=([a-zA-Z0-9_-]+)',
+        r'/uc\?id=([a-zA-Z0-9_-]+)',
+        r'/document/d/([a-zA-Z0-9_-]+)',
+        r'/spreadsheets/d/([a-zA-Z0-9_-]+)',
+        r'/presentation/d/([a-zA-Z0-9_-]+)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    
+    # Попытка извлечь из query параметров
+    parsed = urlparse(url)
+    if parsed.netloc in ['drive.google.com', 'docs.google.com']:
+        query_params = parse_qs(parsed.query)
+        if 'id' in query_params:
+            return query_params['id'][0]
+    
+    return None
+
+
+def convert_google_drive_url(url: str) -> Optional[str]:
+    """
+    Преобразует Google Drive ссылку в прямую ссылку для скачивания
+    
+    Возвращает None, если это не Google Drive ссылка
+    """
+    parsed = urlparse(url)
+    
+    # Проверяем, является ли это Google Drive ссылкой
+    if parsed.netloc not in ['drive.google.com', 'docs.google.com']:
+        return None
+    
+    file_id = extract_google_drive_file_id(url)
+    if not file_id:
+        return None
+    
+    # Для обычных файлов используем прямую ссылку
+    # Для Google Docs/Sheets/Slides нужно использовать другой формат
+    if 'docs.google.com' in parsed.netloc:
+        # Google Docs/Sheets/Slides требуют экспорта
+        doc_type = 'document' if '/document/' in url else 'spreadsheets' if '/spreadsheets/' in url else 'presentation'
+        # Пытаемся экспортировать как PDF или другой формат
+        # Но для простоты попробуем прямую ссылку
+        return f'https://drive.google.com/uc?export=download&id={file_id}'
+    else:
+        # Обычные файлы - прямая ссылка для скачивания
+        return f'https://drive.google.com/uc?export=download&id={file_id}'
+
+
 @login_required
 @ensure_csrf_cookie
 def upload_from_url(request):
@@ -529,6 +594,13 @@ def upload_from_url(request):
                 return create_json_response(False, 'Некорректный URL', status=400)
         except Exception as e:
             return create_json_response(False, f'Ошибка при проверке URL: {str(e)}', status=400)
+        
+        # Проверяем, является ли это Google Drive ссылкой, и преобразуем её
+        original_url = file_url  # Сохраняем оригинальный URL для возможного использования
+        google_drive_url = convert_google_drive_url(file_url)
+        if google_drive_url:
+            logger.info(f"Detected Google Drive URL: {original_url}, converting to: {google_drive_url}")
+            file_url = google_drive_url
         
         # Получаем текущую папку для загрузки
         folder = None
@@ -586,7 +658,42 @@ def upload_from_url(request):
             logger.info(f"Starting GET request to download file...")
             response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
             response.raise_for_status()
-            logger.info(f"GET request successful, status: {response.status_code}")
+            
+            # Проверяем, не вернул ли Google Drive HTML страницу (например, для больших файлов требуется подтверждение)
+            content_type = response.headers.get('Content-Type', '')
+            is_google_drive = 'drive.google.com' in original_url or 'docs.google.com' in original_url
+            
+            if 'text/html' in content_type and is_google_drive:
+                # Пытаемся найти прямую ссылку в HTML или используем альтернативный метод
+                logger.warning("Google Drive returned HTML page, file may require confirmation or be too large")
+                
+                # Для больших файлов Google Drive может требовать подтверждение
+                # Пытаемся использовать альтернативный формат ссылки
+                file_id = extract_google_drive_file_id(original_url)
+                if file_id:
+                    # Для больших файлов Google Drive требует подтверждение
+                    # Используем формат с confirm параметром
+                    alt_url = f'https://drive.google.com/uc?export=download&confirm=t&id={file_id}'
+                    logger.info(f"Trying alternative Google Drive URL: {alt_url}")
+                    response.close()  # Закрываем предыдущий ответ
+                    response = requests.get(alt_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
+                    response.raise_for_status()
+                    content_type = response.headers.get('Content-Type', '')
+                    
+                    if 'text/html' in content_type:
+                        return create_json_response(
+                            False,
+                            'Не удалось скачать файл из Google Drive. Файл может быть слишком большим или требовать подтверждения доступа. Убедитесь, что файл доступен для скачивания (настройки доступа: "Все, у кого есть ссылка").',
+                            status=400
+                        )
+                else:
+                    return create_json_response(
+                        False,
+                        'Не удалось определить ID файла из Google Drive ссылки. Убедитесь, что ссылка корректна.',
+                        status=400
+                    )
+            
+            logger.info(f"GET request successful, status: {response.status_code}, Content-Type: {content_type}")
             
             # Получаем имя файла из URL или заголовков
             filename = None
