@@ -155,24 +155,24 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
 # Максимальный размер всех данных POST-запроса (1GB)
 # Это критически важно для загрузки больших файлов
-DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 4294967296  # 4GB
 CHUNKED_UPLOAD_MAX_BYTES = 2147483648  # 2GB
-CHUNKED_UPLOAD_CHUNK_SIZE = 5242880  # 5MB
+CHUNKED_UPLOAD_CHUNK_SIZE = 10485760  # 10MB
 
 # Avatar upload settings
-MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_AVATAR_SIZE = 10 * 1024 * 1024  # 5MB
 
 # Create temp directory if it doesn't exist
 if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
     os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 # Large file settings
-LARGE_FILE_SIZE_THRESHOLD = 10485760  # 10MB (10485760 bytes = 10 * 1024 * 1024)
-MAX_FILE_SIZE = 1073741824  # 1GB (было 2GB, уменьшено до 1GB согласно требованиям)
-MAX_UPLOAD_SIZE = 1073741824  # 1GB
+LARGE_FILE_SIZE_THRESHOLD = 52428800  # 10MB (10485760 bytes = 10 * 1024 * 1024)
+MAX_FILE_SIZE = 4294967296  # 4GB (было 2GB, уменьшено до 1GB согласно требованиям)
+MAX_UPLOAD_SIZE = 4294967296  # 4GB
 
 # Настройки для больших файлов
-CHUNK_SIZE = 2097152  # 2MB
+CHUNK_SIZE = 10485760  # 10MB
 
 # Login URL
 LOGIN_URL = 'login'
