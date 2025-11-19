@@ -160,7 +160,7 @@ CHUNKED_UPLOAD_MAX_BYTES = 2147483648  # 2GB
 CHUNKED_UPLOAD_CHUNK_SIZE = 10485760  # 10MB
 
 # Avatar upload settings
-MAX_AVATAR_SIZE = 10 * 1024 * 1024  # 5MB
+MAX_AVATAR_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Create temp directory if it doesn't exist
 if not os.path.exists(FILE_UPLOAD_TEMP_DIR):

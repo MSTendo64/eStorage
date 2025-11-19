@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -6,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, JsonResponse, FileResponse, HttpResponse, StreamingHttpResponse
 from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from urllib.parse import quote, urlparse
 import requests
 
@@ -498,6 +500,7 @@ def save_text_file(request, file_id):
 
 
 @login_required
+@ensure_csrf_cookie
 def upload_from_url(request):
     """Загрузка файла по URL"""
     if request.method != 'POST':
@@ -506,8 +509,10 @@ def upload_from_url(request):
     try:
         # Получаем URL из POST или JSON
         if request.content_type == 'application/json':
-            import json
-            data = json.loads(request.body)
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return create_json_response(False, 'Некорректный JSON в запросе', status=400)
             file_url = data.get('url', '').strip()
             folder_id = data.get('folder_id', None)
         else:
@@ -653,7 +658,12 @@ def upload_from_url(request):
                 status=500
             )
     
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in upload_from_url: {e}")
+        return create_json_response(False, 'Ошибка при обработке запроса: некорректный JSON', status=400)
     except Exception as e:
-        logger.error(f"Error in upload_from_url: {e}")
-        return create_json_response(False, f'Ошибка: {str(e)}', status=500)
+        logger.error(f"Error in upload_from_url: {e}", exc_info=True)
+        # Всегда возвращаем JSON, даже при ошибках
+        error_message = str(e) if str(e) else 'Неизвестная ошибка'
+        return create_json_response(False, f'Ошибка: {error_message}', status=500)
 

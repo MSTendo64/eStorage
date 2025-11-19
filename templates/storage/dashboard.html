@@ -468,6 +468,14 @@
     max-height: 90vh;
     overflow-y: auto;
 }
+
+/* Центрирование модального окна загрузки по URL */
+#uploadFromUrlModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 1rem);
+    margin: 0.5rem auto;
+}
 </style>
 
 <div class="loading-overlay" id="loadingOverlay">
@@ -1075,7 +1083,7 @@
 
 <!-- Модальное окно для загрузки по URL -->
 <div class="modal fade" id="uploadFromUrlModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -1095,12 +1103,26 @@
                             Введите полную ссылку на файл для загрузки
                         </div>
                     </div>
+                    <div id="uploadUrlProgressContainer" class="d-none mb-3">
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 id="uploadUrlProgress" 
+                                 style="width: 0%"
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                <span id="uploadUrlProgressText">0%</span>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="uploadUrlStatus">Подготовка к загрузке...</small>
+                    </div>
                     <div id="uploadUrlError" class="alert alert-danger d-none" role="alert"></div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="uploadFromUrl()">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="uploadUrlCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="uploadFromUrl()" id="uploadUrlSubmitBtn">
                     <i class="fas fa-download me-1"></i> Загрузить
                 </button>
             </div>
@@ -1288,7 +1310,39 @@ function showUploadFromUrlModal() {
     const modal = new bootstrap.Modal(document.getElementById('uploadFromUrlModal'));
     document.getElementById('fileUrl').value = '';
     document.getElementById('uploadUrlError').classList.add('d-none');
+    document.getElementById('uploadUrlProgressContainer').classList.add('d-none');
+    document.getElementById('uploadUrlSubmitBtn').disabled = false;
+    document.getElementById('uploadUrlCancelBtn').disabled = false;
+    document.getElementById('uploadUrlProgress').style.width = '0%';
+    document.getElementById('uploadUrlProgress').setAttribute('aria-valuenow', '0');
+    document.getElementById('uploadUrlProgressText').textContent = '0%';
     modal.show();
+}
+
+// Функция для обновления прогресс-бара загрузки по URL
+function updateUploadUrlProgress(percent, status) {
+    const progressBar = document.getElementById('uploadUrlProgress');
+    const progressText = document.getElementById('uploadUrlProgressText');
+    const statusText = document.getElementById('uploadUrlStatus');
+    const progressContainer = document.getElementById('uploadUrlProgressContainer');
+    
+    if (progressContainer) {
+        progressContainer.classList.remove('d-none');
+    }
+    
+    if (progressBar) {
+        const roundedPercent = Math.round(percent);
+        progressBar.style.width = roundedPercent + '%';
+        progressBar.setAttribute('aria-valuenow', roundedPercent);
+    }
+    
+    if (progressText) {
+        progressText.textContent = Math.round(percent) + '%';
+    }
+    
+    if (statusText && status) {
+        statusText.textContent = status;
+    }
 }
 
 // Функция для загрузки файла по URL
@@ -1296,6 +1350,9 @@ async function uploadFromUrl() {
     const urlInput = document.getElementById('fileUrl');
     const fileUrl = urlInput.value.trim();
     const errorDiv = document.getElementById('uploadUrlError');
+    const submitBtn = document.getElementById('uploadUrlSubmitBtn');
+    const cancelBtn = document.getElementById('uploadUrlCancelBtn');
+    const progressContainer = document.getElementById('uploadUrlProgressContainer');
     
     // Скрываем предыдущие ошибки
     errorDiv.classList.add('d-none');
@@ -1324,18 +1381,24 @@ async function uploadFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folder');
     
-    // Показываем индикатор загрузки
-    showLoading('Загрузка файла по URL...');
+    // Блокируем кнопки и показываем прогресс
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    updateUploadUrlProgress(0, 'Подготовка к загрузке...');
     
     const csrfToken = getCsrfToken();
     if (!csrfToken) {
-        hideLoading();
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
         errorDiv.textContent = 'Ошибка: не удалось получить CSRF токен';
         errorDiv.classList.remove('d-none');
+        progressContainer.classList.add('d-none');
         return;
     }
     
     try {
+        updateUploadUrlProgress(10, 'Отправка запроса...');
+        
         const response = await fetch('{% url "upload_from_url" %}', {
             method: 'POST',
             headers: {
@@ -1348,25 +1411,68 @@ async function uploadFromUrl() {
             })
         });
         
+        // Проверяем Content-Type перед парсингом JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // Если ответ не JSON, читаем как текст для отображения ошибки
+            const text = await response.text();
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            progressContainer.classList.add('d-none');
+            
+            // Пытаемся найти ошибку в HTML (если это страница ошибки Django)
+            let errorMessage = 'Ошибка при загрузке файла';
+            if (text.includes('<title>')) {
+                const titleMatch = text.match(/<title>(.*?)<\/title>/);
+                if (titleMatch) {
+                    errorMessage = 'Ошибка сервера: ' + titleMatch[1];
+                }
+            } else if (text.length < 500) {
+                errorMessage = text;
+            }
+            
+            errorDiv.textContent = errorMessage;
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        updateUploadUrlProgress(30, 'Скачивание файла...');
+        
         const data = await response.json();
         
         if (data.success) {
-            hideLoading();
-            // Закрываем модальное окно
-            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFromUrlModal'));
-            if (modal) {
-                modal.hide();
-            }
-            // Обновляем страницу для отображения нового файла
-            location.reload();
+            updateUploadUrlProgress(100, 'Загрузка завершена!');
+            
+            // Небольшая задержка перед закрытием для показа 100%
+            setTimeout(() => {
+                // Закрываем модальное окно
+                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFromUrlModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                // Обновляем страницу для отображения нового файла
+                location.reload();
+            }, 500);
         } else {
-            hideLoading();
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            progressContainer.classList.add('d-none');
             errorDiv.textContent = data.error || data.message || 'Ошибка при загрузке файла';
             errorDiv.classList.remove('d-none');
         }
     } catch (error) {
-        hideLoading();
-        errorDiv.textContent = 'Ошибка при загрузке файла: ' + error.message;
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        progressContainer.classList.add('d-none');
+        
+        let errorMessage = 'Ошибка при загрузке файла: ' + error.message;
+        
+        // Специальная обработка ошибки парсинга JSON
+        if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
+            errorMessage = 'Ошибка: сервер вернул некорректный ответ. Возможно, проблема с авторизацией или доступом.';
+        }
+        
+        errorDiv.textContent = errorMessage;
         errorDiv.classList.remove('d-none');
     }
 }
