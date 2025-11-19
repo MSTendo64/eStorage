@@ -545,35 +545,48 @@ def upload_from_url(request):
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             
+            logger.info(f"Starting download from URL: {file_url}")
+            
             # Делаем HEAD запрос для проверки размера файла (если поддерживается)
             content_length = None
             try:
-                head_response = requests.head(file_url, headers=headers, timeout=10, allow_redirects=True)
+                head_response = requests.head(file_url, headers=headers, timeout=30, allow_redirects=True)
                 content_length = head_response.headers.get('Content-Length')
-            except requests.exceptions.RequestException:
+                logger.info(f"HEAD request successful, Content-Length: {content_length}")
+            except requests.exceptions.RequestException as e:
                 # Если HEAD запрос не поддерживается, пропускаем проверку размера
                 # Размер будет проверен во время загрузки
+                logger.warning(f"HEAD request failed, will check size during download: {e}")
                 pass
             
             if content_length:
-                file_size = int(content_length)
-                # Проверяем размер файла
-                if file_size > settings.MAX_FILE_SIZE:
-                    max_size_mb = settings.MAX_FILE_SIZE / (1024 * 1024)
-                    return create_json_response(
-                        False, 
-                        f'Файл слишком большой. Максимальный размер: {max_size_mb:.0f}MB', 
-                        status=400
-                    )
-                
-                # Проверяем квоту хранилища
-                quota_error = validate_storage_quota(request.user, file_size, request)
-                if quota_error:
-                    return quota_error
+                try:
+                    file_size = int(content_length)
+                    logger.info(f"File size from headers: {file_size} bytes ({file_size / (1024*1024):.2f} MB)")
+                    
+                    # Проверяем размер файла
+                    if file_size > settings.MAX_FILE_SIZE:
+                        max_size_mb = settings.MAX_FILE_SIZE / (1024 * 1024)
+                        logger.warning(f"File too large: {file_size / (1024*1024):.2f} MB > {max_size_mb:.0f} MB")
+                        return create_json_response(
+                            False, 
+                            f'Файл слишком большой. Максимальный размер: {max_size_mb:.0f}MB', 
+                            status=400
+                        )
+                    
+                    # Проверяем квоту хранилища
+                    quota_error = validate_storage_quota(request.user, file_size, request)
+                    if quota_error:
+                        logger.warning(f"Storage quota exceeded for user {request.user.id}")
+                        return quota_error
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Could not parse Content-Length: {content_length}, error: {e}")
             
-            # Скачиваем файл
-            response = requests.get(file_url, headers=headers, timeout=300, stream=True, allow_redirects=True)
+            # Скачиваем файл с увеличенным таймаутом для больших файлов
+            logger.info(f"Starting GET request to download file...")
+            response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
             response.raise_for_status()
+            logger.info(f"GET request successful, status: {response.status_code}")
             
             # Получаем имя файла из URL или заголовков
             filename = None
@@ -607,51 +620,131 @@ def upload_from_url(request):
             
             # Сохранение файла
             downloaded_size = 0
-            with open(file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded_size += len(chunk)
-                        
-                        # Проверяем размер во время загрузки
-                        if downloaded_size > settings.MAX_FILE_SIZE:
-                            os.remove(file_path)
-                            return create_json_response(
-                                False, 
-                                f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
-                                status=400
-                            )
+            chunk_size = 1024 * 1024  # 1MB chunks для больших файлов
+            last_log_size = 0
+            log_interval = 10 * 1024 * 1024  # Логируем каждые 10MB
+            
+            try:
+                with open(file_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            
+                            # Логируем прогресс для больших файлов
+                            if downloaded_size - last_log_size >= log_interval:
+                                logger.info(f"Downloaded {downloaded_size / (1024*1024):.2f} MB of {file_url}")
+                                last_log_size = downloaded_size
+                            
+                            # Проверяем размер во время загрузки
+                            if downloaded_size > settings.MAX_FILE_SIZE:
+                                os.remove(file_path)
+                                logger.warning(f"File exceeded max size during download: {downloaded_size / (1024*1024):.2f} MB")
+                                return create_json_response(
+                                    False, 
+                                    f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                                    status=400
+                                )
+                
+                logger.info(f"File downloaded successfully, size: {downloaded_size} bytes")
+            except IOError as e:
+                logger.error(f"IOError while saving file: {e}")
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                return create_json_response(
+                    False,
+                    f'Ошибка при сохранении файла: {str(e)}',
+                    status=500
+                )
             
             # Получаем реальный размер файла
-            actual_size = os.path.getsize(file_path)
+            try:
+                actual_size = os.path.getsize(file_path)
+                logger.info(f"File saved, actual size: {actual_size} bytes")
+            except OSError as e:
+                logger.error(f"Error getting file size: {e}")
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                return create_json_response(
+                    False,
+                    f'Ошибка при проверке размера файла: {str(e)}',
+                    status=500
+                )
             
             # Создание записи в БД
-            file = UserFile.objects.create(
-                user=request.user,
-                file=f'{request.user.id}/{filename}',
-                filename=filename,
-                file_size=actual_size,
-                folder=folder
-            )
+            try:
+                file = UserFile.objects.create(
+                    user=request.user,
+                    file=f'{request.user.id}/{filename}',
+                    filename=filename,
+                    file_size=actual_size,
+                    folder=folder
+                )
+                logger.info(f"File record created in DB: {file.id}")
+            except Exception as e:
+                logger.error(f"Error creating file record in DB: {e}")
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                return create_json_response(
+                    False,
+                    f'Ошибка при создании записи в базе данных: {str(e)}',
+                    status=500
+                )
             
             # Создаем токен для скачивания при загрузке файла
-            generate_download_token(file)
+            try:
+                generate_download_token(file)
+                logger.info(f"Download token created for file {file.id}")
+            except Exception as e:
+                logger.warning(f"Error creating download token: {e}, but file is saved")
             
+            logger.info(f"File upload from URL completed successfully: {filename}")
             return create_json_response(
                 True, 
                 'Файл успешно загружен по URL',
                 data={'filename': filename, 'file_id': file.id}
             )
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error downloading file from URL {file_url}: {e}")
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout while downloading file from URL {file_url}: {e}", exc_info=True)
             return create_json_response(
                 False, 
-                f'Ошибка при скачивании файла: {str(e)}', 
+                'Превышено время ожидания при скачивании файла. Файл может быть слишком большим или сервер недоступен.', 
+                status=500
+            )
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error downloading file from URL {file_url}: {e}", exc_info=True)
+            return create_json_response(
+                False,
+                'Ошибка подключения к серверу. Проверьте URL и доступность файла.',
+                status=500
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error downloading file from URL {file_url}: {e}", exc_info=True)
+            error_msg = f'Ошибка при скачивании файла: {str(e)}'
+            return create_json_response(
+                False, 
+                error_msg, 
+                status=500
+            )
+        except OSError as e:
+            logger.error(f"OS error while uploading file from URL {file_url}: {e}", exc_info=True)
+            return create_json_response(
+                False,
+                f'Ошибка файловой системы: {str(e)}. Возможно, недостаточно места на диске.',
                 status=500
             )
         except Exception as e:
-            logger.error(f"Error uploading file from URL {file_url}: {e}")
+            logger.error(f"Unexpected error uploading file from URL {file_url}: {e}", exc_info=True)
             return create_json_response(
                 False, 
                 f'Ошибка при загрузке файла: {str(e)}', 
