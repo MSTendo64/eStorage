@@ -2207,16 +2207,15 @@ async function renameFile() {
     }
     
     try {
-        const formData = new FormData();
-        formData.append('name', newFileName);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-        
         const response = await fetch(`/storage/file/rename/${fileId}/`, {
             method: 'POST',
-            body: formData,
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken
-            }
+            },
+            body: JSON.stringify({
+                name: newFileName
+            })
         });
         
         const data = await response.json();
@@ -2229,7 +2228,11 @@ async function renameFile() {
             }
             
             // Показываем сообщение об успехе
-            showSuccessMessage(data.message || 'Файл успешно переименован');
+            if (typeof showSuccessMessage === 'function') {
+                showSuccessMessage(data.message || 'Файл успешно переименован');
+            } else {
+                alert(data.message || 'Файл успешно переименован');
+            }
             
             // Обновляем страницу для отображения нового имени
             setTimeout(() => {
@@ -2296,16 +2299,15 @@ async function renameFile() {
     }
     
     try {
-        const formData = new FormData();
-        formData.append('name', newFileName);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-        
         const response = await fetch(`/storage/file/rename/${fileId}/`, {
             method: 'POST',
-            body: formData,
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken
-            }
+            },
+            body: JSON.stringify({
+                name: newFileName
+            })
         });
         
         const data = await response.json();
@@ -2318,7 +2320,11 @@ async function renameFile() {
             }
             
             // Показываем сообщение об успехе
-            showSuccessMessage(data.message || 'Файл успешно переименован');
+            if (typeof showSuccessMessage === 'function') {
+                showSuccessMessage(data.message || 'Файл успешно переименован');
+            } else {
+                alert(data.message || 'Файл успешно переименован');
+            }
             
             // Обновляем страницу для отображения нового имени
             setTimeout(() => {
