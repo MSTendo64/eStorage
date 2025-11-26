@@ -1,6 +1,8 @@
 import os
 import json
 import re
+import shutil
+import tempfile
 from typing import Optional, Tuple
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -612,6 +614,74 @@ def download_via_proxy(url: str, headers: dict, timeout: int = 600) -> Optional[
     return None
 
 
+def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
+    """
+    Пытается скачать видео с Pinterest используя yt-dlp
+    
+    Возвращает путь к скачанному файлу или None если не удалось
+    """
+    try:
+        import yt_dlp
+        import tempfile
+        
+        # Создаем временную директорию для загрузки
+        temp_dir = tempfile.mkdtemp()
+        
+        # Настройки yt-dlp
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Предпочитаем MP4
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            'quiet': False,
+            'no_warnings': False,
+            'extract_flat': False,
+            'writeinfojson': False,
+            'writethumbnail': False,
+        }
+        
+        logger.info(f"Attempting to download Pinterest video using yt-dlp: {pinterest_url}")
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            try:
+                # Получаем информацию о видео
+                info = ydl.extract_info(pinterest_url, download=False)
+                
+                if not info:
+                    logger.warning("yt-dlp could not extract video info from Pinterest URL")
+                    return None
+                
+                # Проверяем, есть ли видео
+                if 'url' in info:
+                    video_url = info['url']
+                    logger.info(f"yt-dlp found video URL: {video_url[:100]}...")
+                    
+                    # Скачиваем видео
+                    ydl.download([pinterest_url])
+                    
+                    # Ищем скачанный файл
+                    downloaded_files = [f for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
+                    if downloaded_files:
+                        video_file = os.path.join(temp_dir, downloaded_files[0])
+                        logger.info(f"Video downloaded successfully: {video_file}")
+                        return video_file
+                    else:
+                        logger.warning("Video file not found after download")
+                        return None
+                else:
+                    logger.warning("No video URL found in yt-dlp info")
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Error downloading video with yt-dlp: {e}")
+                return None
+                
+    except ImportError:
+        logger.warning("yt-dlp is not installed, cannot download Pinterest videos")
+        return None
+    except Exception as e:
+        logger.error(f"Error in download_pinterest_video_with_ytdlp: {e}")
+        return None
+
+
 def convert_pinterest_url(url: str) -> Optional[str]:
     """
     Преобразует Pinterest ссылку в прямую ссылку на медиа-файл (изображение или видео)
@@ -919,16 +989,20 @@ def convert_pinterest_url(url: str) -> Optional[str]:
         # Ищем video теги в HTML
         # Pinterest использует blob URLs, поэтому ищем исходные данные в атрибутах и JavaScript
         video_tag_match = re.search(r'<video[^>]*>', html, re.IGNORECASE)
+        has_video_tag = False
         if video_tag_match:
+            has_video_tag = True
             video_tag = video_tag_match.group(0)
             
-            # Ищем src атрибут (может быть blob URL, пропускаем)
+            # Ищем src атрибут (может быть blob URL)
             src_match = re.search(r'src=["\']([^"\']+)["\']', video_tag, re.IGNORECASE)
             if src_match:
                 src_url = src_match.group(1)
-                # Пропускаем blob URLs, но логируем для отладки
+                # Если это blob URL, это означает, что видео есть, но прямая ссылка недоступна
                 if src_url.startswith('blob:'):
-                    logger.debug(f"Found blob URL in video tag (skipping): {src_url}")
+                    logger.warning(f"Found blob URL in video tag - Pinterest uses dynamic video loading, no direct URL available: {src_url}")
+                    # Помечаем, что видео есть, но прямая ссылка недоступна
+                    # Продолжаем поиск в других местах
                 elif (src_url.startswith('http') or src_url.startswith('//')) and '.m3u8' not in src_url.lower():
                     logger.info(f"Found Pinterest video in <video> src: {src_url}")
                     video_urls.append(src_url)
@@ -1040,15 +1114,28 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                 logger.warning("Only m3u8/HLS playlists or blob URLs found, no direct video files available")
                 # Не возвращаем m3u8 или blob, пусть вернется изображение
         
+        # Если видео не найдено, но есть video тег с blob URL, это означает, что видео есть,
+        # но Pinterest не предоставляет прямую ссылку (использует динамическую загрузку)
+        if has_video_tag and not video_urls:
+            logger.warning("Pinterest pin contains video with blob URL, but no direct video URL is available. "
+                          "Pinterest uses dynamic video loading which cannot be downloaded directly. "
+                          "Returning image instead.")
+        
         # Если видео не найдено, возвращаем изображение (если есть)
         # Но только если мы действительно не нашли видео (не blob URL и не m3u8)
         if all_image_urls:
             # Предпочитаем оригинальные размеры
             for img_url in all_image_urls:
                 if 'originals' in img_url or '/originals/' in img_url:
-                    logger.info(f"No video found, returning Pinterest original image URL: {img_url}")
+                    if has_video_tag:
+                        logger.info(f"Video pin detected but no direct URL available, returning Pinterest original image URL: {img_url}")
+                    else:
+                        logger.info(f"No video found, returning Pinterest original image URL: {img_url}")
                     return img_url
-            logger.info(f"No video found, returning first Pinterest image URL: {all_image_urls[0]}")
+            if has_video_tag:
+                logger.info(f"Video pin detected but no direct URL available, returning first Pinterest image URL: {all_image_urls[0]}")
+            else:
+                logger.info(f"No video found, returning first Pinterest image URL: {all_image_urls[0]}")
             return all_image_urls[0]
         
         # Если ничего не найдено, возвращаем None
@@ -1097,10 +1184,128 @@ def upload_from_url(request):
         original_url = file_url  # Сохраняем оригинальный URL для возможного использования
         
         # Сначала проверяем Pinterest
+        is_pinterest = False
+        parsed = urlparse(file_url)
+        if parsed.netloc in ['pinterest.com', 'www.pinterest.com', 'ru.pinterest.com', 'pinterest.ru'] and '/pin/' in parsed.path:
+            is_pinterest = True
+        
         pinterest_url = convert_pinterest_url(file_url)
         if pinterest_url:
             logger.info(f"Detected Pinterest URL: {original_url}, converting to: {pinterest_url}")
             file_url = pinterest_url
+        elif is_pinterest:
+            # Если это Pinterest, но convert_pinterest_url вернул None (blob URL или видео)
+            # Пытаемся использовать yt-dlp для загрузки видео
+            logger.info(f"Pinterest URL detected but no direct link found, trying yt-dlp for video download")
+            downloaded_video_path = download_pinterest_video_with_ytdlp(original_url)
+            if downloaded_video_path and os.path.exists(downloaded_video_path):
+                # Файл уже скачан через yt-dlp, обрабатываем его напрямую
+                logger.info(f"Successfully downloaded Pinterest video using yt-dlp: {downloaded_video_path}")
+                
+                # Получаем текущую папку для загрузки
+                folder = None
+                if folder_id:
+                    try:
+                        folder = Folder.objects.get(id=folder_id, user=request.user)
+                    except Folder.DoesNotExist:
+                        pass
+                
+                # Подготовка папки пользователя
+                user_folder = ensure_user_folder_exists(request.user.id)
+                
+                # Получаем имя файла из скачанного файла
+                original_filename = os.path.basename(downloaded_video_path)
+                filename = generate_unique_filename(user_folder, original_filename)
+                file_path = os.path.join(user_folder, filename)
+                
+                # Перемещаем файл из временной директории в постоянную
+                try:
+                    import shutil
+                    shutil.move(downloaded_video_path, file_path)
+                    
+                    # Получаем размер файла
+                    actual_size = os.path.getsize(file_path)
+                    logger.info(f"File moved successfully, size: {actual_size} bytes")
+                    
+                    # Проверяем размер файла
+                    if actual_size > settings.MAX_FILE_SIZE:
+                        os.remove(file_path)
+                        return create_json_response(
+                            False, 
+                            f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                            status=400
+                        )
+                    
+                    # Проверяем квоту хранилища
+                    quota_error = validate_storage_quota(request.user, actual_size, request)
+                    if quota_error:
+                        os.remove(file_path)
+                        return quota_error
+                    
+                    # Создаем запись в БД
+                    try:
+                        file = UserFile.objects.create(
+                            user=request.user,
+                            file=f'{request.user.id}/{filename}',
+                            filename=filename,
+                            file_size=actual_size,
+                            folder=folder
+                        )
+                        logger.info(f"File record created in DB: {file.id}")
+                    except Exception as e:
+                        logger.error(f"Error creating file record in DB: {e}")
+                        if os.path.exists(file_path):
+                            try:
+                                os.remove(file_path)
+                            except:
+                                pass
+                        return create_json_response(
+                            False,
+                            f'Ошибка при создании записи файла: {str(e)}',
+                            status=500
+                        )
+                    
+                    # Создаем токен для скачивания
+                    generate_download_token(file)
+                    
+                    # Удаляем временную директорию
+                    try:
+                        temp_dir = os.path.dirname(downloaded_video_path)
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    
+                    return create_json_response(True, SUCCESS_FILE_UPLOADED)
+                    
+                except Exception as e:
+                    logger.error(f"Error moving downloaded video file: {e}")
+                    # Удаляем временный файл
+                    try:
+                        if os.path.exists(downloaded_video_path):
+                            os.remove(downloaded_video_path)
+                        temp_dir = os.path.dirname(downloaded_video_path)
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return create_json_response(
+                        False,
+                        f'Ошибка при сохранении скачанного видео: {str(e)}',
+                        status=500
+                    )
+            else:
+                # Если yt-dlp не помог, пытаемся получить изображение
+                logger.warning("Could not download Pinterest video with yt-dlp, will try to get image")
+                pinterest_url = convert_pinterest_url(original_url)
+                if pinterest_url:
+                    file_url = pinterest_url
+                else:
+                    return create_json_response(
+                        False,
+                        'Не удалось загрузить видео из Pinterest. Pinterest использует динамическую загрузку видео, и прямая ссылка недоступна. Попробуйте загрузить изображение-превью.',
+                        status=400
+                    )
         
         # Затем проверяем Google Drive
         google_drive_url = convert_google_drive_url(file_url)
