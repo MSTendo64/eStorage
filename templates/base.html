@@ -48,6 +48,8 @@
             --bs-primary: #1e3a8a;
             --bs-link-color: #1e3a8a;
             --bs-link-hover-color: #1e40af;
+            --bs-info: #1e3a8a;
+            --bs-info-rgb: 30, 58, 138;
             --bs-navbar-color: #1a1d21;
             --bs-container-color: #e9ecef;
         }
@@ -800,7 +802,7 @@
                     <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
                          class="me-2" style="height: 32px; max-width: 32px; object-fit: contain;">
                 {% endif %}
-                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold;">
                     {{ system_settings.site_name }}
                 </span>
             </a>
@@ -963,6 +965,8 @@
         --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'30, 58, 138' }};
         --bs-link-color: var(--bs-primary);
         --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#1e40af' }};
+        --bs-info: #1e3a8a;
+        --bs-info-rgb: 30, 58, 138;
     }
 
     /* Кнопки */
@@ -993,6 +997,49 @@
     .btn-outline-primary:hover {
         background-color: var(--bs-primary) !important;
         color: #fff !important;
+    }
+
+    /* Кнопки info - заменяем цвет #0dcaf0 на темно-синий */
+    .btn-info {
+        background-color: var(--bs-info) !important;
+        border-color: var(--bs-info) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-info:hover {
+        background-color: var(--bs-link-hover-color) !important;
+        border-color: var(--bs-link-hover-color) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-info i,
+    .btn-info svg,
+    .btn-info .fas,
+    .btn-info .fa {
+        color: #ffffff !important;
+    }
+
+    .btn-outline-info {
+        color: var(--bs-info) !important;
+        border-color: var(--bs-info) !important;
+    }
+
+    .btn-outline-info:hover {
+        background-color: var(--bs-info) !important;
+        color: #fff !important;
+    }
+
+    /* Badge и другие элементы info */
+    .bg-info {
+        background-color: var(--bs-info) !important;
+    }
+
+    .text-info {
+        color: var(--bs-info) !important;
+    }
+
+    .border-info {
+        border-color: var(--bs-info) !important;
     }
 
     /* Прогресс-бары */
@@ -1590,7 +1637,12 @@
     [data-bs-theme="light"] h5,
     [data-bs-theme="light"] h6 {
         color: #0d1117 !important;
-        font-weight: 600;
+        font-weight: bold;
+    }
+    
+    /* Жирный шрифт для всех заголовков */
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: bold !important;
     }
     
     [data-bs-theme="light"] .card-title {
