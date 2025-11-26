@@ -795,30 +795,57 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                                 key_lower = key.lower()
                                 
                                 # Приоритет видео (исключаем m3u8 и blob URLs)
-                                if is_video_priority and ('video' in key_lower or 'videos' in key_lower or 'stream' in key_lower or 'media' in key_lower):
+                                # Расширяем поиск - ищем в любых полях, которые могут содержать видео
+                                if is_video_priority:
+                                    # Проверяем ключи, связанные с видео
+                                    video_keywords = ['video', 'videos', 'stream', 'media', 'playback', 'content', 'source', 'url', 'src']
+                                    is_video_key = any(keyword in key_lower for keyword in video_keywords)
+                                    
                                     if isinstance(value, str) and (value.startswith('http') or value.startswith('//')):
-                                        # Пропускаем m3u8, HLS плейлисты и blob URLs
+                                        # Пропускаем m3u8, HLS плейлисты, blob URLs и изображения
                                         if ('.m3u8' not in value.lower() and 'hls' not in value.lower() and 
-                                            not value.startswith('blob:')):
-                                            if ('video' in value.lower() or 'stream' in value.lower() or 
-                                                any(ext in value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v'])):
+                                            not value.startswith('blob:') and
+                                            'pinimg.com' not in value.lower() and
+                                            not value.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'))):
+                                            # Если это явно видео поле или URL выглядит как видео
+                                            if (is_video_key or 
+                                                'video' in value.lower() or 'stream' in value.lower() or 
+                                                any(ext in value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v', '.flv'])):
                                                 logger.info(f"Found Pinterest video in data at {path}.{key}: {value}")
                                                 found_video = value
+                                    elif isinstance(value, (dict, list)) and is_video_key:
+                                        # Если ключ связан с видео, ищем глубже
+                                        nested_result = find_media_in_pinterest_data(value, f"{path}.{key}", is_video_priority)
+                                        if nested_result:
+                                            if isinstance(nested_result, tuple) and nested_result[0]:
+                                                found_video = nested_result[0]
+                                            elif isinstance(nested_result, str) and not nested_result.startswith('blob:'):
+                                                found_video = nested_result
                                     elif isinstance(value, dict):
                                         # Ищем вложенные видео URL в различных полях
-                                        video_fields = ['url', 'src', 'source', 'streamUrl', 'videoUrl', 'contentUrl', 'playbackUrl', 'downloadUrl']
+                                        # Расширяем список полей для поиска
+                                        video_fields = ['url', 'src', 'source', 'streamUrl', 'videoUrl', 'contentUrl', 
+                                                       'playbackUrl', 'downloadUrl', 'mediaUrl', 'fileUrl', 'originalUrl',
+                                                       'hdUrl', 'sdUrl', 'mp4Url', 'webmUrl', 'video', 'stream', 'content']
+                                        
+                                        # Сначала проверяем все строковые значения в словаре
                                         for sub_key, sub_value in value.items():
                                             if isinstance(sub_value, str) and (sub_value.startswith('http') or sub_value.startswith('//')):
-                                                # Пропускаем m3u8 и blob URLs
+                                                # Пропускаем m3u8, blob URLs и изображения
                                                 if ('.m3u8' not in sub_value.lower() and 'hls' not in sub_value.lower() and 
-                                                    not sub_value.startswith('blob:')):
-                                                    if (sub_key.lower() in video_fields or 
+                                                    not sub_value.startswith('blob:') and
+                                                    'pinimg.com' not in sub_value.lower() and
+                                                    not sub_value.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'))):
+                                                    sub_key_lower = sub_key.lower()
+                                                    # Если это видео поле или URL выглядит как видео
+                                                    if (sub_key_lower in video_fields or 
                                                         'video' in sub_value.lower() or 'stream' in sub_value.lower() or 
-                                                        any(ext in sub_value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v'])):
+                                                        any(ext in sub_value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v', '.flv'])):
                                                         logger.info(f"Found Pinterest video in nested data at {path}.{key}.{sub_key}: {sub_value}")
                                                         found_video = sub_value
                                                         break
-                                        # Если не нашли в обычных полях, ищем рекурсивно
+                                        
+                                        # Если не нашли в обычных полях, ищем рекурсивно во всех вложенных структурах
                                         if not found_video:
                                             for sub_key, sub_value in value.items():
                                                 if isinstance(sub_value, (dict, list)):
@@ -988,36 +1015,44 @@ def convert_pinterest_url(url: str) -> Optional[str]:
         # Объединяем все найденные изображения
         all_image_urls = temp_image_urls + image_urls
         
-        # Если нашли видео, фильтруем m3u8 и возвращаем прямые видео файлы
+        # Если нашли видео, фильтруем m3u8, blob URLs и изображения, возвращаем прямые видео файлы
         if video_urls:
-            # Фильтруем m3u8 и HLS плейлисты
-            direct_videos = [v_url for v_url in video_urls if '.m3u8' not in v_url.lower() and 'hls' not in v_url.lower()]
+            # Фильтруем m3u8, HLS плейлисты, blob URLs и изображения
+            direct_videos = []
+            for v_url in video_urls:
+                if ('.m3u8' not in v_url.lower() and 'hls' not in v_url.lower() and 
+                    not v_url.startswith('blob:') and
+                    'pinimg.com' not in v_url.lower() and
+                    not v_url.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'))):
+                    direct_videos.append(v_url)
             
             if direct_videos:
                 # Предпочитаем URL с явными признаками видео (mp4, webm, mov, avi)
                 for v_url in direct_videos:
-                    if any(ext in v_url.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                    if any(ext in v_url.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v', '.flv']):
                         logger.info(f"Returning Pinterest direct video URL (preferred): {v_url}")
                         return v_url
-                # Если нет явных расширений, но это не m3u8, возвращаем первое
+                # Если нет явных расширений, но это не m3u8 и не изображение, возвращаем первое
                 logger.info(f"Returning first Pinterest direct video URL: {direct_videos[0]}")
                 return direct_videos[0]
             else:
-                # Если остались только m3u8, логируем предупреждение
-                logger.warning("Only m3u8/HLS playlists found, no direct video files available")
-                # Можно вернуть None или первое m3u8 (но лучше не возвращать m3u8)
-                # return None  # Не возвращаем m3u8, пусть вернется изображение
+                # Если остались только m3u8 или blob URLs, логируем предупреждение
+                logger.warning("Only m3u8/HLS playlists or blob URLs found, no direct video files available")
+                # Не возвращаем m3u8 или blob, пусть вернется изображение
         
         # Если видео не найдено, возвращаем изображение (если есть)
+        # Но только если мы действительно не нашли видео (не blob URL и не m3u8)
         if all_image_urls:
             # Предпочитаем оригинальные размеры
             for img_url in all_image_urls:
                 if 'originals' in img_url or '/originals/' in img_url:
-                    logger.info(f"Returning Pinterest original image URL: {img_url}")
+                    logger.info(f"No video found, returning Pinterest original image URL: {img_url}")
                     return img_url
-            logger.info(f"Returning first Pinterest image URL: {all_image_urls[0]}")
+            logger.info(f"No video found, returning first Pinterest image URL: {all_image_urls[0]}")
             return all_image_urls[0]
         
+        # Если ничего не найдено, возвращаем None
+        logger.warning("No video or image found in Pinterest pin")
         return None
     except requests.RequestException as e:
         logger.warning(f"Error fetching Pinterest URL {url}: {e}")
