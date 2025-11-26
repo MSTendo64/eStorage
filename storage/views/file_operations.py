@@ -794,24 +794,42 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                             for key, value in data.items():
                                 key_lower = key.lower()
                                 
-                                # Приоритет видео (исключаем m3u8)
-                                if is_video_priority and ('video' in key_lower or 'videos' in key_lower):
+                                # Приоритет видео (исключаем m3u8 и blob URLs)
+                                if is_video_priority and ('video' in key_lower or 'videos' in key_lower or 'stream' in key_lower or 'media' in key_lower):
                                     if isinstance(value, str) and (value.startswith('http') or value.startswith('//')):
-                                        # Пропускаем m3u8 и HLS плейлисты
-                                        if '.m3u8' not in value.lower() and 'hls' not in value.lower():
-                                            if 'video' in value.lower() or any(ext in value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                        # Пропускаем m3u8, HLS плейлисты и blob URLs
+                                        if ('.m3u8' not in value.lower() and 'hls' not in value.lower() and 
+                                            not value.startswith('blob:')):
+                                            if ('video' in value.lower() or 'stream' in value.lower() or 
+                                                any(ext in value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v'])):
                                                 logger.info(f"Found Pinterest video in data at {path}.{key}: {value}")
                                                 found_video = value
                                     elif isinstance(value, dict):
-                                        # Ищем вложенные видео URL
+                                        # Ищем вложенные видео URL в различных полях
+                                        video_fields = ['url', 'src', 'source', 'streamUrl', 'videoUrl', 'contentUrl', 'playbackUrl', 'downloadUrl']
                                         for sub_key, sub_value in value.items():
                                             if isinstance(sub_value, str) and (sub_value.startswith('http') or sub_value.startswith('//')):
-                                                # Пропускаем m3u8
-                                                if '.m3u8' not in sub_value.lower() and 'hls' not in sub_value.lower():
-                                                    if 'video' in sub_value.lower() or any(ext in sub_value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                                # Пропускаем m3u8 и blob URLs
+                                                if ('.m3u8' not in sub_value.lower() and 'hls' not in sub_value.lower() and 
+                                                    not sub_value.startswith('blob:')):
+                                                    if (sub_key.lower() in video_fields or 
+                                                        'video' in sub_value.lower() or 'stream' in sub_value.lower() or 
+                                                        any(ext in sub_value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.m4v'])):
                                                         logger.info(f"Found Pinterest video in nested data at {path}.{key}.{sub_key}: {sub_value}")
                                                         found_video = sub_value
                                                         break
+                                        # Если не нашли в обычных полях, ищем рекурсивно
+                                        if not found_video:
+                                            for sub_key, sub_value in value.items():
+                                                if isinstance(sub_value, (dict, list)):
+                                                    nested_result = find_media_in_pinterest_data(sub_value, f"{path}.{key}.{sub_key}", is_video_priority)
+                                                    if nested_result:
+                                                        if isinstance(nested_result, tuple) and nested_result[0]:
+                                                            found_video = nested_result[0]
+                                                            break
+                                                        elif isinstance(nested_result, str) and not nested_result.startswith('blob:'):
+                                                            found_video = nested_result
+                                                            break
                                 
                                 # Изображения (только если видео не найдено)
                                 if not found_video and ('image' in key_lower or 'images' in key_lower or 'pinimg' in key_lower):
@@ -871,13 +889,31 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                 except (json.JSONDecodeError, Exception) as e:
                     logger.debug(f"Error parsing Pinterest data pattern {pattern}: {e}")
         
-        # Ищем video теги в HTML (исключаем m3u8)
-        video_tag_match = re.search(r'<video[^>]*src=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        # Ищем video теги в HTML
+        # Pinterest использует blob URLs, поэтому ищем исходные данные в атрибутах и JavaScript
+        video_tag_match = re.search(r'<video[^>]*>', html, re.IGNORECASE)
         if video_tag_match:
-            video_url = video_tag_match.group(1)
-            if (video_url.startswith('http') or video_url.startswith('//')) and '.m3u8' not in video_url.lower():
-                logger.info(f"Found Pinterest video in <video> tag: {video_url}")
-                video_urls.append(video_url)
+            video_tag = video_tag_match.group(0)
+            
+            # Ищем src атрибут (может быть blob URL, пропускаем)
+            src_match = re.search(r'src=["\']([^"\']+)["\']', video_tag, re.IGNORECASE)
+            if src_match:
+                src_url = src_match.group(1)
+                # Пропускаем blob URLs, но логируем для отладки
+                if src_url.startswith('blob:'):
+                    logger.debug(f"Found blob URL in video tag (skipping): {src_url}")
+                elif (src_url.startswith('http') or src_url.startswith('//')) and '.m3u8' not in src_url.lower():
+                    logger.info(f"Found Pinterest video in <video> src: {src_url}")
+                    video_urls.append(src_url)
+            
+            # Ищем data-атрибуты в video теге, которые могут содержать исходные URL
+            data_attrs = re.findall(r'data-([^=]+)=["\']([^"\']+)["\']', video_tag, re.IGNORECASE)
+            for attr_name, attr_value in data_attrs:
+                if (attr_value.startswith('http') or attr_value.startswith('//')):
+                    # Пропускаем m3u8
+                    if '.m3u8' not in attr_value.lower() and 'hls' not in attr_value.lower():
+                        logger.info(f"Found Pinterest video in video tag data-{attr_name}: {attr_value}")
+                        video_urls.append(attr_value)
         
         # Ищем source теги внутри video (исключаем m3u8)
         video_source_match = re.search(r'<video[^>]*>.*?<source[^>]*src=["\']([^"\']+)["\']', html, re.DOTALL | re.IGNORECASE)
@@ -886,6 +922,68 @@ def convert_pinterest_url(url: str) -> Optional[str]:
             if (video_url.startswith('http') or video_url.startswith('//')) and '.m3u8' not in video_url.lower():
                 logger.info(f"Found Pinterest video in <source> tag: {video_url}")
                 video_urls.append(video_url)
+        
+        # Ищем в JavaScript коде, где могут быть исходные видео URL перед созданием blob
+        # Pinterest часто хранит исходные URL в JavaScript переменных
+        js_video_patterns = [
+            r'["\']videoUrl["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_url["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']videoSrc["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_src["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']videoSource["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_source["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']streamUrl["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']stream_url["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']playbackUrl["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']playback_url["\']\s*:\s*["\']([^"\']+)["\']',
+            r'videoUrl["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'video_url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            # Прямой поиск .mp4, .webm, .mov ссылок в JavaScript
+            r'["\']([^"\']*\.mp4[^"\']*)["\']',
+            r'["\']([^"\']*\.webm[^"\']*)["\']',
+            r'["\']([^"\']*\.mov[^"\']*)["\']',
+            r'https?://[^"\']+\.mp4[^"\']*',
+            r'https?://[^"\']+\.webm[^"\']*',
+            r'https?://[^"\']+\.mov[^"\']*',
+        ]
+        for pattern in js_video_patterns:
+            matches = re.findall(pattern, html, re.IGNORECASE)
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = match[0] if match else ''
+                if match and (match.startswith('http') or match.startswith('//')):
+                    # Пропускаем m3u8, blob URLs и изображения
+                    if ('.m3u8' not in match.lower() and 'hls' not in match.lower() and 
+                        not match.startswith('blob:') and 
+                        'pinimg.com' not in match.lower() and
+                        not match.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))):
+                        logger.info(f"Found Pinterest video in JS pattern: {match}")
+                        video_urls.append(match)
+        
+        # Ищем в JavaScript коде, где могут быть исходные видео URL перед созданием blob
+        # Ищем паттерны типа: videoUrl, video_url, videoSrc, video_src и т.д.
+        js_video_patterns = [
+            r'["\']videoUrl["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_url["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']videoSrc["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_src["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']videoSource["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']video_source["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']streamUrl["\']\s*:\s*["\']([^"\']+)["\']',
+            r'["\']stream_url["\']\s*:\s*["\']([^"\']+)["\']',
+            r'videoUrl["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'video_url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+        ]
+        for pattern in js_video_patterns:
+            matches = re.findall(pattern, html, re.IGNORECASE)
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = match[0] if match else ''
+                if match and (match.startswith('http') or match.startswith('//')):
+                    # Пропускаем m3u8
+                    if '.m3u8' not in match.lower() and 'hls' not in match.lower():
+                        logger.info(f"Found Pinterest video in JS pattern {pattern}: {match}")
+                        video_urls.append(match)
         
         # Объединяем все найденные изображения
         all_image_urls = temp_image_urls + image_urls
