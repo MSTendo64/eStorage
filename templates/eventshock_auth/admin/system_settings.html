@@ -48,6 +48,19 @@
                 </small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Прокси для загрузки файлов</label>
+                <input type="text" class="form-control" name="proxy_url" 
+                       value="{{ settings.proxy_url|default:'' }}"
+                       placeholder="https://api.allorigins.win/raw?url= или https://corsproxy.io/?">
+                <small class="text-muted">
+                    URL прокси-сервера для загрузки файлов по ссылке. Оставьте пустым для использования встроенных прокси-сервисов.
+                    <br>Примеры:
+                    <br>- <code>https://api.allorigins.win/raw?url=</code>
+                    <br>- <code>https://corsproxy.io/?</code>
+                </small>
+            </div>
+
             <button type="submit" class="btn btn-primary">Сохранить</button>
         </form>
     </div>

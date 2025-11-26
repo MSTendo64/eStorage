@@ -32,6 +32,13 @@ def system_settings(request):
         settings.site_name = request.POST.get('site_name', 'eStorage')
         settings.site_name_color = request.POST.get('site_name_color', '#ffffff')
         
+        # Обновление прокси
+        proxy_url = request.POST.get('proxy_url', '').strip()
+        if proxy_url:
+            settings.proxy_url = proxy_url
+        else:
+            settings.proxy_url = None
+        
         # Обработка логотипа
         if 'remove_logo' in request.POST and settings.site_logo:
             settings.site_logo.delete()

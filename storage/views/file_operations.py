@@ -564,6 +564,54 @@ def convert_google_drive_url(url: str) -> Optional[str]:
         return f'https://drive.google.com/uc?export=download&id={file_id}'
 
 
+def download_via_proxy(url: str, headers: dict, timeout: int = 600) -> Optional[requests.Response]:
+    """
+    Пытается скачать файл через прокси-сервисы
+    
+    Возвращает Response объект или None если все попытки не удались
+    """
+    from eventshock_auth.models import SystemSettings
+    
+    # Получаем настройки системы
+    system_settings = SystemSettings.get_settings()
+    
+    # Список прокси-сервисов для попыток
+    proxy_services = []
+    
+    # Если настроен пользовательский прокси, используем его первым
+    if system_settings.proxy_url:
+        # Проверяем формат прокси URL
+        proxy_template = system_settings.proxy_url.strip()
+        if proxy_template.endswith('=') or proxy_template.endswith('?'):
+            # Прокси с параметром URL
+            proxy_services.append(f'{proxy_template}{quote(url)}')
+        else:
+            # Прокси без параметра - добавляем URL как параметр
+            if '?' in proxy_template:
+                proxy_services.append(f'{proxy_template}&url={quote(url)}')
+            else:
+                proxy_services.append(f'{proxy_template}?url={quote(url)}')
+    
+    # Добавляем встроенные прокси-сервисы как резервные
+    proxy_services.extend([
+        f'https://api.allorigins.win/raw?url={quote(url)}',
+        f'https://corsproxy.io/?{quote(url)}',
+    ])
+    
+    for proxy_url in proxy_services:
+        try:
+            logger.info(f"Trying to download via proxy: {proxy_url[:100]}...")
+            response = requests.get(proxy_url, headers=headers, timeout=timeout, stream=True, allow_redirects=True)
+            response.raise_for_status()
+            logger.info(f"Successfully downloaded via proxy, status: {response.status_code}")
+            return response
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Proxy service failed: {e}")
+            continue
+    
+    return None
+
+
 def convert_pinterest_url(url: str) -> Optional[str]:
     """
     Преобразует Pinterest ссылку в прямую ссылку на изображение
@@ -683,6 +731,9 @@ def upload_from_url(request):
                 pass
         
         # Скачиваем файл
+        use_proxy = False
+        proxy_attempted = False
+        
         try:
             # Устанавливаем таймаут и заголовки для запроса
             headers = {
@@ -728,8 +779,29 @@ def upload_from_url(request):
             
             # Скачиваем файл с увеличенным таймаутом для больших файлов
             logger.info(f"Starting GET request to download file...")
-            response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
-            response.raise_for_status()
+            response = None
+            try:
+                response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
+                response.raise_for_status()
+            except (requests.exceptions.RequestException, requests.exceptions.HTTPError) as e:
+                # Если первая попытка не удалась, пробуем через прокси
+                logger.warning(f"Direct download failed: {e}, attempting via proxy...")
+                if response:
+                    try:
+                        response.close()
+                    except:
+                        pass
+                
+                proxy_response = download_via_proxy(file_url, headers, timeout=600)
+                if proxy_response:
+                    response = proxy_response
+                    use_proxy = True
+                    proxy_attempted = True
+                    logger.info("Successfully retrying download via proxy")
+                else:
+                    # Если прокси тоже не помог, возвращаем ошибку
+                    error_msg = f'Не удалось скачать файл: {str(e)}. Попытка через прокси также не удалась.'
+                    return create_json_response(False, error_msg, status=500)
             
             # Проверяем, не вернул ли Google Drive HTML страницу (например, для больших файлов требуется подтверждение)
             content_type = response.headers.get('Content-Type', '')
@@ -833,11 +905,60 @@ def upload_from_url(request):
                         os.remove(file_path)
                     except:
                         pass
-                return create_json_response(
-                    False,
-                    f'Ошибка при сохранении файла: {str(e)}',
-                    status=500
-                )
+                
+                # Если еще не пробовали через прокси, пробуем сейчас
+                if not proxy_attempted:
+                    logger.info("Retrying download via proxy after IOError...")
+                    try:
+                        if response:
+                            response.close()
+                    except:
+                        pass
+                    
+                    proxy_response = download_via_proxy(file_url, headers, timeout=600)
+                    if proxy_response:
+                        # Пробуем сохранить файл снова через прокси
+                        downloaded_size = 0
+                        try:
+                            with open(file_path, 'wb') as f:
+                                for chunk in proxy_response.iter_content(chunk_size=chunk_size):
+                                    if chunk:
+                                        f.write(chunk)
+                                        downloaded_size += len(chunk)
+                                        
+                                        if downloaded_size > settings.MAX_FILE_SIZE:
+                                            os.remove(file_path)
+                                            return create_json_response(
+                                                False, 
+                                                f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                                                status=400
+                                            )
+                            logger.info(f"File downloaded successfully via proxy, size: {downloaded_size} bytes")
+                            # Продолжаем выполнение - файл успешно сохранен через прокси
+                        except Exception as proxy_error:
+                            logger.error(f"Error saving file via proxy: {proxy_error}")
+                            if os.path.exists(file_path):
+                                try:
+                                    os.remove(file_path)
+                                except:
+                                    pass
+                            return create_json_response(
+                                False,
+                                f'Ошибка при сохранении файла: {str(e)}. Попытка через прокси также не удалась: {str(proxy_error)}',
+                                status=500
+                            )
+                    else:
+                        return create_json_response(
+                            False,
+                            f'Ошибка при сохранении файла: {str(e)}. Попытка через прокси также не удалась.',
+                            status=500
+                        )
+                else:
+                    return create_json_response(
+                        False,
+                        f'Ошибка при сохранении файла: {str(e)}',
+                        status=500
+                    )
             
             # Получаем реальный размер файла
             try:
