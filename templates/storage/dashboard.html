@@ -807,55 +807,51 @@
                         <div class="file-card-actions">
                             <div class="btn-group-grid-desktop">
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-eye"></i>
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
+                                        <i class="fas fa-play"></i>
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
+                                        <i class="fas fa-music"></i>
                                     </button>
                                 {% elif file.is_archive %}
-                                    <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
-                                        <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                    <button class="btn btn-sm btn-info" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.view_contents }}">
+                                        <i class="fas fa-archive"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')">
-                                        <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    <button class="btn btn-sm btn-warning" onclick="extractArchive('{{ file.id }}')" title="{{ t.storage.file_list.actions.extract }}">
+                                        <i class="fas fa-box-open"></i>
                                     </button>
                                 {% elif file.is_text %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-alt"></i>
                                     </button>
                                 {% elif file.is_document %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-pdf"></i>
                                     </button>
                                 {% elif file.is_code %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-code"></i>
                                     </button>
                                 {% endif %}
-                                <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')">
-                                    <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                <button class="btn btn-sm btn-primary" onclick="downloadFile('{{ file.id }}')" title="{{ t.storage.file_list.actions.download }}">
+                                    <i class="fas fa-download"></i>
                                 </button>
-                                <button class="btn btn-sm btn-info" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')">
-                                    <i class="fas fa-link"></i> Прямая ссылка
+                                <button class="btn btn-sm btn-info" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Прямая ссылка">
+                                    <i class="fas fa-link"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
-                                    <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+                                <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.delete }}">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                                 <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
                                         onclick="togglePublicity('{{ file.id }}', this)"
-                                        data-public="{{ file.is_public|yesno:'true,false' }}">
+                                        data-public="{{ file.is_public|yesno:'true,false' }}"
+                                        title="{% if file.is_public %}{{ t.storage.file_list.actions.public }}{% else %}{{ t.storage.file_list.actions.private }}{% endif %}">
                                     <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
-                                    {% if file.is_public %}
-                                        {{ t.storage.file_list.actions.public }}
-                                    {% else %}
-                                        {{ t.storage.file_list.actions.private }}
-                                    {% endif %}
                                 </button>
                             </div>
                         </div>
@@ -979,55 +975,51 @@
                         <div class="file-card-actions">
                             <div class="btn-group-grid">
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-eye"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-eye"></i>
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-play"></i> {{ t.storage.file_list.actions.play }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
+                                        <i class="fas fa-play"></i>
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-music"></i> {{ t.storage.file_list.actions.listen }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
+                                        <i class="fas fa-music"></i>
                                     </button>
                                 {% elif file.is_archive %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')">
-                                        <i class="fas fa-archive"></i> {{ t.storage.file_list.actions.view_contents }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showArchiveContents('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.view_contents }}">
+                                        <i class="fas fa-archive"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-warning mb-1" onclick="extractArchive('{{ file.id }}')">
-                                        <i class="fas fa-box-open"></i> {{ t.storage.file_list.actions.extract }}
+                                    <button class="btn btn-sm btn-warning mb-1" onclick="extractArchive('{{ file.id }}')" title="{{ t.storage.file_list.actions.extract }}">
+                                        <i class="fas fa-box-open"></i>
                                     </button>
                                 {% elif file.is_text %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-alt"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-alt"></i>
                                     </button>
                                 {% elif file.is_document %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-pdf"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-pdf"></i>
                                     </button>
                                 {% elif file.is_code %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')">
-                                        <i class="fas fa-file-code"></i> {{ t.storage.file_list.actions.preview }}
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                        <i class="fas fa-file-code"></i>
                                     </button>
                                 {% endif %}
-                                <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')">
-                                    <i class="fas fa-download"></i> {{ t.storage.file_list.actions.download }}
+                                <button class="btn btn-sm btn-primary mb-1" onclick="downloadFile('{{ file.id }}')" title="{{ t.storage.file_list.actions.download }}">
+                                    <i class="fas fa-download"></i>
                                 </button>
-                                <button class="btn btn-sm btn-info mb-1" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')">
-                                    <i class="fas fa-link"></i> Прямая ссылка
+                                <button class="btn btn-sm btn-info mb-1" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Прямая ссылка">
+                                    <i class="fas fa-link"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger mb-1" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')">
-                                    <i class="fas fa-trash"></i> {{ t.storage.file_list.actions.delete }}
+                                <button class="btn btn-sm btn-danger mb-1" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.delete }}">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                                 <button class="btn btn-sm {% if file.is_public %}btn-success{% else %}btn-secondary{% endif %}" 
                                         onclick="togglePublicity('{{ file.id }}', this)"
-                                        data-public="{{ file.is_public|yesno:'true,false' }}">
+                                        data-public="{{ file.is_public|yesno:'true,false' }}"
+                                        title="{% if file.is_public %}{{ t.storage.file_list.actions.public }}{% else %}{{ t.storage.file_list.actions.private }}{% endif %}">
                                     <i class="fas {% if file.is_public %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
-                                    {% if file.is_public %}
-                                        {{ t.storage.file_list.actions.public }}
-                                    {% else %}
-                                        {{ t.storage.file_list.actions.private }}
-                                    {% endif %}
                                 </button>
                             </div>
                         </div>

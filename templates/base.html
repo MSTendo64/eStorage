@@ -40,9 +40,9 @@
         :root {
             --bs-body-bg: #e9ecef;
             --bs-body-color: #1a1d21;
-            --bs-primary: #0d6efd;
-            --bs-link-color: #0d6efd;
-            --bs-link-hover-color: #0a58ca;
+            --bs-primary: #1e3a8a;
+            --bs-link-color: #1e3a8a;
+            --bs-link-hover-color: #1e40af;
             --bs-navbar-color: #1a1d21;
             --bs-container-color: #e9ecef;
         }
@@ -256,6 +256,27 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        
+        /* Стили для кнопок только с иконками в карточках файлов */
+        .file-card-actions .btn {
+            min-width: 2.5rem;
+            padding: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .file-card-actions .btn i {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        @media (min-width: 768px) {
+            .btn-group-grid-desktop .btn {
+                min-width: 2.5rem;
+                padding: 0.5rem;
+            }
         }
         
         @media (min-width: 768px) {
@@ -931,10 +952,10 @@
     <style>
     /* Основные переменные для акцентного цвета */
     :root {
-        --bs-primary: {{ user.userprofile.accent_color|default:'#0d6efd' }};
-        --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'13, 110, 253' }};
+        --bs-primary: {{ user.userprofile.accent_color|default:'#1e3a8a' }};
+        --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'30, 58, 138' }};
         --bs-link-color: var(--bs-primary);
-        --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#0a58ca' }};
+        --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#1e40af' }};
     }
 
     /* Кнопки */
