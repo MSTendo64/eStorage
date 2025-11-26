@@ -564,6 +564,70 @@ def convert_google_drive_url(url: str) -> Optional[str]:
         return f'https://drive.google.com/uc?export=download&id={file_id}'
 
 
+def convert_pinterest_url(url: str) -> Optional[str]:
+    """
+    Преобразует Pinterest ссылку в прямую ссылку на изображение
+    
+    Возвращает None, если это не Pinterest ссылка или не удалось получить изображение
+    """
+    parsed = urlparse(url)
+    
+    # Проверяем, является ли это Pinterest ссылкой
+    if parsed.netloc not in ['pinterest.com', 'www.pinterest.com', 'ru.pinterest.com', 'pinterest.ru']:
+        return None
+    
+    # Проверяем, что это ссылка на пин
+    if '/pin/' not in parsed.path:
+        return None
+    
+    try:
+        # Получаем HTML страницы пина
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        html = response.text
+        
+        # Ищем og:image мета-тег
+        og_image_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if og_image_match:
+            image_url = og_image_match.group(1)
+            # Pinterest часто использует промежуточные URL, преобразуем в прямой
+            if 'pinimg.com' in image_url:
+                # Заменяем размер на оригинальный (убираем параметры размера)
+                image_url = re.sub(r'/[\d]+x[\d]+/', '/originals/', image_url)
+            return image_url
+        
+        # Альтернативный способ: ищем в JSON-LD данных
+        json_ld_match = re.search(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE)
+        if json_ld_match:
+            try:
+                json_data = json.loads(json_ld_match.group(1))
+                if isinstance(json_data, dict) and 'image' in json_data:
+                    image_url = json_data['image']
+                    if isinstance(image_url, str):
+                        return image_url
+                    elif isinstance(image_url, dict) and 'url' in image_url:
+                        return image_url['url']
+            except (json.JSONDecodeError, KeyError):
+                pass
+        
+        # Еще один способ: ищем в data-атрибутах
+        data_image_match = re.search(r'data-image-url=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if data_image_match:
+            return data_image_match.group(1)
+        
+        return None
+    except requests.RequestException as e:
+        logger.warning(f"Error fetching Pinterest URL {url}: {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error parsing Pinterest URL {url}: {e}")
+        return None
+
+
 @login_required
 @ensure_csrf_cookie
 def upload_from_url(request):
@@ -595,8 +659,16 @@ def upload_from_url(request):
         except Exception as e:
             return create_json_response(False, f'Ошибка при проверке URL: {str(e)}', status=400)
         
-        # Проверяем, является ли это Google Drive ссылкой, и преобразуем её
+        # Проверяем, является ли это Google Drive или Pinterest ссылкой, и преобразуем её
         original_url = file_url  # Сохраняем оригинальный URL для возможного использования
+        
+        # Сначала проверяем Pinterest
+        pinterest_url = convert_pinterest_url(file_url)
+        if pinterest_url:
+            logger.info(f"Detected Pinterest URL: {original_url}, converting to: {pinterest_url}")
+            file_url = pinterest_url
+        
+        # Затем проверяем Google Drive
         google_drive_url = convert_google_drive_url(file_url)
         if google_drive_url:
             logger.info(f"Detected Google Drive URL: {original_url}, converting to: {google_drive_url}")
