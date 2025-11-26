@@ -693,7 +693,26 @@ def convert_pinterest_url(url: str) -> Optional[str]:
             logger.info(f"Found Pinterest video via data-video-url: {video_url}")
             return video_url
         
-        # Если видео не найдено, ищем изображение
+        # Ищем другие варианты data-атрибутов для видео
+        data_video_patterns = [
+            r'data-video-src=["\']([^"\']+)["\']',
+            r'data-video-uri=["\']([^"\']+)["\']',
+            r'data-video-href=["\']([^"\']+)["\']',
+            r'data-pin-video-url=["\']([^"\']+)["\']',
+        ]
+        for pattern in data_video_patterns:
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                video_url = match.group(1)
+                logger.info(f"Found Pinterest video via pattern {pattern}: {video_url}")
+                return video_url
+        
+        # Если видео не найдено в мета-тегах и data-атрибутах, ищем в JavaScript данных
+        # (продолжение ниже в коде)
+        
+        # Временно сохраняем найденные изображения, но не возвращаем их пока не проверим все источники видео
+        temp_image_urls = []
+        # Сохраняем найденные изображения, но не возвращаем их пока не проверим все источники видео
         # Ищем og:image мета-тег
         og_image_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
         if og_image_match:
@@ -703,7 +722,7 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                 # Заменяем размер на оригинальный (убираем параметры размера)
                 image_url = re.sub(r'/[\d]+x[\d]+/', '/originals/', image_url)
             logger.info(f"Found Pinterest image via og:image: {image_url}")
-            return image_url
+            temp_image_urls.append(image_url)
         
         # Альтернативный способ: ищем в JSON-LD данных для изображения
         if json_ld_match:
@@ -713,10 +732,10 @@ def convert_pinterest_url(url: str) -> Optional[str]:
                     image_url = json_data['image']
                     if isinstance(image_url, str):
                         logger.info(f"Found Pinterest image in JSON-LD: {image_url}")
-                        return image_url
+                        temp_image_urls.append(image_url)
                     elif isinstance(image_url, dict) and 'url' in image_url:
                         logger.info(f"Found Pinterest image url: {image_url['url']}")
-                        return image_url['url']
+                        temp_image_urls.append(image_url['url'])
             except (json.JSONDecodeError, KeyError):
                 pass
         
@@ -725,41 +744,143 @@ def convert_pinterest_url(url: str) -> Optional[str]:
         if data_image_match:
             image_url = data_image_match.group(1)
             logger.info(f"Found Pinterest image via data-image-url: {image_url}")
-            return image_url
+            temp_image_urls.append(image_url)
         
         # Ищем в Pinterest специфичных скриптах
-        # Pinterest часто хранит данные в window.__initialData__
-        pinterest_data_match = re.search(r'window\.__initialData__\s*=\s*({.*?});', html, re.DOTALL)
-        if pinterest_data_match:
-            try:
-                pinterest_data = json.loads(pinterest_data_match.group(1))
-                # Ищем видео или изображение в структуре данных Pinterest
-                def find_media_in_pinterest_data(data, path=''):
-                    if isinstance(data, dict):
-                        # Проверяем ключи, связанные с медиа
-                        for key, value in data.items():
-                            if 'video' in key.lower() and isinstance(value, str) and value.startswith('http'):
-                                logger.info(f"Found Pinterest video in __initialData__ at {path}.{key}: {value}")
-                                return value
-                            if 'image' in key.lower() and isinstance(value, str) and value.startswith('http'):
-                                logger.info(f"Found Pinterest image in __initialData__ at {path}.{key}: {value}")
-                                return value
-                            if isinstance(value, (dict, list)):
-                                result = find_media_in_pinterest_data(value, f"{path}.{key}")
+        # Pinterest часто хранит данные в различных JavaScript переменных
+        pinterest_data_patterns = [
+            r'window\.__initialData__\s*=\s*({.*?});',
+            r'window\.__PWS_INITIAL_DATA__\s*=\s*({.*?});',
+            r'window\.__PWS_INITIAL_STATE__\s*=\s*({.*?});',
+            r'__PWS_INITIAL_DATA__\s*=\s*({.*?});',
+        ]
+        
+        video_urls = []  # Собираем все найденные видео URL
+        image_urls = []  # Собираем все найденные изображения
+        
+        for pattern in pinterest_data_patterns:
+            pinterest_data_match = re.search(pattern, html, re.DOTALL)
+            if pinterest_data_match:
+                try:
+                    pinterest_data = json.loads(pinterest_data_match.group(1))
+                    # Ищем видео или изображение в структуре данных Pinterest
+                    def find_media_in_pinterest_data(data, path='', is_video_priority=True):
+                        found_video = None
+                        found_image = None
+                        
+                        if isinstance(data, dict):
+                            # Проверяем ключи, связанные с медиа
+                            for key, value in data.items():
+                                key_lower = key.lower()
+                                
+                                # Приоритет видео
+                                if is_video_priority and ('video' in key_lower or 'videos' in key_lower):
+                                    if isinstance(value, str) and (value.startswith('http') or value.startswith('//')):
+                                        if 'video' in value.lower() or any(ext in value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                            logger.info(f"Found Pinterest video in data at {path}.{key}: {value}")
+                                            found_video = value
+                                    elif isinstance(value, dict):
+                                        # Ищем вложенные видео URL
+                                        for sub_key, sub_value in value.items():
+                                            if isinstance(sub_value, str) and (sub_value.startswith('http') or sub_value.startswith('//')):
+                                                if 'video' in sub_value.lower() or any(ext in sub_value.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                                    logger.info(f"Found Pinterest video in nested data at {path}.{key}.{sub_key}: {sub_value}")
+                                                    found_video = sub_value
+                                                    break
+                                
+                                # Изображения (только если видео не найдено)
+                                if not found_video and ('image' in key_lower or 'images' in key_lower or 'pinimg' in key_lower):
+                                    if isinstance(value, str) and (value.startswith('http') or value.startswith('//')):
+                                        if 'pinimg.com' in value or 'image' in value.lower():
+                                            logger.info(f"Found Pinterest image in data at {path}.{key}: {value}")
+                                            found_image = value
+                                
+                                # Рекурсивный поиск
+                                if isinstance(value, (dict, list)):
+                                    result = find_media_in_pinterest_data(value, f"{path}.{key}", is_video_priority)
+                                    if result:
+                                        if isinstance(result, tuple):
+                                            if result[0]:  # video
+                                                found_video = result[0]
+                                            if result[1]:  # image
+                                                found_image = result[1]
+                                        elif isinstance(result, str):
+                                            if 'video' in result.lower() or any(ext in result.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                                found_video = result
+                                            else:
+                                                found_image = result
+                                
+                                if found_video:
+                                    break
+                                    
+                        elif isinstance(data, list):
+                            for i, item in enumerate(data):
+                                result = find_media_in_pinterest_data(item, f"{path}[{i}]", is_video_priority)
                                 if result:
-                                    return result
-                    elif isinstance(data, list):
-                        for i, item in enumerate(data):
-                            result = find_media_in_pinterest_data(item, f"{path}[{i}]")
-                            if result:
-                                return result
-                    return None
-                
-                media_url = find_media_in_pinterest_data(pinterest_data)
-                if media_url:
-                    return media_url
-            except (json.JSONDecodeError, Exception) as e:
-                logger.debug(f"Error parsing Pinterest __initialData__: {e}")
+                                    if isinstance(result, tuple):
+                                        if result[0]:
+                                            found_video = result[0]
+                                        if result[1]:
+                                            found_image = result[1]
+                                    elif isinstance(result, str):
+                                        if 'video' in result.lower() or any(ext in result.lower() for ext in ['.mp4', '.webm', '.mov', '.avi']):
+                                            found_video = result
+                                        else:
+                                            found_image = result
+                                if found_video:
+                                    break
+                        
+                        return (found_video, found_image) if is_video_priority else (found_image, found_video)
+                    
+                    result = find_media_in_pinterest_data(pinterest_data, is_video_priority=True)
+                    if result:
+                        video_url, image_url = result
+                        if video_url:
+                            video_urls.append(video_url)
+                        if image_url:
+                            image_urls.append(image_url)
+                except (json.JSONDecodeError, Exception) as e:
+                    logger.debug(f"Error parsing Pinterest data pattern {pattern}: {e}")
+        
+        # Ищем video теги в HTML
+        video_tag_match = re.search(r'<video[^>]*src=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if video_tag_match:
+            video_url = video_tag_match.group(1)
+            if video_url.startswith('http') or video_url.startswith('//'):
+                logger.info(f"Found Pinterest video in <video> tag: {video_url}")
+                video_urls.append(video_url)
+        
+        # Ищем source теги внутри video
+        video_source_match = re.search(r'<video[^>]*>.*?<source[^>]*src=["\']([^"\']+)["\']', html, re.DOTALL | re.IGNORECASE)
+        if video_source_match:
+            video_url = video_source_match.group(1)
+            if video_url.startswith('http') or video_url.startswith('//'):
+                logger.info(f"Found Pinterest video in <source> tag: {video_url}")
+                video_urls.append(video_url)
+        
+        # Объединяем все найденные изображения
+        all_image_urls = temp_image_urls + image_urls
+        
+        # Если нашли видео, возвращаем первое найденное
+        if video_urls:
+            # Предпочитаем URL с явными признаками видео
+            for v_url in video_urls:
+                if any(ext in v_url.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', 'video']):
+                    logger.info(f"Returning Pinterest video URL: {v_url}")
+                    return v_url
+            # Если нет явных признаков, возвращаем первое
+            logger.info(f"Returning first Pinterest video URL: {video_urls[0]}")
+            return video_urls[0]
+        
+        # Если видео не найдено, возвращаем изображение (если есть)
+        if all_image_urls:
+            # Предпочитаем оригинальные размеры
+            for img_url in all_image_urls:
+                if 'originals' in img_url or '/originals/' in img_url:
+                    logger.info(f"Returning Pinterest original image URL: {img_url}")
+                    return img_url
+            logger.info(f"Returning first Pinterest image URL: {all_image_urls[0]}")
+            return all_image_urls[0]
         
         return None
     except requests.RequestException as e:
