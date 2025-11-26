@@ -1355,7 +1355,7 @@ def upload_from_url(request):
                         logger.error("Video pin detected but yt-dlp failed to download")
                         return create_json_response(
                             False,
-                            'Не удалось загрузить видео из Pinterest. Возможно, требуется обновление yt-dlp или видео недоступно для скачивания. Попробуйте обновить yt-dlp: pip install --upgrade yt-dlp',
+                            'Ошибка загрузки. код: cloadres_000',
                             status=400
                         )
                     else:
@@ -1375,7 +1375,7 @@ def upload_from_url(request):
                     # Если не удалось проверить, предполагаем что это видео пин
                     return create_json_response(
                         False,
-                        'Не удалось загрузить видео из Pinterest. Ошибка при проверке типа контента. Попробуйте обновить yt-dlp: pip install --upgrade yt-dlp',
+                        'Ошибка загрузки. код: cloadres_000',
                         status=400
                     )
         
