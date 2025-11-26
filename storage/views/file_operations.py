@@ -708,19 +708,26 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
                     return None
                     
             except Exception as e:
-                logger.error(f"Error downloading video with yt-dlp: {e}")
+                logger.error(f"Error downloading video with yt-dlp: {e}", exc_info=True)
+                # Логируем детали ошибки для диагностики
+                error_details = {
+                    'error_type': type(e).__name__,
+                    'error_message': str(e),
+                    'pinterest_url': pinterest_url[:100] if pinterest_url else None,
+                }
+                logger.error(f"yt-dlp error details: {error_details}")
                 # Удаляем временную директорию при ошибке
                 try:
                     shutil.rmtree(temp_dir)
-                except:
-                    pass
+                except Exception as cleanup_error:
+                    logger.warning(f"Error cleaning up temp directory: {cleanup_error}")
                 return None
                 
     except ImportError:
         logger.warning("yt-dlp is not installed, cannot download Pinterest videos")
         return None
     except Exception as e:
-        logger.error(f"Error in download_pinterest_video_with_ytdlp: {e}")
+        logger.error(f"Error in download_pinterest_video_with_ytdlp: {e}", exc_info=True)
         return None
 
 
@@ -1241,7 +1248,28 @@ def upload_from_url(request):
             # Если это Pinterest, но convert_pinterest_url вернул None (blob URL или видео)
             # Пытаемся использовать yt-dlp для загрузки видео
             logger.info(f"Pinterest URL detected but no direct link found (likely blob URL video), trying yt-dlp for video download")
-            downloaded_video_path = download_pinterest_video_with_ytdlp(original_url)
+            
+            # Проверяем наличие yt-dlp перед использованием
+            try:
+                import yt_dlp
+                yt_dlp_version = yt_dlp.version.__version__ if hasattr(yt_dlp, 'version') else 'unknown'
+                logger.info(f"yt-dlp is available, version: {yt_dlp_version}")
+            except ImportError:
+                logger.warning("yt-dlp is not installed, will try to get image instead")
+                # Если yt-dlp не установлен, пытаемся получить изображение
+                pinterest_url = convert_pinterest_url(original_url)
+                if pinterest_url and 'pinimg.com' in pinterest_url.lower():
+                    logger.info(f"Using image fallback (yt-dlp not installed): {pinterest_url}")
+                    file_url = pinterest_url
+                else:
+                    return create_json_response(
+                        False,
+                        'Не удалось загрузить контент из Pinterest. Для загрузки видео требуется yt-dlp.',
+                        status=400
+                    )
+                downloaded_video_path = None
+            else:
+                downloaded_video_path = download_pinterest_video_with_ytdlp(original_url)
             if downloaded_video_path and os.path.exists(downloaded_video_path):
                 # Файл уже скачан через yt-dlp, обрабатываем его напрямую
                 logger.info(f"Successfully downloaded Pinterest video using yt-dlp: {downloaded_video_path}")
@@ -1352,12 +1380,28 @@ def upload_from_url(request):
                     
                     if has_video_tag:
                         # Это видео пин, но yt-dlp не смог скачать
-                        logger.error("Video pin detected but yt-dlp failed to download")
-                        return create_json_response(
-                            False,
-                            'Ошибка загрузки. код: cloadres_000',
-                            status=400
-                        )
+                        # Проверяем, установлен ли yt-dlp
+                        try:
+                            import yt_dlp
+                            yt_dlp_version = yt_dlp.version.__version__ if hasattr(yt_dlp, 'version') else 'unknown'
+                            logger.error(f"Video pin detected but yt-dlp failed to download. yt-dlp version: {yt_dlp_version}")
+                        except ImportError:
+                            logger.error("Video pin detected but yt-dlp is not installed")
+                        except Exception as e:
+                            logger.error(f"Error checking yt-dlp version: {e}")
+                        
+                        # Пытаемся получить изображение как fallback
+                        logger.warning("Trying to get image as fallback for video pin")
+                        pinterest_url = convert_pinterest_url(original_url)
+                        if pinterest_url and 'pinimg.com' in pinterest_url.lower():
+                            logger.info(f"Using image fallback for video pin: {pinterest_url}")
+                            file_url = pinterest_url
+                        else:
+                            return create_json_response(
+                                False,
+                                'Ошибка загрузки. код: cloadres_000',
+                                status=400
+                            )
                     else:
                         # Это не видео пин, можно попробовать получить изображение
                         logger.warning("Could not download with yt-dlp, trying to get image (not a video pin)")
@@ -1370,14 +1414,34 @@ def upload_from_url(request):
                                 'Не удалось загрузить контент из Pinterest.',
                                 status=400
                             )
+                except requests.RequestException as e:
+                    logger.error(f"Error fetching Pinterest URL for type check: {e}")
+                    # Пытаемся получить изображение как fallback
+                    logger.warning("Trying to get image as fallback after request error")
+                    pinterest_url = convert_pinterest_url(original_url)
+                    if pinterest_url and 'pinimg.com' in pinterest_url.lower():
+                        logger.info(f"Using image fallback after request error: {pinterest_url}")
+                        file_url = pinterest_url
+                    else:
+                        return create_json_response(
+                            False,
+                            'Ошибка загрузки. код: cloadres_000',
+                            status=400
+                        )
                 except Exception as e:
-                    logger.error(f"Error checking Pinterest pin type: {e}")
-                    # Если не удалось проверить, предполагаем что это видео пин
-                    return create_json_response(
-                        False,
-                        'Ошибка загрузки. код: cloadres_000',
-                        status=400
-                    )
+                    logger.error(f"Error checking Pinterest pin type: {e}", exc_info=True)
+                    # Пытаемся получить изображение как fallback
+                    logger.warning("Trying to get image as fallback after exception")
+                    pinterest_url = convert_pinterest_url(original_url)
+                    if pinterest_url and 'pinimg.com' in pinterest_url.lower():
+                        logger.info(f"Using image fallback after exception: {pinterest_url}")
+                        file_url = pinterest_url
+                    else:
+                        return create_json_response(
+                            False,
+                            'Ошибка загрузки. код: cloadres_000',
+                            status=400
+                        )
         
         # Затем проверяем Google Drive
         google_drive_url = convert_google_drive_url(file_url)
