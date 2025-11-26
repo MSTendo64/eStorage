@@ -844,6 +844,9 @@
                                 <button class="btn btn-sm btn-info" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Прямая ссылка">
                                     <i class="fas fa-link"></i>
                                 </button>
+                                <button class="btn btn-sm btn-info" onclick="showRenameFileModal('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Переименовать">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.delete }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -1012,6 +1015,9 @@
                                 <button class="btn btn-sm btn-info mb-1" onclick="getRawLink('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Прямая ссылка">
                                     <i class="fas fa-link"></i>
                                 </button>
+                                <button class="btn btn-sm btn-info mb-1" onclick="showRenameFileModal('{{ file.id }}', '{{ file.filename|escapejs }}')" title="Переименовать">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <button class="btn btn-sm btn-danger mb-1" onclick="deleteFile('{{ file.id }}', '{{ file.filename }}')" title="{{ t.storage.file_list.actions.delete }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -1120,6 +1126,41 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="uploadUrlCancelBtn">Отмена</button>
                 <button type="button" class="btn btn-primary" onclick="uploadFromUrl()" id="uploadUrlSubmitBtn">
                     <i class="fas fa-download me-1"></i> Загрузить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для переименования файла -->
+<div class="modal fade" id="renameFileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>
+                    Переименовать файл
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="renameFileForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="newFileName" class="form-label">Новое имя файла</label>
+                        <input type="text" class="form-control" id="newFileName" 
+                               placeholder="Введите новое имя файла" required>
+                        <div class="form-text">
+                            Введите новое имя файла с расширением (например: document.pdf)
+                        </div>
+                    </div>
+                    <div id="renameFileError" class="alert alert-danger d-none" role="alert"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="renameFileCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="renameFile()" id="renameFileSubmitBtn">
+                    <i class="fas fa-save me-1"></i> Сохранить
                 </button>
             </div>
         </div>
@@ -2118,6 +2159,184 @@ function downloadFile(fileId) {
     .finally(() => {
         setTimeout(hideLoading, 1000);
     });
+}
+
+// Функция показа модального окна для переименования файла
+function showRenameFileModal(fileId, currentFilename) {
+    const modal = new bootstrap.Modal(document.getElementById('renameFileModal'));
+    document.getElementById('newFileName').value = currentFilename;
+    document.getElementById('renameFileError').classList.add('d-none');
+    document.getElementById('renameFileSubmitBtn').disabled = false;
+    document.getElementById('renameFileCancelBtn').disabled = false;
+    
+    // Сохраняем ID файла в data-атрибуте кнопки
+    document.getElementById('renameFileSubmitBtn').setAttribute('data-file-id', fileId);
+    
+    modal.show();
+}
+
+// Функция переименования файла
+async function renameFile() {
+    const submitBtn = document.getElementById('renameFileSubmitBtn');
+    const cancelBtn = document.getElementById('renameFileCancelBtn');
+    const errorDiv = document.getElementById('renameFileError');
+    const newFileNameInput = document.getElementById('newFileName');
+    const fileId = submitBtn.getAttribute('data-file-id');
+    const newFileName = newFileNameInput.value.trim();
+    
+    // Скрываем предыдущие ошибки
+    errorDiv.classList.add('d-none');
+    
+    if (!newFileName) {
+        errorDiv.textContent = 'Имя файла не может быть пустым';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Блокируем кнопки
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        errorDiv.textContent = 'Ошибка: не удалось получить CSRF токен';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('name', newFileName);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`/storage/file/rename/${fileId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Закрываем модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('renameFileModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Показываем сообщение об успехе
+            showSuccessMessage(data.message || 'Файл успешно переименован');
+            
+            // Обновляем страницу для отображения нового имени
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        } else {
+            // Показываем ошибку
+            errorDiv.textContent = data.message || 'Ошибка при переименовании файла';
+            errorDiv.classList.remove('d-none');
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Ошибка при отправке запроса: ' + error.message;
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+    }
+}
+
+// Функция показа модального окна для переименования файла
+function showRenameFileModal(fileId, currentFilename) {
+    const modal = new bootstrap.Modal(document.getElementById('renameFileModal'));
+    document.getElementById('newFileName').value = currentFilename;
+    document.getElementById('renameFileError').classList.add('d-none');
+    document.getElementById('renameFileSubmitBtn').disabled = false;
+    document.getElementById('renameFileCancelBtn').disabled = false;
+    
+    // Сохраняем ID файла в data-атрибуте кнопки
+    document.getElementById('renameFileSubmitBtn').setAttribute('data-file-id', fileId);
+    
+    modal.show();
+}
+
+// Функция переименования файла
+async function renameFile() {
+    const submitBtn = document.getElementById('renameFileSubmitBtn');
+    const cancelBtn = document.getElementById('renameFileCancelBtn');
+    const errorDiv = document.getElementById('renameFileError');
+    const newFileNameInput = document.getElementById('newFileName');
+    const fileId = submitBtn.getAttribute('data-file-id');
+    const newFileName = newFileNameInput.value.trim();
+    
+    // Скрываем предыдущие ошибки
+    errorDiv.classList.add('d-none');
+    
+    if (!newFileName) {
+        errorDiv.textContent = 'Имя файла не может быть пустым';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Блокируем кнопки
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        errorDiv.textContent = 'Ошибка: не удалось получить CSRF токен';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('name', newFileName);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        const response = await fetch(`/storage/file/rename/${fileId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Закрываем модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('renameFileModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Показываем сообщение об успехе
+            showSuccessMessage(data.message || 'Файл успешно переименован');
+            
+            // Обновляем страницу для отображения нового имени
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        } else {
+            // Показываем ошибку
+            errorDiv.textContent = data.message || 'Ошибка при переименовании файла';
+            errorDiv.classList.remove('d-none');
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Ошибка при отправке запроса: ' + error.message;
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+    }
 }
 
 // Функция получения прямой ссылки на файл
