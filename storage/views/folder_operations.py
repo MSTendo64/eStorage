@@ -210,9 +210,28 @@ def rename_file(request, file_id):
     try:
         file = UserFile.objects.get(id=file_id, user=request.user)
         
-        new_name = request.POST.get('name', '').strip()
+        # Получаем новое имя из POST или JSON
+        if request.content_type == 'application/json':
+            try:
+                import json
+                data = json.loads(request.body)
+                new_name = data.get('name', '').strip()
+            except json.JSONDecodeError:
+                return create_json_response(False, 'Некорректный JSON в запросе', status=400)
+        else:
+            new_name = request.POST.get('name', '').strip()
+        
         if not new_name:
             return create_json_response(False, 'Имя файла не может быть пустым', status=400)
+        
+        # Валидация имени файла
+        if len(new_name) > 255:
+            return create_json_response(False, 'Имя файла слишком длинное (максимум 255 символов)', status=400)
+        
+        # Проверка на запрещенные символы
+        import re
+        if re.search(r'[<>:"/\\|?*]', new_name):
+            return create_json_response(False, 'Имя файла содержит запрещенные символы', status=400)
         
         # Проверка на существующий файл с таким же именем в той же папке
         if UserFile.objects.filter(user=request.user, filename=new_name, folder=file.folder).exclude(id=file_id).exists():

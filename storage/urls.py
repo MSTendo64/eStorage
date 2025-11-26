@@ -9,6 +9,7 @@ urlpatterns = [
     path('delete/<int:file_id>/', views.delete_file, name='delete_file'),
     path('generate-link/<int:file_id>/', views.generate_download_link, name='generate_download_link'),
     path('save-text/<int:file_id>/', views.save_text_file, name='save_text_file'),
+    path('upload-from-url/', views.upload_from_url, name='upload_from_url'),
     path('archive-contents/<int:file_id>/', views.get_archive_contents, name='archive_contents'),
     path('extract-archive/<int:file_id>/', views.extract_archive, name='extract_archive'),
     path('toggle-publicity/<int:file_id>/', views.toggle_file_publicity, name='toggle_file_publicity'),

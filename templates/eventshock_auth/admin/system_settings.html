@@ -48,6 +48,23 @@
                 </small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Прокси для загрузки файлов</label>
+                <input type="text" class="form-control" name="proxy_url" 
+                       value="{{ settings.proxy_url|default:'' }}"
+                       placeholder="http://your-server.com/proxy?url=">
+                <small class="text-muted">
+                    URL прокси-сервера для загрузки файлов по ссылке. Оставьте пустым для использования встроенных прокси-сервисов.
+                    <br><strong>Для настройки собственного прокси-сервера на Ubuntu см. файл PROXY_SETUP.md</strong>
+                    <br>Формат URL:
+                    <br>- <code>http://your-server.com/proxy?url=</code> (URL добавляется автоматически)
+                    <br>- <code>http://your-server.com/proxy?url=</code> (с параметром url)
+                    <br>Примеры публичных прокси:
+                    <br>- <code>https://api.allorigins.win/raw?url=</code>
+                    <br>- <code>https://corsproxy.io/?</code>
+                </small>
+            </div>
+
             <button type="submit" class="btn btn-primary">Сохранить</button>
         </form>
     </div>

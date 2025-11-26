@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Eventshock Storage{% endblock %}</title>
+    {% if system_settings.site_logo %}
+    <link rel="icon" href="{{ system_settings.site_logo.url }}">
+    <link rel="shortcut icon" href="{{ system_settings.site_logo.url }}">
+    <link rel="apple-touch-icon" href="{{ system_settings.site_logo.url }}">
+    {% endif %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
@@ -40,9 +45,19 @@
         :root {
             --bs-body-bg: #e9ecef;
             --bs-body-color: #1a1d21;
-            --bs-primary: #0d6efd;
-            --bs-link-color: #0d6efd;
-            --bs-link-hover-color: #0a58ca;
+            --bs-primary: #1e3a8a;
+            --bs-link-color: #1e3a8a;
+            --bs-link-hover-color: #1e40af;
+            --bs-info: #6f42c1;
+            --bs-info-rgb: 111, 66, 193;
+            --bs-success: #198754;
+            --bs-success-rgb: 25, 135, 84;
+            --bs-warning: #ffc107;
+            --bs-warning-rgb: 255, 193, 7;
+            --bs-danger: #dc3545;
+            --bs-danger-rgb: 220, 53, 69;
+            --bs-secondary: #6c757d;
+            --bs-secondary-rgb: 108, 117, 125;
             --bs-navbar-color: #1a1d21;
             --bs-container-color: #e9ecef;
         }
@@ -256,6 +271,29 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        
+        /* Стили для кнопок только с иконками в карточках файлов и папок */
+        .file-card-actions .btn,
+        .folder-card-actions .btn {
+            min-width: 2.5rem;
+            padding: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .file-card-actions .btn i,
+        .folder-card-actions .btn i {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        @media (min-width: 768px) {
+            .btn-group-grid-desktop .btn {
+                min-width: 2.5rem;
+                padding: 0.5rem;
+            }
         }
         
         @media (min-width: 768px) {
@@ -772,7 +810,7 @@
                     <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
                          class="me-2" style="height: 32px; max-width: 32px; object-fit: contain;">
                 {% endif %}
-                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold;">
                     {{ system_settings.site_name }}
                 </span>
             </a>
@@ -931,10 +969,21 @@
     <style>
     /* Основные переменные для акцентного цвета */
     :root {
-        --bs-primary: {{ user.userprofile.accent_color|default:'#0d6efd' }};
-        --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'13, 110, 253' }};
+        --bs-primary: {{ user.userprofile.accent_color|default:'#1e3a8a' }};
+        --bs-primary-rgb: {{ user.userprofile.accent_color_rgb|default:'30, 58, 138' }};
         --bs-link-color: var(--bs-primary);
-        --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#0a58ca' }};
+        --bs-link-hover-color: {{ user.userprofile.accent_color_darker|default:'#1e40af' }};
+        /* Логичные цвета для разных типов действий */
+        --bs-info: #6f42c1;
+        --bs-info-rgb: 111, 66, 193;
+        --bs-success: #198754;
+        --bs-success-rgb: 25, 135, 84;
+        --bs-warning: #ffc107;
+        --bs-warning-rgb: 255, 193, 7;
+        --bs-danger: #dc3545;
+        --bs-danger-rgb: 220, 53, 69;
+        --bs-secondary: #6c757d;
+        --bs-secondary-rgb: 108, 117, 125;
     }
 
     /* Кнопки */
@@ -965,6 +1014,145 @@
     .btn-outline-primary:hover {
         background-color: var(--bs-primary) !important;
         color: #fff !important;
+    }
+
+    /* Кнопки info - фиолетовый для информационных действий (Просмотр, Прямая ссылка, Переименовать) */
+    .btn-info {
+        background-color: var(--bs-info) !important;
+        border-color: var(--bs-info) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-info:hover {
+        background-color: #5a32a3 !important;
+        border-color: #5a32a3 !important;
+        color: #ffffff !important;
+    }
+
+    .btn-info i,
+    .btn-info svg,
+    .btn-info .fas,
+    .btn-info .fa {
+        color: #ffffff !important;
+    }
+
+    .btn-outline-info {
+        color: var(--bs-info) !important;
+        border-color: var(--bs-info) !important;
+    }
+
+    .btn-outline-info:hover {
+        background-color: var(--bs-info) !important;
+        color: #fff !important;
+    }
+
+    /* Кнопки success - зеленый для позитивных действий (Создать, Поделиться, Публичный) */
+    .btn-success {
+        background-color: var(--bs-success) !important;
+        border-color: var(--bs-success) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-success:hover {
+        background-color: #157347 !important;
+        border-color: #157347 !important;
+        color: #ffffff !important;
+    }
+
+    .btn-success i,
+    .btn-success svg,
+    .btn-success .fas,
+    .btn-success .fa {
+        color: #ffffff !important;
+    }
+
+    /* Кнопки warning - желтый/оранжевый для предупреждающих действий (Переименовать, Доступ, Распаковать) */
+    .btn-warning {
+        background-color: var(--bs-warning) !important;
+        border-color: var(--bs-warning) !important;
+        color: #000000 !important;
+    }
+
+    .btn-warning:hover {
+        background-color: #ffcd39 !important;
+        border-color: #ffcd39 !important;
+        color: #000000 !important;
+    }
+
+    .btn-warning i,
+    .btn-warning svg,
+    .btn-warning .fas,
+    .btn-warning .fa {
+        color: #000000 !important;
+    }
+
+    /* Кнопки danger - красный для опасных действий (Удалить, Отозвать) */
+    .btn-danger {
+        background-color: var(--bs-danger) !important;
+        border-color: var(--bs-danger) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-danger:hover {
+        background-color: #bb2d3b !important;
+        border-color: #bb2d3b !important;
+        color: #ffffff !important;
+    }
+
+    .btn-danger i,
+    .btn-danger svg,
+    .btn-danger .fas,
+    .btn-danger .fa {
+        color: #ffffff !important;
+    }
+
+    /* Кнопки secondary - серый для второстепенных действий (Сортировка, Приватный) */
+    .btn-secondary {
+        background-color: var(--bs-secondary) !important;
+        border-color: var(--bs-secondary) !important;
+        color: #ffffff !important;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5c636a !important;
+        border-color: #5c636a !important;
+        color: #ffffff !important;
+    }
+
+    .btn-secondary i,
+    .btn-secondary svg,
+    .btn-secondary .fas,
+    .btn-secondary .fa {
+        color: #ffffff !important;
+    }
+
+    /* Badge и другие элементы */
+    .bg-info {
+        background-color: var(--bs-info) !important;
+    }
+
+    .text-info {
+        color: var(--bs-info) !important;
+    }
+
+    .border-info {
+        border-color: var(--bs-info) !important;
+    }
+
+    .bg-success {
+        background-color: var(--bs-success) !important;
+    }
+
+    .bg-warning {
+        background-color: var(--bs-warning) !important;
+    }
+
+    .bg-danger {
+        background-color: var(--bs-danger) !important;
+    }
+
+    .bg-secondary {
+        background-color: var(--bs-secondary) !important;
     }
 
     /* Прогресс-бары */
@@ -1010,26 +1198,44 @@
     
     .unified-player-header {
         backdrop-filter: blur(10px);
-        padding: 0.25rem 1rem;
-        height: 24px;
-        min-height: 24px;
-        max-height: 24px;
+        padding: 0.5rem 1rem;
+        height: 40px;
+        min-height: 40px;
+        max-height: 40px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         user-select: none;
         position: relative;
         flex-shrink: 0;
+        background: rgba(var(--bs-body-bg-rgb, 255, 255, 255), 0.95);
+        border-bottom: 1px solid rgba(var(--bs-border-color-rgb, 222, 226, 230), 0.5);
+    }
+    
+    [data-bs-theme="dark"] .unified-player-header {
+        background: rgba(var(--bs-body-bg-rgb, 33, 37, 41), 0.95);
+        border-bottom: 1px solid rgba(var(--bs-border-color-rgb, 73, 80, 87), 0.5);
     }
     
     .unified-player-title {
-        font-size: 0.75rem;
+        font-size: 0.95rem;
         margin: 0;
-        font-weight: 600;
+        font-weight: bold;
         position: absolute;
         left: 0.5rem;
         top: 50%;
         transform: translateY(-50%);
+        color: var(--bs-body-color, #1a1d21);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - 120px);
+    }
+    
+    [data-bs-theme="dark"] .unified-player-title {
+        color: var(--bs-body-color, #f8f9fa);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     }
     
     .unified-player-actions {
@@ -1562,7 +1768,12 @@
     [data-bs-theme="light"] h5,
     [data-bs-theme="light"] h6 {
         color: #0d1117 !important;
-        font-weight: 600;
+        font-weight: bold;
+    }
+    
+    /* Жирный шрифт для всех заголовков */
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: bold !important;
     }
     
     [data-bs-theme="light"] .card-title {
@@ -2093,10 +2304,17 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
             break;
     }
     
+    // Формируем четкое название файла
+    let displayTitle = filename || 'Просмотр файла';
+    // Если название слишком длинное, обрезаем его
+    if (displayTitle.length > 60) {
+        displayTitle = displayTitle.substring(0, 57) + '...';
+    }
+    
     return {
         html: `
             <div class="unified-player-header">
-                <h5 class="unified-player-title">${filename || 'Просмотр файла'}</h5>
+                <h5 class="unified-player-title" title="${filename || 'Просмотр файла'}">${displayTitle}</h5>
                 <div class="unified-player-actions">
                     ${downloadBtn}
                     ${closeBtn}

@@ -160,6 +160,7 @@ class SystemSettings(models.Model):
     site_name = models.CharField(max_length=100, default='eStorage')
     site_logo = models.ImageField(upload_to='system/logo/', null=True, blank=True)
     site_name_color = models.CharField(max_length=7, default='#ffffff', help_text='HEX color code')
+    proxy_url = models.CharField(max_length=500, null=True, blank=True, help_text='URL прокси-сервера для загрузки файлов (например: https://api.allorigins.win/raw?url= или https://corsproxy.io/?)')
 
     class Meta:
         verbose_name = 'System Settings'

@@ -1,52 +1,69 @@
-asgiref==3.8.1
-certifi==2024.8.30
-cffi==1.17.1
-charset-normalizer==3.4.0
-colorama==0.4.6
-crispy-bootstrap5==0.7
-cryptography==43.0.3
-decorator==4.4.2
+# Core Django
 Django==5.1.3
+asgiref==3.8.1
+sqlparse==0.5.2
+tzdata==2024.2
+
+# Django Extensions
 django-cors-headers==4.3.1
 django-crispy-forms==2.0
+crispy-bootstrap5==0.7
 django-oauth-toolkit==2.3.0
 django-ranged-response==0.2.0
 django-rest-framework==0.1.0
 django-simple-captcha==0.6.0
+django-redis==5.4.0
+
+# REST Framework
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
+
+# Database
+psycopg2-binary==2.9.9  # Для PostgreSQL
+
+# Media Processing
+pillow==10.4.0
 ffmpeg-python==0.2.0
-future==1.0.0
-idna==3.10
 imageio==2.36.0
 imageio-ffmpeg==0.5.1
-jwcrypto==1.5.6
 moviepy==1.0.3
 numpy==2.1.3
+python-magic==0.4.27
+pytube==15.0.0
+yt-dlp==2024.11.18
+
+# HTTP & Networking
+requests==2.31.0
+urllib3==2.2.3
+certifi==2024.8.30
+idna==3.10
+charset-normalizer==3.4.0
+
+# Security & Authentication
+cryptography==43.0.3
+PyJWT==2.10.0
 oauthlib==3.2.2
-pillow==10.4.0
+jwcrypto==1.5.6
+
+# Utilities
+python-dotenv==1.0.0
+colorama==0.4.6
+decorator==4.4.2
+future==1.0.0
 proglog==0.1.10
 psutil==6.1.0
 pycparser==2.22
-PyJWT==2.10.0
-python-dotenv==1.0.0
-python-magic==0.4.27
-pytube==15.0.0
-requests==2.31.0
-sqlparse==0.5.2
 tqdm==4.67.0
 typing_extensions==4.12.2
-tzdata==2024.2
-urllib3==2.2.3
-yt-dlp==2024.11.18
-Django>=4.2.0
-python-dotenv==1.0.0
-requests==2.31.0
-django-crispy-forms==2.0
-crispy-bootstrap5==0.7
-django-oauth-toolkit==2.3.0
-django-cors-headers==4.3.1 
-django-redis==5.4.0
-psycopg2-binary==2.9.9  # Для PostgreSQL
+cffi==1.17.1
+
+# Static Files & Deployment
 whitenoise==6.6.0  # Для раздачи статики
+
+# Monitoring & Error Tracking
 sentry-sdk==1.39.1
+
+# Testing
+coverage==7.5.3  # Для покрытия кода тестами
+selenium==4.18.1  # Для E2E тестов
+webdriver-manager==4.0.1  # Для автоматического управления драйверами браузеров
