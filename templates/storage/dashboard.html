@@ -605,18 +605,6 @@
         <div class="d-flex flex-column mb-3 gap-2" style="position: relative; overflow: visible; z-index: 1;">
             <h2 class="mb-0">{{ t.storage.file_list.title }}</h2>
             <div class="d-flex flex-wrap gap-2 align-items-center" style="overflow: visible; position: relative;">
-                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm">
-                    <i class="fas fa-share-alt me-1"></i> Доступы
-                </a>
-                <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
-                    <i class="fas fa-folder-plus me-1"></i> Создать папку
-                </button>
-                <button class="btn btn-info btn-sm" onclick="showUploadFromUrlModal()">
-                    <i class="fas fa-link me-1"></i> Загрузить по URL
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
-                    <i class="fas fa-folder-open me-1"></i> Переместить в папку
-                </button>
                 <div class="dropdown" style="position: static;">
                     <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid var(--bs-secondary); background-color: var(--bs-secondary); color: white;">
                         <i class="fas fa-sort me-2"></i>
@@ -645,6 +633,18 @@
                     </a></li>
                     </ul>
                 </div>
+                <button class="btn btn-success btn-sm" onclick="showCreateFolderModal()">
+                    <i class="fas fa-folder-plus me-1"></i> Создать папку
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="showMoveFilesModal()" id="moveFilesBtn" disabled>
+                    <i class="fas fa-folder-open me-1"></i> Переместить в папку
+                </button>
+                <a href="{% url 'shared_folders_list' %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-share-alt me-1"></i> Доступы
+                </a>
+                <button class="btn btn-info btn-sm" onclick="showUploadFromUrlModal()">
+                    <i class="fas fa-link me-1"></i> Загрузить по ссылке
+                </button>
             
                 <script>
                 // Инициализация Bootstrap Dropdown
