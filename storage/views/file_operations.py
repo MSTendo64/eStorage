@@ -614,9 +614,9 @@ def download_via_proxy(url: str, headers: dict, timeout: int = 600) -> Optional[
 
 def convert_pinterest_url(url: str) -> Optional[str]:
     """
-    Преобразует Pinterest ссылку в прямую ссылку на изображение
+    Преобразует Pinterest ссылку в прямую ссылку на медиа-файл (изображение или видео)
     
-    Возвращает None, если это не Pinterest ссылка или не удалось получить изображение
+    Возвращает None, если это не Pinterest ссылка или не удалось получить медиа-файл
     """
     parsed = urlparse(url)
     
@@ -638,6 +638,62 @@ def convert_pinterest_url(url: str) -> Optional[str]:
         
         html = response.text
         
+        # Сначала проверяем наличие видео (приоритет видео над изображением)
+        # Ищем og:video мета-тег
+        og_video_match = re.search(r'<meta\s+property=["\']og:video["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if og_video_match:
+            video_url = og_video_match.group(1)
+            logger.info(f"Found Pinterest video via og:video: {video_url}")
+            return video_url
+        
+        # Ищем og:video:url
+        og_video_url_match = re.search(r'<meta\s+property=["\']og:video:url["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if og_video_url_match:
+            video_url = og_video_url_match.group(1)
+            logger.info(f"Found Pinterest video via og:video:url: {video_url}")
+            return video_url
+        
+        # Ищем video:content
+        video_content_match = re.search(r'<meta\s+property=["\']video:content["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if video_content_match:
+            video_url = video_content_match.group(1)
+            logger.info(f"Found Pinterest video via video:content: {video_url}")
+            return video_url
+        
+        # Ищем в JSON-LD данных для видео
+        json_ld_match = re.search(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE)
+        if json_ld_match:
+            try:
+                json_data = json.loads(json_ld_match.group(1))
+                # Проверяем наличие видео в JSON-LD
+                if isinstance(json_data, dict):
+                    # Ищем video в различных форматах
+                    if 'video' in json_data:
+                        video_data = json_data['video']
+                        if isinstance(video_data, str):
+                            logger.info(f"Found Pinterest video in JSON-LD: {video_data}")
+                            return video_data
+                        elif isinstance(video_data, dict):
+                            if 'contentUrl' in video_data:
+                                logger.info(f"Found Pinterest video contentUrl: {video_data['contentUrl']}")
+                                return video_data['contentUrl']
+                            elif 'url' in video_data:
+                                logger.info(f"Found Pinterest video url: {video_data['url']}")
+                                return video_data['url']
+                            elif 'embedUrl' in video_data:
+                                logger.info(f"Found Pinterest video embedUrl: {video_data['embedUrl']}")
+                                return video_data['embedUrl']
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.debug(f"Error parsing JSON-LD for video: {e}")
+        
+        # Ищем data-video-url атрибуты
+        data_video_match = re.search(r'data-video-url=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if data_video_match:
+            video_url = data_video_match.group(1)
+            logger.info(f"Found Pinterest video via data-video-url: {video_url}")
+            return video_url
+        
+        # Если видео не найдено, ищем изображение
         # Ищем og:image мета-тег
         og_image_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
         if og_image_match:
@@ -646,26 +702,64 @@ def convert_pinterest_url(url: str) -> Optional[str]:
             if 'pinimg.com' in image_url:
                 # Заменяем размер на оригинальный (убираем параметры размера)
                 image_url = re.sub(r'/[\d]+x[\d]+/', '/originals/', image_url)
+            logger.info(f"Found Pinterest image via og:image: {image_url}")
             return image_url
         
-        # Альтернативный способ: ищем в JSON-LD данных
-        json_ld_match = re.search(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE)
+        # Альтернативный способ: ищем в JSON-LD данных для изображения
         if json_ld_match:
             try:
                 json_data = json.loads(json_ld_match.group(1))
                 if isinstance(json_data, dict) and 'image' in json_data:
                     image_url = json_data['image']
                     if isinstance(image_url, str):
+                        logger.info(f"Found Pinterest image in JSON-LD: {image_url}")
                         return image_url
                     elif isinstance(image_url, dict) and 'url' in image_url:
+                        logger.info(f"Found Pinterest image url: {image_url['url']}")
                         return image_url['url']
             except (json.JSONDecodeError, KeyError):
                 pass
         
-        # Еще один способ: ищем в data-атрибутах
+        # Еще один способ: ищем в data-атрибутах для изображения
         data_image_match = re.search(r'data-image-url=["\']([^"\']+)["\']', html, re.IGNORECASE)
         if data_image_match:
-            return data_image_match.group(1)
+            image_url = data_image_match.group(1)
+            logger.info(f"Found Pinterest image via data-image-url: {image_url}")
+            return image_url
+        
+        # Ищем в Pinterest специфичных скриптах
+        # Pinterest часто хранит данные в window.__initialData__
+        pinterest_data_match = re.search(r'window\.__initialData__\s*=\s*({.*?});', html, re.DOTALL)
+        if pinterest_data_match:
+            try:
+                pinterest_data = json.loads(pinterest_data_match.group(1))
+                # Ищем видео или изображение в структуре данных Pinterest
+                def find_media_in_pinterest_data(data, path=''):
+                    if isinstance(data, dict):
+                        # Проверяем ключи, связанные с медиа
+                        for key, value in data.items():
+                            if 'video' in key.lower() and isinstance(value, str) and value.startswith('http'):
+                                logger.info(f"Found Pinterest video in __initialData__ at {path}.{key}: {value}")
+                                return value
+                            if 'image' in key.lower() and isinstance(value, str) and value.startswith('http'):
+                                logger.info(f"Found Pinterest image in __initialData__ at {path}.{key}: {value}")
+                                return value
+                            if isinstance(value, (dict, list)):
+                                result = find_media_in_pinterest_data(value, f"{path}.{key}")
+                                if result:
+                                    return result
+                    elif isinstance(data, list):
+                        for i, item in enumerate(data):
+                            result = find_media_in_pinterest_data(item, f"{path}[{i}]")
+                            if result:
+                                return result
+                    return None
+                
+                media_url = find_media_in_pinterest_data(pinterest_data)
+                if media_url:
+                    return media_url
+            except (json.JSONDecodeError, Exception) as e:
+                logger.debug(f"Error parsing Pinterest __initialData__: {e}")
         
         return None
     except requests.RequestException as e:
@@ -852,15 +946,47 @@ def upload_from_url(request):
                 # Извлекаем имя файла из URL
                 path = urlparse(file_url).path
                 filename = os.path.basename(path) or 'downloaded_file'
-                # Если нет расширения, пытаемся определить из Content-Type
-                if '.' not in filename:
-                    content_type = response.headers.get('Content-Type', '')
-                    if 'image' in content_type:
+            
+            # Определяем расширение на основе Content-Type, если его нет
+            content_type = response.headers.get('Content-Type', '').lower()
+            if '.' not in filename or not os.path.splitext(filename)[1]:
+                # Определяем расширение по Content-Type
+                if 'video' in content_type:
+                    if 'mp4' in content_type:
+                        filename += '.mp4'
+                    elif 'webm' in content_type:
+                        filename += '.webm'
+                    elif 'quicktime' in content_type or 'mov' in content_type:
+                        filename += '.mov'
+                    elif 'x-msvideo' in content_type or 'avi' in content_type:
+                        filename += '.avi'
+                    else:
+                        filename += '.mp4'  # По умолчанию для видео
+                elif 'image' in content_type:
+                    if 'jpeg' in content_type or 'jpg' in content_type:
                         filename += '.jpg'
-                    elif 'pdf' in content_type:
-                        filename += '.pdf'
-                    elif 'text' in content_type:
-                        filename += '.txt'
+                    elif 'png' in content_type:
+                        filename += '.png'
+                    elif 'gif' in content_type:
+                        filename += '.gif'
+                    elif 'webp' in content_type:
+                        filename += '.webp'
+                    else:
+                        filename += '.jpg'  # По умолчанию для изображений
+                elif 'pdf' in content_type:
+                    filename += '.pdf'
+                elif 'text' in content_type:
+                    filename += '.txt'
+                else:
+                    # Если это Pinterest URL, пытаемся определить тип по URL
+                    if 'pinterest' in original_url.lower():
+                        # Проверяем, был ли это видео или изображение
+                        if 'video' in file_url.lower() or 'mp4' in file_url.lower() or 'webm' in file_url.lower():
+                            filename += '.mp4'
+                        else:
+                            filename += '.jpg'
+                    else:
+                        filename += '.bin'  # По умолчанию для неизвестных типов
             
             # Подготовка папки пользователя
             user_folder = ensure_user_folder_exists(request.user.id)
