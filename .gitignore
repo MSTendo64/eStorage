@@ -162,4 +162,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 nginx.conf
+templates/eventshock_auth/admin/backup_plan.html
 templates/eventshock_auth/admin/security_policy.html
+templates/eventshock_auth/admin/diagrams.html

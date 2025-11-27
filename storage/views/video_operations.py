@@ -80,7 +80,13 @@ def get_file_metadata(request, file_id):
 def get_public_file_metadata(request, token):
     """API endpoint для получения метаданных публичного видео файла"""
     try:
-        file = UserFile.objects.get(public_token=token, is_public=True)
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model, UserFile
+        file = find_token_in_model(UserFile, 'public_token', token)
+        if not file:
+            raise UserFile.DoesNotExist
+        if not file.is_public:
+            raise UserFile.DoesNotExist
         
         if not file.is_video:
             return create_json_response(
@@ -203,7 +209,13 @@ def get_public_video_quality(request, token, quality):
         except ValueError:
             return create_json_response(False, 'Некорректное качество видео', status=400)
         
-        file = UserFile.objects.get(public_token=token, is_public=True)
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model, UserFile
+        file = find_token_in_model(UserFile, 'public_token', token)
+        if not file:
+            raise UserFile.DoesNotExist
+        if not file.is_public:
+            raise UserFile.DoesNotExist
         
         if not file.is_video:
             return create_json_response(False, 'Файл не является видео', status=400)
@@ -265,7 +277,13 @@ def get_public_video_quality(request, token, quality):
 def public_file(request, token):
     """Публичный просмотр файла"""
     try:
-        file = UserFile.objects.get(public_token=token, is_public=True)
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model, UserFile
+        file = find_token_in_model(UserFile, 'public_token', token)
+        if not file:
+            raise UserFile.DoesNotExist
+        if not file.is_public:
+            raise UserFile.DoesNotExist
         
         # Для медиафайлов показываем страницу просмотра
         if file.is_image or file.is_video or file.is_audio:

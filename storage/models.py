@@ -8,6 +8,45 @@ import zipfile
 import tarfile
 from django.urls import reverse
 from django.core.exceptions import ValidationError
+import base64
+
+
+def generate_short_token():
+    """
+    Генерирует короткий токен (22 символа вместо 32).
+    Использует base64url кодирование UUID для совместимости с URL.
+    Обратная совместимость: старые токены (32 символа hex) также поддерживаются.
+    """
+    # Генерируем UUID и кодируем в base64url (без padding)
+    token_bytes = uuid.uuid4().bytes
+    token_b64 = base64.urlsafe_b64encode(token_bytes).decode('ascii')
+    # Убираем padding '=' и получаем 22 символа
+    return token_b64.rstrip('=')
+
+
+def find_token_in_model(model_class, token_field, token_value):
+    """
+    Универсальная функция для поиска токена с обратной совместимостью.
+    Поддерживает как новые короткие токены (22 символа base64url), 
+    так и старые длинные токены (32 символа hex).
+    Django ORM автоматически найдет токен по точному совпадению независимо от формата.
+    
+    Args:
+        model_class: Класс модели Django
+        token_field: Имя поля с токеном
+        token_value: Значение токена для поиска
+    
+    Returns:
+        Объект модели или None
+    """
+    # Прямой поиск (работает для новых и старых токенов)
+    try:
+        return model_class.objects.get(**{token_field: token_value})
+    except model_class.DoesNotExist:
+        return None
+    except model_class.MultipleObjectsReturned:
+        # Если несколько объектов (не должно быть, но на всякий случай)
+        return model_class.objects.filter(**{token_field: token_value}).first()
 
 class Folder(models.Model):
     """Модель для виртуальных папок пользователя"""
@@ -113,7 +152,7 @@ class SharedFolderAccess(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.share_token and self.access_type == 'link':
-            self.share_token = uuid.uuid4().hex
+            self.share_token = generate_short_token()
         if not self.owner_id and self.folder:
             self.owner = self.folder.user
         super().save(*args, **kwargs)
@@ -189,7 +228,7 @@ class UserFile(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_public and not self.public_token:
-            self.public_token = uuid.uuid4().hex
+            self.public_token = generate_short_token()
         elif not self.is_public:
             self.public_token = None
             
@@ -366,7 +405,7 @@ class DownloadToken(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.token:
-            self.token = uuid.uuid4().hex
+            self.token = generate_short_token()
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(days=1)
         super().save(*args, **kwargs)

@@ -259,7 +259,11 @@ def _parse_range_header(range_header, file_size):
 def download_file(request, token):
     """Скачивание файла по токену - отдает файл напрямую через nginx (X-Accel-Redirect)"""
     try:
-        download_token = DownloadToken.objects.get(token=token)
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model
+        download_token = find_token_in_model(DownloadToken, 'token', token)
+        if not download_token:
+            raise Http404("Токен не найден")
         if not download_token.is_valid():
             raise Http404("Ссылка устарела")
             
@@ -330,7 +334,11 @@ def raw_file(request, filename):
         if not token:
             raise Http404("Токен не указан")
         
-        download_token = DownloadToken.objects.get(token=token)
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model
+        download_token = find_token_in_model(DownloadToken, 'token', token)
+        if not download_token:
+            raise Http404("Токен не найден")
         if not download_token.is_valid():
             raise Http404("Ссылка устарела")
             

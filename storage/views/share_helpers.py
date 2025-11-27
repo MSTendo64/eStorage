@@ -227,12 +227,12 @@ def create_or_update_access(folder: Folder, owner: User, access_type: str,
             created = False
         else:
             # Создаем новый доступ
-            import uuid
+            from ..models import generate_short_token
             access = SharedFolderAccess.objects.create(
                 folder=folder,
                 owner=owner,
                 access_type='link',
-                share_token=uuid.uuid4().hex,
+                share_token=generate_short_token(),
                 max_users=permissions['max_users'],
                 can_view=permissions['can_view'],
                 can_download=permissions['can_download'],

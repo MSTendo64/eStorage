@@ -291,7 +291,13 @@ def get_link_access_users(request, access_id):
 def shared_folder_view(request, token):
     """Просмотр общей папки по ссылке (для незарегистрированных и зарегистрированных)"""
     try:
-        access = get_object_or_404(SharedFolderAccess, share_token=token, access_type='link')
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model, SharedFolderAccess
+        access = find_token_in_model(SharedFolderAccess, 'share_token', token)
+        if not access:
+            raise Http404("Доступ не найден")
+        if access.access_type != 'link':
+            raise Http404("Неверный тип доступа")
         
         # Проверка доступа для незарегистрированных пользователей
         if not request.user.is_authenticated:
@@ -332,7 +338,13 @@ def shared_folder_view(request, token):
 def shared_file_download(request, token, file_id):
     """Скачивание файла из общей папки"""
     try:
-        access = get_object_or_404(SharedFolderAccess, share_token=token, access_type='link')
+        # Используем универсальную функцию поиска для обратной совместимости
+        from ..models import find_token_in_model, SharedFolderAccess
+        access = find_token_in_model(SharedFolderAccess, 'share_token', token)
+        if not access:
+            raise Http404("Доступ не найден")
+        if access.access_type != 'link':
+            raise Http404("Неверный тип доступа")
         user = request.user if request.user.is_authenticated else None
         
         # Проверка прав на скачивание
