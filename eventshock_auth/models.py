@@ -161,6 +161,7 @@ class SystemSettings(models.Model):
     site_logo = models.ImageField(upload_to='system/logo/', null=True, blank=True)
     site_name_color = models.CharField(max_length=7, default='#ffffff', help_text='HEX color code')
     proxy_url = models.CharField(max_length=500, null=True, blank=True, help_text='URL прокси-сервера для загрузки файлов (например: https://api.allorigins.win/raw?url= или https://corsproxy.io/?)')
+    proxy_domains = models.TextField(null=True, blank=True, help_text='Список доменов (по одному на строку), для которых сразу использовать прокси при загрузке')
 
     class Meta:
         verbose_name = 'System Settings'

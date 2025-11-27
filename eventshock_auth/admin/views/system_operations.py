@@ -39,6 +39,13 @@ def system_settings(request):
         else:
             settings.proxy_url = None
         
+        # Обновление доменов для прокси
+        proxy_domains = request.POST.get('proxy_domains', '').strip()
+        if proxy_domains:
+            settings.proxy_domains = proxy_domains
+        else:
+            settings.proxy_domains = None
+        
         # Обработка логотипа
         if 'remove_logo' in request.POST and settings.site_logo:
             settings.site_logo.delete()

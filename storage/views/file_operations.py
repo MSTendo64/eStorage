@@ -566,6 +566,69 @@ def convert_google_drive_url(url: str) -> Optional[str]:
         return f'https://drive.google.com/uc?export=download&id={file_id}'
 
 
+def should_use_proxy_for_domain(url: str) -> bool:
+    """
+    Проверяет, нужно ли использовать прокси для данного URL на основе настроек доменов
+    
+    Returns:
+        True если домен URL находится в списке доменов для автоматического использования прокси
+    """
+    from eventshock_auth.models import SystemSettings
+    
+    try:
+        system_settings = SystemSettings.get_settings()
+        
+        # Если список доменов не настроен, возвращаем False
+        if not system_settings.proxy_domains:
+            return False
+        
+        # Парсим URL для получения домена
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        # Если домен пустой (например, относительный URL), возвращаем False
+        if not domain:
+            return False
+        
+        # Убираем порт из домена, если он есть
+        if ':' in domain:
+            domain = domain.split(':')[0]
+        
+        # Получаем список доменов из настроек (разделяем по переносу строки и запятой)
+        proxy_domains_text = system_settings.proxy_domains.strip()
+        if not proxy_domains_text:
+            return False
+        
+        # Разделяем домены по переносу строки и запятой, очищаем от пробелов
+        domains = []
+        for line in proxy_domains_text.split('\n'):
+            for item in line.split(','):
+                item = item.strip().lower()
+                if item:
+                    domains.append(item)
+        
+        # Проверяем, входит ли домен URL в список
+        for proxy_domain in domains:
+            proxy_domain = proxy_domain.strip().lower()
+            if not proxy_domain:
+                continue
+            
+            # Точное совпадение домена
+            if domain == proxy_domain:
+                logger.info(f"Domain {domain} matches proxy domain {proxy_domain}, will use proxy")
+                return True
+            
+            # Проверка поддоменов (например, subdomain.example.com для example.com)
+            if domain.endswith('.' + proxy_domain):
+                logger.info(f"Domain {domain} is subdomain of {proxy_domain}, will use proxy")
+                return True
+        
+        return False
+    except Exception as e:
+        logger.error(f"Error checking proxy domain: {e}")
+        return False
+
+
 def download_via_proxy(url: str, headers: dict, timeout: int = 600) -> Optional[requests.Response]:
     """
     Пытается скачать файл через прокси-сервисы
@@ -1504,31 +1567,50 @@ def upload_from_url(request):
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Could not parse Content-Length: {content_length}, error: {e}")
             
+            # Проверяем, нужно ли использовать прокси для этого домена
+            use_proxy_immediately = should_use_proxy_for_domain(file_url)
+            
             # Скачиваем файл с увеличенным таймаутом для больших файлов
             logger.info(f"Starting GET request to download file...")
             response = None
-            try:
-                response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
-                response.raise_for_status()
-            except (requests.exceptions.RequestException, requests.exceptions.HTTPError) as e:
-                # Если первая попытка не удалась, пробуем через прокси
-                logger.warning(f"Direct download failed: {e}, attempting via proxy...")
-                if response:
-                    try:
-                        response.close()
-                    except:
-                        pass
-                
+            
+            if use_proxy_immediately:
+                # Если домен в списке для автоматического использования прокси, используем прокси сразу
+                logger.info(f"Domain requires proxy, using proxy immediately for: {file_url[:100]}...")
                 proxy_response = download_via_proxy(file_url, headers, timeout=600)
                 if proxy_response:
                     response = proxy_response
                     use_proxy = True
                     proxy_attempted = True
-                    logger.info("Successfully retrying download via proxy")
+                    logger.info("Successfully downloaded via proxy (automatic)")
                 else:
-                    # Если прокси тоже не помог, возвращаем ошибку
-                    error_msg = f'Не удалось скачать файл: {str(e)}. Попытка через прокси также не удалась.'
+                    # Если прокси не помог, возвращаем ошибку
+                    error_msg = 'Не удалось скачать файл через прокси. Домен требует использования прокси.'
                     return create_json_response(False, error_msg, status=500)
+            else:
+                # Пытаемся прямую загрузку сначала
+                try:
+                    response = requests.get(file_url, headers=headers, timeout=600, stream=True, allow_redirects=True)
+                    response.raise_for_status()
+                except (requests.exceptions.RequestException, requests.exceptions.HTTPError) as e:
+                    # Если первая попытка не удалась, пробуем через прокси
+                    logger.warning(f"Direct download failed: {e}, attempting via proxy...")
+                    if response:
+                        try:
+                            response.close()
+                        except:
+                            pass
+                    
+                    proxy_response = download_via_proxy(file_url, headers, timeout=600)
+                    if proxy_response:
+                        response = proxy_response
+                        use_proxy = True
+                        proxy_attempted = True
+                        logger.info("Successfully retrying download via proxy")
+                    else:
+                        # Если прокси тоже не помог, возвращаем ошибку
+                        error_msg = f'Не удалось скачать файл: {str(e)}. Попытка через прокси также не удалась.'
+                        return create_json_response(False, error_msg, status=500)
             
             # Проверяем, не вернул ли Google Drive HTML страницу (например, для больших файлов требуется подтверждение)
             content_type = response.headers.get('Content-Type', '')

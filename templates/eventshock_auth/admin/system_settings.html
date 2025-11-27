@@ -65,6 +65,21 @@
                 </small>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label">Домены для автоматического использования прокси</label>
+                <textarea class="form-control" name="proxy_domains" rows="5" 
+                          placeholder="example.com&#10;another-domain.com&#10;subdomain.example.org">{{ settings.proxy_domains|default:'' }}</textarea>
+                <small class="text-muted">
+                    Список доменов (по одному на строку), для которых сразу использовать прокси при загрузке файлов.
+                    <br>Если домен указан в этом списке, прокси будет использован сразу, без попытки прямой загрузки.
+                    <br><strong>Примеры:</strong>
+                    <br>- <code>example.com</code> - будет использован прокси для всех URL с этим доменом
+                    <br>- <code>subdomain.example.com</code> - только для конкретного поддомена
+                    <br>- <code>example.org</code> - другой домен
+                    <br>Оставьте пустым, если не нужно автоматически использовать прокси для определенных доменов.
+                </small>
+            </div>
+
             <button type="submit" class="btn btn-primary">Сохранить</button>
         </form>
     </div>
