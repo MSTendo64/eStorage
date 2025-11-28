@@ -802,6 +802,123 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
         return None
 
 
+def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
+    """
+    Пытается скачать видео с TikTok используя yt-dlp
+    
+    Возвращает путь к скачанному файлу или None если не удалось
+    """
+    try:
+        import yt_dlp
+        
+        # Создаем временную директорию для загрузки
+        temp_dir = tempfile.mkdtemp()
+        
+        # Настройки yt-dlp для TikTok
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Предпочитаем MP4
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID вместо title
+            'quiet': True,  # Уменьшаем вывод
+            'no_warnings': False,
+            'extract_flat': False,
+            'writeinfojson': False,
+            'writethumbnail': False,
+            'noplaylist': True,  # Только одно видео
+            'ignoreerrors': False,
+            'no_check_certificate': False,
+        }
+        
+        logger.info(f"Attempting to download TikTok video using yt-dlp: {tiktok_url}")
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            try:
+                # Получаем информацию о видео
+                info = ydl.extract_info(tiktok_url, download=False)
+                
+                if not info:
+                    logger.warning("yt-dlp could not extract video info from TikTok URL")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return None
+                
+                # Проверяем, есть ли видео
+                if info.get('_type') == 'playlist':
+                    logger.warning("TikTok URL returned playlist, not a single video")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return None
+                
+                # Проверяем наличие видео URL или форматов
+                has_video = False
+                if 'url' in info:
+                    has_video = True
+                elif 'formats' in info and info['formats']:
+                    # Проверяем, есть ли видео форматы
+                    for fmt in info['formats']:
+                        if fmt.get('vcodec') != 'none':  # Есть видео кодек
+                            has_video = True
+                            break
+                
+                if not has_video:
+                    logger.warning("No video found in TikTok URL")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return None
+                
+                logger.info(f"yt-dlp found video, starting download...")
+                
+                # Скачиваем видео
+                ydl.download([tiktok_url])
+                
+                # Ищем скачанный файл (исключаем служебные файлы)
+                downloaded_files = [
+                    f for f in os.listdir(temp_dir) 
+                    if os.path.isfile(os.path.join(temp_dir, f)) 
+                    and not f.endswith(('.json', '.description', '.info', '.jpg', '.png', '.webp'))
+                ]
+                
+                if downloaded_files:
+                    video_file = os.path.join(temp_dir, downloaded_files[0])
+                    logger.info(f"TikTok video downloaded successfully: {video_file} ({os.path.getsize(video_file)} bytes)")
+                    return video_file
+                else:
+                    logger.warning("TikTok video file not found after download")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return None
+                    
+            except Exception as e:
+                logger.error(f"Error downloading TikTok video with yt-dlp: {e}", exc_info=True)
+                # Логируем детали ошибки для диагностики
+                error_details = {
+                    'error_type': type(e).__name__,
+                    'error_message': str(e),
+                    'tiktok_url': tiktok_url[:100] if tiktok_url else None,
+                }
+                logger.error(f"yt-dlp error details: {error_details}")
+                # Удаляем временную директорию при ошибке
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception as cleanup_error:
+                    logger.warning(f"Error cleaning up temp directory: {cleanup_error}")
+                return None
+                
+    except ImportError:
+        logger.warning("yt-dlp is not installed, cannot download TikTok videos")
+        return None
+    except Exception as e:
+        logger.error(f"Error in download_tiktok_video_with_ytdlp: {e}", exc_info=True)
+        return None
+
+
 def convert_pinterest_url(url: str) -> Optional[str]:
     """
     Преобразует Pinterest ссылку в прямую ссылку на медиа-файл (изображение или видео)
@@ -1513,6 +1630,146 @@ def upload_from_url(request):
                             'Ошибка загрузки. код: cloadres_000',
                             status=400
                         )
+        
+        # Проверяем TikTok
+        is_tiktok = False
+        parsed = urlparse(file_url)
+        tiktok_domains = ['tiktok.com', 'www.tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com', 'm.tiktok.com']
+        # Проверяем домен
+        if parsed.netloc in tiktok_domains:
+            is_tiktok = True
+        # Проверяем путь на наличие /video/ или /@ (формат @username/video/1234567890)
+        elif 'tiktok.com' in parsed.netloc.lower() and ('/video/' in parsed.path or '/@' in parsed.path):
+            is_tiktok = True
+        # Проверяем короткие ссылки vm.tiktok.com и vt.tiktok.com
+        elif parsed.netloc in ['vm.tiktok.com', 'vt.tiktok.com']:
+            is_tiktok = True
+        
+        if is_tiktok:
+            logger.info(f"Detected TikTok URL: {original_url}, attempting to download with yt-dlp")
+            
+            # Проверяем наличие yt-dlp перед использованием
+            try:
+                import yt_dlp
+                yt_dlp_version = yt_dlp.version.__version__ if hasattr(yt_dlp, 'version') else 'unknown'
+                logger.info(f"yt-dlp is available, version: {yt_dlp_version}")
+            except ImportError:
+                logger.warning("yt-dlp is not installed, cannot download TikTok videos")
+                return create_json_response(
+                    False,
+                    'Для загрузки видео из TikTok требуется yt-dlp. Пожалуйста, установите yt-dlp.',
+                    status=400
+                )
+            
+            # Пытаемся скачать видео через yt-dlp
+            downloaded_video_path = download_tiktok_video_with_ytdlp(original_url)
+            
+            if downloaded_video_path and os.path.exists(downloaded_video_path):
+                # Файл уже скачан через yt-dlp, обрабатываем его напрямую
+                logger.info(f"Successfully downloaded TikTok video using yt-dlp: {downloaded_video_path}")
+                
+                # Получаем текущую папку для загрузки
+                folder = None
+                if folder_id:
+                    try:
+                        folder = Folder.objects.get(id=folder_id, user=request.user)
+                    except Folder.DoesNotExist:
+                        pass
+                
+                # Подготовка папки пользователя
+                user_folder = ensure_user_folder_exists(request.user.id)
+                
+                # Получаем имя файла из скачанного файла
+                original_filename = os.path.basename(downloaded_video_path)
+                # Если имя файла не имеет расширения, добавляем .mp4
+                if '.' not in original_filename:
+                    original_filename += '.mp4'
+                filename = generate_unique_filename(user_folder, original_filename)
+                file_path = os.path.join(user_folder, filename)
+                
+                # Перемещаем файл из временной директории в постоянную
+                try:
+                    import shutil
+                    shutil.move(downloaded_video_path, file_path)
+                    
+                    # Получаем размер файла
+                    actual_size = os.path.getsize(file_path)
+                    logger.info(f"File moved successfully, size: {actual_size} bytes")
+                    
+                    # Проверяем размер файла
+                    if actual_size > settings.MAX_FILE_SIZE:
+                        os.remove(file_path)
+                        return create_json_response(
+                            False, 
+                            f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                            status=400
+                        )
+                    
+                    # Проверяем квоту хранилища
+                    quota_error = validate_storage_quota(request.user, actual_size, request)
+                    if quota_error:
+                        os.remove(file_path)
+                        return quota_error
+                    
+                    # Создаем запись в БД
+                    try:
+                        file = UserFile.objects.create(
+                            user=request.user,
+                            file=f'{request.user.id}/{filename}',
+                            filename=filename,
+                            file_size=actual_size,
+                            folder=folder
+                        )
+                        logger.info(f"File record created in DB: {file.id}")
+                    except Exception as e:
+                        logger.error(f"Error creating file record in DB: {e}")
+                        if os.path.exists(file_path):
+                            try:
+                                os.remove(file_path)
+                            except:
+                                pass
+                        return create_json_response(
+                            False,
+                            f'Ошибка при создании записи файла: {str(e)}',
+                            status=500
+                        )
+                    
+                    # Создаем токен для скачивания
+                    generate_download_token(file)
+                    
+                    # Удаляем временную директорию
+                    try:
+                        temp_dir = os.path.dirname(downloaded_video_path)
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    
+                    return create_json_response(True, SUCCESS_FILE_UPLOADED)
+                    
+                except Exception as e:
+                    logger.error(f"Error moving downloaded TikTok video file: {e}")
+                    # Удаляем временный файл
+                    try:
+                        if os.path.exists(downloaded_video_path):
+                            os.remove(downloaded_video_path)
+                        temp_dir = os.path.dirname(downloaded_video_path)
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return create_json_response(
+                        False,
+                        f'Ошибка при сохранении скачанного видео: {str(e)}',
+                        status=500
+                    )
+            else:
+                # Если yt-dlp не смог скачать видео
+                return create_json_response(
+                    False,
+                    'Не удалось загрузить видео из TikTok. Убедитесь, что ссылка корректна и видео доступно.',
+                    status=400
+                )
         
         # Затем проверяем Google Drive
         google_drive_url = convert_google_drive_url(file_url)
