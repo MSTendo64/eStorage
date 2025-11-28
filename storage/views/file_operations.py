@@ -815,10 +815,11 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
         temp_dir = tempfile.mkdtemp()
         
         # Настройки yt-dlp для TikTok
+        # TikTok может требовать дополнительные опции для корректной работы
         ydl_opts = {
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Предпочитаем MP4
+            'format': 'best[ext=mp4]/best',  # Упрощаем формат для TikTok
             'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID вместо title
-            'quiet': True,  # Уменьшаем вывод
+            'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
             'writeinfojson': False,
@@ -826,13 +827,24 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
             'no_check_certificate': False,
+            # Дополнительные опции для TikTok
+            'extractor_args': {
+                'tiktok': {
+                    'webpage_download': True,
+                }
+            },
+            # User-Agent для обхода блокировок
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'referer': 'https://www.tiktok.com/',
         }
         
         logger.info(f"Attempting to download TikTok video using yt-dlp: {tiktok_url}")
+        logger.info(f"Temp directory: {temp_dir}")
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
                 # Получаем информацию о видео
+                logger.info("Extracting video info...")
                 info = ydl.extract_info(tiktok_url, download=False)
                 
                 if not info:
@@ -842,6 +854,8 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                     except:
                         pass
                     return None
+                
+                logger.info(f"Video info extracted. Title: {info.get('title', 'N/A')}, ID: {info.get('id', 'N/A')}")
                 
                 # Проверяем, есть ли видео
                 if info.get('_type') == 'playlist':
@@ -854,17 +868,24 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                 
                 # Проверяем наличие видео URL или форматов
                 has_video = False
+                video_url = None
                 if 'url' in info:
                     has_video = True
+                    video_url = info.get('url')
+                    logger.info(f"Found direct video URL: {video_url[:100] if video_url else 'N/A'}...")
                 elif 'formats' in info and info['formats']:
                     # Проверяем, есть ли видео форматы
+                    logger.info(f"Found {len(info['formats'])} formats")
                     for fmt in info['formats']:
                         if fmt.get('vcodec') != 'none':  # Есть видео кодек
                             has_video = True
+                            video_url = fmt.get('url')
+                            logger.info(f"Found video format: {fmt.get('format_id', 'N/A')}, vcodec: {fmt.get('vcodec', 'N/A')}")
                             break
                 
                 if not has_video:
                     logger.warning("No video found in TikTok URL")
+                    logger.warning(f"Available keys in info: {list(info.keys())}")
                     try:
                         shutil.rmtree(temp_dir)
                     except:
@@ -876,25 +897,61 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                 # Скачиваем видео
                 ydl.download([tiktok_url])
                 
+                logger.info(f"Download completed, checking temp directory: {temp_dir}")
+                
                 # Ищем скачанный файл (исключаем служебные файлы)
+                all_files = os.listdir(temp_dir)
+                logger.info(f"Files in temp directory: {all_files}")
+                
                 downloaded_files = [
-                    f for f in os.listdir(temp_dir) 
+                    f for f in all_files
                     if os.path.isfile(os.path.join(temp_dir, f)) 
-                    and not f.endswith(('.json', '.description', '.info', '.jpg', '.png', '.webp'))
+                    and not f.endswith(('.json', '.description', '.info', '.jpg', '.png', '.webp', '.info.json'))
                 ]
+                
+                logger.info(f"Filtered video files: {downloaded_files}")
                 
                 if downloaded_files:
                     video_file = os.path.join(temp_dir, downloaded_files[0])
-                    logger.info(f"TikTok video downloaded successfully: {video_file} ({os.path.getsize(video_file)} bytes)")
+                    file_size = os.path.getsize(video_file)
+                    logger.info(f"TikTok video downloaded successfully: {video_file} ({file_size} bytes)")
+                    
+                    # Проверяем, что файл не пустой
+                    if file_size == 0:
+                        logger.warning("Downloaded file is empty")
+                        try:
+                            shutil.rmtree(temp_dir)
+                        except:
+                            pass
+                        return None
+                    
                     return video_file
                 else:
                     logger.warning("TikTok video file not found after download")
+                    logger.warning(f"All files in directory: {all_files}")
                     try:
                         shutil.rmtree(temp_dir)
                     except:
                         pass
                     return None
                     
+            except yt_dlp.utils.DownloadError as e:
+                logger.error(f"yt-dlp DownloadError: {e}", exc_info=True)
+                error_msg = str(e)
+                # Пытаемся извлечь более понятное сообщение об ошибке
+                if 'Private video' in error_msg or 'private' in error_msg.lower():
+                    logger.error("TikTok video is private or unavailable")
+                elif 'not available' in error_msg.lower() or 'unavailable' in error_msg.lower():
+                    logger.error("TikTok video is not available")
+                elif 'age-restricted' in error_msg.lower():
+                    logger.error("TikTok video is age-restricted")
+                
+                # Удаляем временную директорию при ошибке
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception as cleanup_error:
+                    logger.warning(f"Error cleaning up temp directory: {cleanup_error}")
+                return None
             except Exception as e:
                 logger.error(f"Error downloading TikTok video with yt-dlp: {e}", exc_info=True)
                 # Логируем детали ошибки для диагностики
@@ -1764,10 +1821,20 @@ def upload_from_url(request):
                         status=500
                     )
             else:
-                # Если yt-dlp не смог скачать видео
+                # Если yt-dlp не смог скачать видео, проверяем логи для более детальной информации
+                logger.error(f"Failed to download TikTok video from URL: {original_url}")
+                # Проверяем, может быть это проблема с доступом или форматом URL
+                error_message = 'Не удалось загрузить видео из TikTok. '
+                
+                # Проверяем, может быть нужна другая версия URL
+                if 'vm.tiktok.com' in original_url or 'vt.tiktok.com' in original_url:
+                    error_message += 'Попробуйте использовать полную ссылку с www.tiktok.com'
+                else:
+                    error_message += 'Убедитесь, что ссылка корректна, видео доступно и не является приватным.'
+                
                 return create_json_response(
                     False,
-                    'Не удалось загрузить видео из TikTok. Убедитесь, что ссылка корректна и видео доступно.',
+                    error_message,
                     status=400
                 )
         
