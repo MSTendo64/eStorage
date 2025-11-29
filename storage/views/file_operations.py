@@ -995,7 +995,8 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             # Приоритет: лучшее видео + лучший звук (объединяется автоматически), затем лучшее комбинированное, затем лучшее MP4, затем любое лучшее
             # Формат bestvideo+bestaudio автоматически объединит видео и аудио в один файл
             'format': 'bestvideo+bestaudio/best',
-            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID вместо title
+            # Используем название видео, yt-dlp автоматически очистит недопустимые символы
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
@@ -1010,6 +1011,8 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
+            # Очищаем название от недопустимых символов для файловой системы
+            'restrictfilenames': False,  # Разрешаем использовать оригинальное название
         }
         
         logger.info(f"Attempting to download YouTube video using yt-dlp: {youtube_url}")
@@ -2081,6 +2084,15 @@ def upload_from_url(request):
                     # Если имя файла не имеет расширения, добавляем .mp4
                     if '.' not in original_filename:
                         original_filename += '.mp4'
+                    # Очищаем имя файла от недопустимых символов для Windows
+                    # yt-dlp уже очистил основные символы, но проверим еще раз
+                    import re
+                    # Удаляем недопустимые символы для Windows: < > : " / \ | ? *
+                    original_filename = re.sub(r'[<>:"/\\|?*]', '', original_filename)
+                    # Ограничиваем длину имени файла (Windows ограничение ~260 символов для пути)
+                    if len(original_filename) > 200:
+                        name, ext = os.path.splitext(original_filename)
+                        original_filename = name[:200] + ext
                     filename = generate_unique_filename(user_folder, original_filename)
                     file_path = os.path.join(user_folder, filename)
                     

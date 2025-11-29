@@ -1432,7 +1432,37 @@ async function uploadFromUrl() {
     }
     
     try {
-        updateUploadUrlProgress(10, 'Отправка запроса...');
+        // Определяем тип URL для показа соответствующих этапов
+        const urlObj = new URL(fileUrl);
+        const hostname = urlObj.hostname.toLowerCase();
+        let urlType = 'файл';
+        let isVideoPlatform = false;
+        
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+            urlType = 'YouTube';
+            isVideoPlatform = true;
+        } else if (hostname.includes('tiktok.com')) {
+            urlType = 'TikTok';
+            isVideoPlatform = true;
+        } else if (hostname.includes('pinterest.com') || hostname.includes('pinterest.ru')) {
+            urlType = 'Pinterest';
+            isVideoPlatform = true;
+        } else if (hostname.includes('drive.google.com') || hostname.includes('docs.google.com')) {
+            urlType = 'Google Drive';
+        }
+        
+        updateUploadUrlProgress(5, 'Анализ URL...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        updateUploadUrlProgress(10, `Определен источник: ${urlType}`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        if (isVideoPlatform) {
+            updateUploadUrlProgress(15, 'Подготовка к загрузке видео...');
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        updateUploadUrlProgress(20, 'Отправка запроса на сервер...');
         
         const response = await fetch('{% url "upload_from_url" %}', {
             method: 'POST',
@@ -1445,6 +1475,8 @@ async function uploadFromUrl() {
                 folder_id: folderId ? parseInt(folderId) : null
             })
         });
+        
+        updateUploadUrlProgress(30, 'Запрос отправлен, ожидание ответа...');
         
         // Проверяем Content-Type перед парсингом JSON
         const contentType = response.headers.get('content-type');
@@ -1471,11 +1503,27 @@ async function uploadFromUrl() {
             return;
         }
         
-        updateUploadUrlProgress(30, 'Скачивание файла...');
+        updateUploadUrlProgress(40, isVideoPlatform ? 'Извлечение информации о видео...' : 'Получение информации о файле...');
+        
+        // Симулируем прогресс во время обработки на сервере
+        const progressInterval = setInterval(() => {
+            const currentPercent = parseInt(document.getElementById('uploadUrlProgress').style.width) || 40;
+            if (currentPercent < 85) {
+                const newPercent = Math.min(currentPercent + 2, 85);
+                updateUploadUrlProgress(newPercent, isVideoPlatform ? 'Скачивание видео...' : 'Скачивание файла...');
+            }
+        }, 1000);
         
         const data = await response.json();
         
+        clearInterval(progressInterval);
+        
+        updateUploadUrlProgress(90, 'Обработка файла...');
+        
         if (data.success) {
+            updateUploadUrlProgress(95, 'Сохранение файла...');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             updateUploadUrlProgress(100, 'Загрузка завершена!');
             
             // Небольшая задержка перед закрытием для показа 100%
