@@ -365,7 +365,7 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
     let newHeight = resizeStart.height + deltaY;
     
     // Минимальные размеры с учетом шапки и элементов управления плеера
-    const headerHeight = 24;
+    const headerHeight = 20;
     const controlsHeight = 80;
     const isMobile = window.innerWidth <= 767.98;
     const minWidth = isMobile ? window.innerWidth * 0.9 : 400;
@@ -662,7 +662,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     // Очищаем предыдущий плеер если он существует
     if (globalPlayer) {
         try {
-            globalPlayer.destroy();
+            if (typeof globalPlayer.destroy === 'function') {
+                globalPlayer.destroy();
+            } else if (globalPlayer.dispose && typeof globalPlayer.dispose === 'function') {
+                globalPlayer.dispose();
+            }
         } catch(e) {
             console.error('Error destroying player:', e);
         }
@@ -849,7 +853,7 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                         const modalBody = modalContent.querySelector('.modal-body');
                         if (modalBody) {
                             const header = modalContent.querySelector('.unified-player-header');
-                            const headerHeight = header ? header.offsetHeight : 24;
+                            const headerHeight = header ? header.offsetHeight : 20;
                             modalBody.style.height = (optimalHeight - headerHeight) + 'px';
                             modalBody.style.minHeight = (optimalHeight - headerHeight) + 'px';
                             modalBody.style.maxHeight = (optimalHeight - headerHeight) + 'px';
@@ -993,7 +997,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         // Уничтожаем плеер при закрытии
         if (globalPlayer) {
             try {
-                globalPlayer.destroy();
+                if (typeof globalPlayer.destroy === 'function') {
+                    globalPlayer.destroy();
+                } else if (globalPlayer.dispose && typeof globalPlayer.dispose === 'function') {
+                    globalPlayer.dispose();
+                }
                 globalPlayer = null;
             } catch(e) {
                 console.error('Error destroying player:', e);
