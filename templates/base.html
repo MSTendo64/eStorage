@@ -1324,12 +1324,23 @@
         font-size: 13px !important;
         white-space: nowrap !important;
         pointer-events: none !important;
-        opacity: 1 !important;
-        visibility: visible !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
         display: block !important;
         min-width: auto !important;
         max-width: none !important;
         transform: translateX(-50%) !important;
+        transition: opacity 0.2s ease, visibility 0.2s ease !important;
+    }
+
+    /* Показываем tooltip только при наведении */
+    .plyr__control:hover .plyr__tooltip,
+    .plyr__progress__container:hover .plyr__tooltip,
+    .plyr__progress:hover .plyr__tooltip,
+    .plyr__control[aria-expanded="true"] .plyr__tooltip,
+    .plyr__progress__container[aria-valuenow] .plyr__tooltip {
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
     .plyr__tooltip::before {
@@ -1347,8 +1358,6 @@
 
     .plyr__tooltip__content {
         display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
         color: #fff !important;
         font-weight: 500 !important;
     }
@@ -2320,23 +2329,6 @@ function initUnifiedPlayer(selector, options = {}) {
     
     const player = new Plyr(selector, { ...defaultOptions, ...options });
     
-    // Исправление отображения tooltip времени на полосе прокрутки
-    if (player && player.elements) {
-        // Убеждаемся, что tooltip правильно отображается
-        const progressContainer = player.elements.progress;
-        if (progressContainer && progressContainer.addEventListener) {
-            // Добавляем обработчик для правильного позиционирования tooltip
-            progressContainer.addEventListener('mousemove', function(e) {
-                const tooltip = progressContainer.querySelector('.plyr__tooltip');
-                if (tooltip) {
-                    tooltip.style.display = 'block';
-                    tooltip.style.visibility = 'visible';
-                    tooltip.style.opacity = '1';
-                }
-            });
-        }
-    }
-    
     // Исправление меню настроек - убеждаемся, что подменю не обрезается
     if (player) {
         // Получаем DOM элемент плеера
@@ -2349,35 +2341,8 @@ function initUnifiedPlayer(selector, options = {}) {
         }
         
         if (playerContainer) {
-            // Используем делегирование событий для кнопки настроек
-            playerContainer.addEventListener('click', function(e) {
-                const target = e.target.closest('[data-plyr="settings"]');
-                if (target) {
-                    // После открытия меню настроек проверяем позицию подменю
-                    setTimeout(() => {
-                        const speedControl = playerContainer.querySelector('[data-plyr="speed"]');
-                        if (speedControl) {
-                            const speedMenu = speedControl.querySelector('.plyr__menu');
-                            if (speedMenu) {
-                                // Проверяем, помещается ли меню справа
-                                const rect = speedControl.getBoundingClientRect();
-                                const menuRect = speedMenu.getBoundingClientRect();
-                                const viewportWidth = window.innerWidth;
-                                
-                                // Если меню не помещается справа, открываем влево
-                                if (rect.right + menuRect.width > viewportWidth) {
-                                    speedMenu.style.left = 'auto';
-                                    speedMenu.style.right = '100%';
-                                    speedMenu.style.marginLeft = '0';
-                                    speedMenu.style.marginRight = '4px';
-                                }
-                            }
-                        }
-                    }, 50);
-                }
-            });
-            
-            // Также отслеживаем изменения атрибута aria-expanded для скорости
+            // Отслеживаем изменения атрибута aria-expanded для скорости через MutationObserver
+            // Это не мешает работе кнопки настроек
             const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded') {
@@ -2390,6 +2355,7 @@ function initUnifiedPlayer(selector, options = {}) {
                                     const menuRect = speedMenu.getBoundingClientRect();
                                     const viewportWidth = window.innerWidth;
                                     
+                                    // Если меню не помещается справа, открываем влево
                                     if (rect.right + menuRect.width > viewportWidth) {
                                         speedMenu.style.left = 'auto';
                                         speedMenu.style.right = '100%';
