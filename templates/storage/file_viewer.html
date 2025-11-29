@@ -636,6 +636,94 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
             globalPlayer = initUnifiedPlayer(playerElement);
+            
+            // Для видео добавляем обработчик для автоматической адаптации размера окна
+            if (type === 'video') {
+                // Получаем video элемент (может быть напрямую или через Plyr)
+                let videoElement = null;
+                if (playerElement.tagName === 'VIDEO') {
+                    videoElement = playerElement;
+                } else if (globalPlayer && globalPlayer.media && globalPlayer.media.tagName === 'VIDEO') {
+                    videoElement = globalPlayer.media;
+                }
+                
+                if (videoElement) {
+                    // Функция для адаптации размера окна под размер видео
+                    const adaptWindowToVideoSize = () => {
+                        if (!modalDialog || !modalContent) return;
+                        
+                        const videoWidth = videoElement.videoWidth;
+                        const videoHeight = videoElement.videoHeight;
+                        
+                        // Если размеры видео еще не загружены, ждем
+                        if (!videoWidth || !videoHeight) return;
+                        
+                        const isMobile = window.innerWidth <= 767.98;
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // Вычисляем соотношение сторон видео
+                        const videoAspectRatio = videoWidth / videoHeight;
+                        
+                        // Максимальные размеры с учетом viewport
+                        const maxWidth = isMobile ? Math.min(400, viewportWidth - 32) : Math.min(1200, viewportWidth * 0.7);
+                        const maxHeight = isMobile ? viewportHeight - 32 : viewportHeight * 0.85;
+                        
+                        // Вычисляем оптимальный размер окна на основе реального соотношения сторон видео
+                        let optimalWidth = maxWidth;
+                        let optimalHeight = optimalWidth / videoAspectRatio;
+                        
+                        // Если высота превышает максимум, пересчитываем по высоте
+                        if (optimalHeight > maxHeight) {
+                            optimalHeight = maxHeight;
+                            optimalWidth = optimalHeight * videoAspectRatio;
+                        }
+                        
+                        // Минимальные размеры
+                        const minWidth = isMobile ? viewportWidth * 0.9 : 400;
+                        const minHeight = isMobile ? viewportHeight * 0.7 : 300;
+                        
+                        // Убеждаемся, что размеры не меньше минимума
+                        if (optimalWidth < minWidth) {
+                            optimalWidth = minWidth;
+                            optimalHeight = optimalWidth / videoAspectRatio;
+                        }
+                        if (optimalHeight < minHeight) {
+                            optimalHeight = minHeight;
+                            optimalWidth = optimalHeight * videoAspectRatio;
+                        }
+                        
+                        // Применяем размеры к модальному окну
+                        modalDialog.style.width = optimalWidth + 'px';
+                        modalDialog.style.maxWidth = optimalWidth + 'px';
+                        modalDialog.style.height = optimalHeight + 'px';
+                        modalDialog.style.maxHeight = optimalHeight + 'px';
+                        
+                        modalContent.style.width = '100%';
+                        modalContent.style.height = '100%';
+                        modalContent.style.maxWidth = '100%';
+                        modalContent.style.maxHeight = '100%';
+                        
+                        // Обновляем размер modal-body
+                        const modalBody = modalContent.querySelector('.modal-body');
+                        if (modalBody) {
+                            const header = modalContent.querySelector('.unified-player-header');
+                            const headerHeight = header ? header.offsetHeight : 24;
+                            modalBody.style.height = (optimalHeight - headerHeight) + 'px';
+                            modalBody.style.minHeight = (optimalHeight - headerHeight) + 'px';
+                            modalBody.style.maxHeight = (optimalHeight - headerHeight) + 'px';
+                        }
+                    };
+                    
+                    // Обработчик для получения метаданных видео
+                    videoElement.addEventListener('loadedmetadata', adaptWindowToVideoSize);
+                    
+                    // Также проверяем, если метаданные уже загружены
+                    if (videoElement.readyState >= 1) {
+                        setTimeout(adaptWindowToVideoSize, 100);
+                    }
+                }
+            }
         }
     }
     
@@ -676,6 +764,24 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.height = size + 'px';
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
+        } else if (type === 'video') {
+            // Для видео устанавливаем временный размер (будет обновлен после загрузки метаданных)
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const maxWidth = isMobile ? Math.min(400, viewportWidth - 32) : Math.min(1200, viewportWidth * 0.7);
+            const maxHeight = isMobile ? viewportHeight - 32 : viewportHeight * 0.85;
+            
+            // Временный размер (16:9), будет обновлен после загрузки метаданных
+            const tempHeight = maxWidth / (16 / 9);
+            modalDialog.style.width = maxWidth + 'px';
+            modalDialog.style.maxWidth = maxWidth + 'px';
+            modalDialog.style.height = Math.min(tempHeight, maxHeight) + 'px';
+            modalDialog.style.maxHeight = maxHeight + 'px';
+            
+            modalContent.style.width = '100%';
+            modalContent.style.height = '100%';
+            modalContent.style.maxWidth = '100%';
+            modalContent.style.maxHeight = '100%';
         } else {
             // На мобильных используем нормальный размер (не на весь экран)
             if (isMobile) {
@@ -698,14 +804,7 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                 const maxWidth = Math.min(1200, viewportWidth * 0.7);
                 const maxHeight = viewportHeight * 0.85;
                 
-                // Для видео используем соотношение 16:9, для других файлов - адаптивно
-                if (type === 'video') {
-                    const videoHeight = maxWidth / (16 / 9);
-                    modalDialog.style.width = maxWidth + 'px';
-                    modalDialog.style.maxWidth = maxWidth + 'px';
-                    modalDialog.style.height = Math.min(videoHeight, maxHeight) + 'px';
-                    modalDialog.style.maxHeight = maxHeight + 'px';
-                } else if (type === 'audio') {
+                if (type === 'audio') {
                     modalDialog.style.width = maxWidth + 'px';
                     modalDialog.style.maxWidth = maxWidth + 'px';
                     modalDialog.style.height = 'auto';
