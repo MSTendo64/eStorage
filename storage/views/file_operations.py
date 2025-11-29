@@ -1005,10 +1005,8 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             'ignoreerrors': False,
             'no_check_certificate': False,
             # Объединяем видео и аудио в один файл MP4 (если они были разделены)
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
+            # FFmpegVideoConvertor может не существовать, используем FFmpegMerger для объединения
+            'postprocessors': [],
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
@@ -2036,141 +2034,150 @@ def upload_from_url(request):
         is_youtube = False
         parsed = urlparse(file_url)
         youtube_domains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com', 'youtube-nocookie.com']
-        # Проверяем домен
-        if parsed.netloc in youtube_domains or 'youtube.com' in parsed.netloc.lower():
+        # Проверяем домен (включая youtu.be)
+        if parsed.netloc in youtube_domains or 'youtube.com' in parsed.netloc.lower() or 'youtu.be' in parsed.netloc.lower():
             is_youtube = True
         # Проверяем путь на наличие /watch, /embed/, /v/ или короткие ссылки youtu.be
-        elif 'youtu.be' in parsed.netloc.lower() or '/watch' in parsed.path or '/embed/' in parsed.path or '/v/' in parsed.path:
+        elif '/watch' in parsed.path or '/embed/' in parsed.path or '/v/' in parsed.path:
             is_youtube = True
         
         if is_youtube:
             logger.info(f"Detected YouTube URL: {original_url}, attempting to download with yt-dlp")
             
-            # Проверяем наличие yt-dlp перед использованием
             try:
-                import yt_dlp
-                yt_dlp_version = yt_dlp.version.__version__ if hasattr(yt_dlp, 'version') else 'unknown'
-                logger.info(f"yt-dlp is available, version: {yt_dlp_version}")
-            except ImportError:
-                logger.warning("yt-dlp is not installed, cannot download YouTube videos")
-                return create_json_response(
-                    False,
-                    'Для загрузки видео с YouTube требуется yt-dlp. Пожалуйста, установите yt-dlp.',
-                    status=400
-                )
-            
-            # Пытаемся скачать видео через yt-dlp
-            downloaded_video_path = download_youtube_video_with_ytdlp(original_url)
-            
-            if downloaded_video_path and os.path.exists(downloaded_video_path):
-                # Файл уже скачан через yt-dlp, обрабатываем его напрямую
-                logger.info(f"Successfully downloaded YouTube video using yt-dlp: {downloaded_video_path}")
-                
-                # Получаем текущую папку для загрузки
-                folder = None
-                if folder_id:
-                    try:
-                        folder = Folder.objects.get(id=folder_id, user=request.user)
-                    except Folder.DoesNotExist:
-                        pass
-                
-                # Подготовка папки пользователя
-                user_folder = ensure_user_folder_exists(request.user.id)
-                
-                # Получаем имя файла из скачанного файла
-                original_filename = os.path.basename(downloaded_video_path)
-                # Если имя файла не имеет расширения, добавляем .mp4
-                if '.' not in original_filename:
-                    original_filename += '.mp4'
-                filename = generate_unique_filename(user_folder, original_filename)
-                file_path = os.path.join(user_folder, filename)
-                
-                # Перемещаем файл из временной директории в постоянную
+                # Проверяем наличие yt-dlp перед использованием
                 try:
-                    import shutil
-                    shutil.move(downloaded_video_path, file_path)
-                    
-                    # Получаем размер файла
-                    actual_size = os.path.getsize(file_path)
-                    logger.info(f"File moved successfully, size: {actual_size} bytes")
-                    
-                    # Проверяем размер файла
-                    if actual_size > settings.MAX_FILE_SIZE:
-                        os.remove(file_path)
-                        return create_json_response(
-                            False, 
-                            f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
-                            status=400
-                        )
-                    
-                    # Проверяем квоту хранилища
-                    quota_error = validate_storage_quota(request.user, actual_size, request)
-                    if quota_error:
-                        os.remove(file_path)
-                        return quota_error
-                    
-                    # Создаем запись в БД
-                    try:
-                        file = UserFile.objects.create(
-                            user=request.user,
-                            file=f'{request.user.id}/{filename}',
-                            filename=filename,
-                            file_size=actual_size,
-                            folder=folder
-                        )
-                        logger.info(f"File record created in DB: {file.id}")
-                    except Exception as e:
-                        logger.error(f"Error creating file record in DB: {e}")
-                        if os.path.exists(file_path):
-                            try:
-                                os.remove(file_path)
-                            except:
-                                pass
-                        return create_json_response(
-                            False,
-                            f'Ошибка при создании записи файла: {str(e)}',
-                            status=500
-                        )
-                    
-                    # Создаем токен для скачивания
-                    generate_download_token(file)
-                    
-                    # Удаляем временную директорию
-                    try:
-                        temp_dir = os.path.dirname(downloaded_video_path)
-                        if os.path.exists(temp_dir):
-                            shutil.rmtree(temp_dir)
-                    except:
-                        pass
-                    
-                    return create_json_response(True, SUCCESS_FILE_UPLOADED)
-                    
-                except Exception as e:
-                    logger.error(f"Error moving downloaded YouTube video file: {e}")
-                    # Удаляем временный файл
-                    try:
-                        if os.path.exists(downloaded_video_path):
-                            os.remove(downloaded_video_path)
-                        temp_dir = os.path.dirname(downloaded_video_path)
-                        if os.path.exists(temp_dir):
-                            shutil.rmtree(temp_dir)
-                    except:
-                        pass
+                    import yt_dlp
+                    yt_dlp_version = yt_dlp.version.__version__ if hasattr(yt_dlp, 'version') else 'unknown'
+                    logger.info(f"yt-dlp is available, version: {yt_dlp_version}")
+                except ImportError:
+                    logger.warning("yt-dlp is not installed, cannot download YouTube videos")
                     return create_json_response(
                         False,
-                        f'Ошибка при сохранении скачанного видео: {str(e)}',
-                        status=500
+                        'Для загрузки видео с YouTube требуется yt-dlp. Пожалуйста, установите yt-dlp.',
+                        status=400
                     )
-            else:
-                # Если yt-dlp не смог скачать видео, проверяем логи для более детальной информации
-                logger.error(f"Failed to download YouTube video from URL: {original_url}")
-                error_message = 'Не удалось загрузить видео с YouTube. '
-                error_message += 'Убедитесь, что ссылка корректна, видео доступно и не заблокировано.'
                 
+                # Пытаемся скачать видео через yt-dlp
+                downloaded_video_path = download_youtube_video_with_ytdlp(original_url)
+                
+                if downloaded_video_path and os.path.exists(downloaded_video_path):
+                    # Файл уже скачан через yt-dlp, обрабатываем его напрямую
+                    logger.info(f"Successfully downloaded YouTube video using yt-dlp: {downloaded_video_path}")
+                    
+                    # Получаем текущую папку для загрузки
+                    folder = None
+                    if folder_id:
+                        try:
+                            folder = Folder.objects.get(id=folder_id, user=request.user)
+                        except Folder.DoesNotExist:
+                            pass
+                    
+                    # Подготовка папки пользователя
+                    user_folder = ensure_user_folder_exists(request.user.id)
+                    
+                    # Получаем имя файла из скачанного файла
+                    original_filename = os.path.basename(downloaded_video_path)
+                    # Если имя файла не имеет расширения, добавляем .mp4
+                    if '.' not in original_filename:
+                        original_filename += '.mp4'
+                    filename = generate_unique_filename(user_folder, original_filename)
+                    file_path = os.path.join(user_folder, filename)
+                    
+                    # Перемещаем файл из временной директории в постоянную
+                    try:
+                        import shutil
+                        shutil.move(downloaded_video_path, file_path)
+                        
+                        # Получаем размер файла
+                        actual_size = os.path.getsize(file_path)
+                        logger.info(f"File moved successfully, size: {actual_size} bytes")
+                        
+                        # Проверяем размер файла
+                        if actual_size > settings.MAX_FILE_SIZE:
+                            os.remove(file_path)
+                            return create_json_response(
+                                False, 
+                                f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                                status=400
+                            )
+                        
+                        # Проверяем квоту хранилища
+                        quota_error = validate_storage_quota(request.user, actual_size, request)
+                        if quota_error:
+                            os.remove(file_path)
+                            return quota_error
+                        
+                        # Создаем запись в БД
+                        try:
+                            file = UserFile.objects.create(
+                                user=request.user,
+                                file=f'{request.user.id}/{filename}',
+                                filename=filename,
+                                file_size=actual_size,
+                                folder=folder
+                            )
+                            logger.info(f"File record created in DB: {file.id}")
+                        except Exception as e:
+                            logger.error(f"Error creating file record in DB: {e}")
+                            if os.path.exists(file_path):
+                                try:
+                                    os.remove(file_path)
+                                except:
+                                    pass
+                            return create_json_response(
+                                False,
+                                f'Ошибка при создании записи файла: {str(e)}',
+                                status=500
+                            )
+                        
+                        # Создаем токен для скачивания
+                        generate_download_token(file)
+                        
+                        # Удаляем временную директорию
+                        try:
+                            temp_dir = os.path.dirname(downloaded_video_path)
+                            if os.path.exists(temp_dir):
+                                shutil.rmtree(temp_dir)
+                        except:
+                            pass
+                        
+                        return create_json_response(True, SUCCESS_FILE_UPLOADED)
+                        
+                    except Exception as e:
+                        logger.error(f"Error moving downloaded YouTube video file: {e}")
+                        # Удаляем временный файл
+                        try:
+                            if os.path.exists(downloaded_video_path):
+                                os.remove(downloaded_video_path)
+                            temp_dir = os.path.dirname(downloaded_video_path)
+                            if os.path.exists(temp_dir):
+                                shutil.rmtree(temp_dir)
+                        except:
+                            pass
+                        return create_json_response(
+                            False,
+                            f'Ошибка при сохранении скачанного видео: {str(e)}',
+                            status=500
+                        )
+                else:
+                    # Если yt-dlp не смог скачать видео, проверяем логи для более детальной информации
+                    logger.error(f"Failed to download YouTube video from URL: {original_url}")
+                    error_message = 'Не удалось загрузить видео с YouTube. '
+                    error_message += 'Убедитесь, что ссылка корректна, видео доступно и не заблокировано.'
+                    
+                    return create_json_response(
+                        False,
+                        error_message,
+                        status=400
+                    )
+            except Exception as e:
+                # Обрабатываем любые неожиданные ошибки
+                logger.error(f"Unexpected error in YouTube download handler: {e}", exc_info=True)
                 return create_json_response(
                     False,
-                    error_message,
-                    status=400
+                    f'Ошибка при загрузке видео с YouTube: {str(e)}',
+                    status=500
                 )
         
         # Затем проверяем Google Drive
