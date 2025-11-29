@@ -1255,8 +1255,7 @@
         justify-content: center;
     }
     
-    .unified-player-content video,
-    .unified-player-content audio {
+    .unified-player-content video {
         width: auto;
         height: auto;
         max-width: none;
@@ -1264,6 +1263,14 @@
         min-width: 100%;
         min-height: 100%;
         object-fit: fill;
+    }
+    
+    .unified-player-content audio {
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        min-width: 100%;
+        min-height: auto;
     }
     
     .resize-handle {
@@ -1294,6 +1301,22 @@
     .video-js {
         width: 100%;
         height: 100%;
+    }
+    
+    /* Стили для Video.js аудио-плеера */
+    .video-js.audio-player,
+    .unified-player-content audio.video-js {
+        width: 100%;
+        height: auto;
+        min-height: 60px;
+        max-height: none;
+    }
+    
+    .unified-player-content.audio-container {
+        min-height: 60px;
+        height: auto;
+        align-items: flex-start;
+        padding: 10px;
     }
 
     .video-js .vjs-big-play-button {
@@ -2201,6 +2224,9 @@ function initUnifiedPlayer(selector, options = {}) {
         return initNativePlayer(selector, options);
     }
     
+    // Определяем, является ли это аудио элементом
+    const isAudio = mediaElement && (mediaElement.tagName === 'AUDIO' || mediaElement.classList.contains('audio-player'));
+    
     // По умолчанию используем Video.js
     const defaultOptions = {
         controls: true,
@@ -2220,12 +2246,21 @@ function initUnifiedPlayer(selector, options = {}) {
         plugins: {}
     };
     
+    // Для аудио используем специальные настройки
+    if (isAudio) {
+        defaultOptions.fluid = false;
+        defaultOptions.responsive = false;
+    }
+    
     // Если элемент уже является video-js элементом, используем его напрямую
     let videoElement = mediaElement;
     if (videoElement && !videoElement.classList.contains('video-js')) {
         // Если это обычный video элемент, оборачиваем его в Video.js
         if (videoElement.tagName === 'VIDEO' || videoElement.tagName === 'AUDIO') {
             videoElement.classList.add('video-js');
+            if (isAudio) {
+                videoElement.classList.add('audio-player');
+            }
             videoElement.setAttribute('data-setup', '{}');
         }
     }
@@ -2327,10 +2362,10 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
             playerClass = videoClass;
             break;
         case 'audio':
-            content = `<audio class="video-js vjs-default-skin" controls data-setup="{}" style="width: 100%;">
+            content = `<audio class="video-js vjs-default-skin audio-player" controls data-setup="{}" style="width: 100%; height: auto;">
                 <source src="${url}" type="audio/mpeg">
             </audio>`;
-            playerClass = 'video-js';
+            playerClass = 'video-js audio-player';
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
@@ -2375,6 +2410,9 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
         displayTitle = displayTitle.substring(0, 57) + '...';
     }
     
+    // Добавляем класс для аудио-контейнера
+    const contentClass = type === 'audio' ? 'unified-player-content audio-container' : 'unified-player-content';
+    
     return {
         html: `
             <div class="unified-player-header">
@@ -2384,7 +2422,7 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
                     ${closeBtn}
                 </div>
             </div>
-            <div class="unified-player-content">
+            <div class="${contentClass}">
                 ${content}
                 <div class="resize-handle"></div>
             </div>

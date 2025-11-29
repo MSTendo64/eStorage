@@ -92,13 +92,23 @@ html {
     object-fit: contain;
 }
 
-#previewContent video,
-#previewContent audio {
+#previewContent video {
     max-width: none;
     max-height: none;
     width: 100%;
     height: 100%;
     object-fit: fill;
+}
+
+#previewContent audio,
+#previewContent .video-js.audio-player,
+#previewContent audio.video-js {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    min-height: 60px;
+    max-height: none;
+    object-fit: none;
 }
 
 /* Стили для плеера */
@@ -107,6 +117,22 @@ html {
     height: 100%;
     max-width: none;
     max-height: none;
+}
+
+/* Стили для аудио-плеера */
+.video-js.audio-player,
+#previewContent audio.video-js {
+    width: 100%;
+    height: auto;
+    min-height: 60px;
+    max-height: none;
+}
+
+#previewContent .audio-container {
+    min-height: 60px;
+    height: auto;
+    align-items: flex-start;
+    padding: 10px;
 }
 
 .video-js video {
@@ -178,10 +204,20 @@ html {
         object-fit: contain;
     }
     
-    #previewContent audio {
+    #previewContent audio,
+    #previewContent .video-js.audio-player,
+    #previewContent audio.video-js {
         width: 100%;
         max-width: 100%;
         height: auto;
+        min-height: 60px;
+    }
+    
+    #previewContent .audio-container {
+        min-height: 60px;
+        height: auto;
+        align-items: flex-start;
+        padding: 10px;
     }
     
     .video-js {
@@ -643,9 +679,28 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     
     // Инициализируем Video.js для видео/аудио
     if (playerData.playerClass) {
-        const playerElement = previewContent.querySelector('.' + playerData.playerClass);
+        const playerElement = previewContent.querySelector('.' + playerData.playerClass.split(' ')[0]);
         if (playerElement) {
             globalPlayer = initUnifiedPlayer(playerElement);
+            
+            // Для аудио применяем специальные стили после инициализации
+            if (type === 'audio') {
+                setTimeout(() => {
+                    const audioContainer = previewContent.querySelector('.unified-player-content');
+                    if (audioContainer) {
+                        audioContainer.classList.add('audio-container');
+                        audioContainer.style.minHeight = '60px';
+                        audioContainer.style.height = 'auto';
+                        audioContainer.style.alignItems = 'flex-start';
+                        audioContainer.style.padding = '10px';
+                    }
+                    if (playerElement) {
+                        playerElement.style.width = '100%';
+                        playerElement.style.height = 'auto';
+                        playerElement.style.minHeight = '60px';
+                    }
+                }, 100);
+            }
             
             // Для видео добавляем обработчик для автоматической адаптации размера окна
             if (type === 'video') {
@@ -820,7 +875,10 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                     modalDialog.style.width = maxWidth + 'px';
                     modalDialog.style.maxWidth = maxWidth + 'px';
                     modalDialog.style.height = 'auto';
+                    modalDialog.style.minHeight = '120px';
                     modalDialog.style.maxHeight = '300px';
+                    modalContent.style.height = 'auto';
+                    modalContent.style.minHeight = '120px';
                 } else {
                     modalDialog.style.width = maxWidth + 'px';
                     modalDialog.style.maxWidth = maxWidth + 'px';
