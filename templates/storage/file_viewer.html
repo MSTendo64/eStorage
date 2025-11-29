@@ -102,14 +102,14 @@ html {
 }
 
 /* Стили для плеера */
-.plyr {
+.video-js {
     width: 100%;
     height: 100%;
     max-width: none;
     max-height: none;
 }
 
-.plyr video {
+.video-js video {
     width: 100%;
     height: 100%;
     max-width: none;
@@ -184,14 +184,14 @@ html {
         height: auto;
     }
     
-    .plyr {
+    .video-js {
         width: 100%;
         height: 100%;
         max-width: 100%;
         max-height: 100%;
     }
     
-    .plyr video {
+    .video-js video {
         width: 100%;
         height: 100%;
         max-width: 100%;
@@ -199,7 +199,7 @@ html {
         object-fit: contain;
     }
     
-    .plyr-audio {
+    .video-js.audio {
         width: 100%;
         height: auto;
     }
@@ -225,171 +225,20 @@ html {
 
 /* Скрываем resize-handle для аудио */
 #previewContent audio ~ .resize-handle,
-.plyr-audio ~ .resize-handle,
+.video-js.audio ~ .resize-handle,
 .unified-player-content:has(audio) .resize-handle {
     display: none !important;
     pointer-events: none !important;
 }
 
-/* Исправление отображения tooltip времени на полосе прокрутки Plyr */
-.plyr__tooltip {
-    position: absolute !important;
-    z-index: 10000 !important;
-    background: rgba(0, 0, 0, 0.9) !important;
-    color: #fff !important;
-    padding: 5px 10px !important;
+/* Стили для Video.js в file_viewer */
+.video-js .vjs-control-bar {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 50%, transparent 100%) !important;
+}
+
+.video-js .vjs-menu-button-popup .vjs-menu {
+    background-color: rgba(0, 0, 0, 0.9) !important;
     border-radius: 4px !important;
-    font-size: 13px !important;
-    white-space: nowrap !important;
-    pointer-events: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    display: block !important;
-    min-width: auto !important;
-    max-width: none !important;
-    transform: translateX(-50%) !important;
-    transition: opacity 0.2s ease, visibility 0.2s ease !important;
-}
-
-/* Показываем tooltip только при наведении - показываем правильный tooltip в зависимости от состояния */
-.plyr__control:hover > .plyr__tooltip:not([hidden]),
-.plyr__control:hover .plyr__tooltip:not([hidden]),
-.plyr__progress__container:hover > .plyr__tooltip:not([hidden]),
-.plyr__progress:hover > .plyr__tooltip:not([hidden]) {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* Скрываем все tooltip по умолчанию */
-.plyr__control:not(:hover) .plyr__tooltip,
-.plyr__control .plyr__tooltip[hidden],
-.plyr__progress__container:not(:hover) .plyr__tooltip {
-    opacity: 0 !important;
-    visibility: hidden !important;
-}
-
-/* Показываем только видимый tooltip (Plyr автоматически скрывает неактивные через [hidden]) */
-.plyr__control .plyr__tooltip[hidden] {
-    display: none !important;
-}
-
-.plyr__tooltip::before {
-    content: '' !important;
-    position: absolute !important;
-    bottom: -5px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 0 !important;
-    height: 0 !important;
-    border-style: solid !important;
-    border-width: 5px 5px 0 5px !important;
-    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent !important;
-}
-
-/* Исправление меню настроек Plyr - чтобы секция скорости была доступна */
-.plyr__menu__container {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 8px 0 !important;
-    position: absolute !important;
-    z-index: 10002 !important;
-}
-
-/* Убеждаемся, что меню настроек видно при открытии */
-.plyr__control[data-plyr="settings"][aria-expanded="true"] ~ .plyr__menu__container,
-.plyr__control[data-plyr="settings"][aria-expanded="true"] + .plyr__menu__container,
-.plyr__control[data-plyr="settings"][aria-expanded="true"] .plyr__menu__container {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Убеждаемся, что меню настроек не скрыто */
-.plyr__menu__container[hidden] {
-    display: none !important;
-}
-
-.plyr__menu__container:not([hidden]) {
-    display: block !important;
-}
-
-.plyr__menu {
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-
-.plyr__menu__container .plyr__control {
-    padding: 8px 16px !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-overflow: ellipsis !important;
-}
-
-.plyr__menu__container .plyr__control[role="menuitem"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    min-height: 40px !important;
-}
-
-.plyr__menu__container .plyr__control[role="menuitemradio"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    min-height: 40px !important;
-    padding-right: 40px !important;
-}
-
-/* Улучшение отображения подменю (например, скорость) */
-.plyr__menu__container .plyr__menu {
-    position: absolute !important;
-    left: 100% !important;
-    top: 0 !important;
-    margin-left: 4px !important;
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    overflow-x: visible !important;
-    min-width: 150px !important;
-    background: rgba(0, 0, 0, 0.9) !important;
-    border-radius: 4px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Убеждаемся, что подменю не обрезается */
-.plyr__control[aria-haspopup="true"] {
-    position: relative !important;
-}
-
-.plyr__control[aria-expanded="true"] .plyr__menu {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Исправление для секции скорости воспроизведения */
-.plyr__menu__container .plyr__control[data-plyr="speed"] {
-    position: relative !important;
-}
-
-.plyr__menu__container .plyr__control[data-plyr="speed"] .plyr__menu {
-    left: auto !important;
-    right: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 4px !important;
-}
-
-/* Улучшение видимости текста в tooltip */
-.plyr__tooltip__content {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    color: #fff !important;
-    font-weight: 500 !important;
 }
 </style>
 
@@ -792,7 +641,7 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         }
     }
     
-    // Инициализируем Plyr для видео/аудио
+    // Инициализируем Video.js для видео/аудио
     if (playerData.playerClass) {
         const playerElement = previewContent.querySelector('.' + playerData.playerClass);
         if (playerElement) {
@@ -800,12 +649,14 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             
             // Для видео добавляем обработчик для автоматической адаптации размера окна
             if (type === 'video') {
-                // Получаем video элемент (может быть напрямую или через Plyr)
+                // Получаем video элемент (может быть напрямую или через Video.js)
                 let videoElement = null;
                 if (playerElement.tagName === 'VIDEO') {
                     videoElement = playerElement;
-                } else if (globalPlayer && globalPlayer.media && globalPlayer.media.tagName === 'VIDEO') {
-                    videoElement = globalPlayer.media;
+                } else if (globalPlayer && globalPlayer.tech_ && globalPlayer.tech_.el_ && globalPlayer.tech_.el_.tagName === 'VIDEO') {
+                    videoElement = globalPlayer.tech_.el_;
+                } else if (globalPlayer && globalPlayer.el_ && globalPlayer.el_.querySelector('video')) {
+                    videoElement = globalPlayer.el_.querySelector('video');
                 }
                 
                 if (videoElement) {
@@ -1163,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', null);
         playerElement.innerHTML = playerData.html;
         
-        // Инициализируем Plyr для видео/аудио
+        // Инициализируем Video.js для видео/аудио
         if (playerData.playerClass) {
             const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
             if (mediaElement) {
