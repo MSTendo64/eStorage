@@ -230,6 +230,121 @@ html {
     display: none !important;
     pointer-events: none !important;
 }
+
+/* Исправление отображения tooltip времени на полосе прокрутки Plyr */
+.plyr__tooltip {
+    position: absolute !important;
+    z-index: 10000 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    color: #fff !important;
+    padding: 5px 10px !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    min-width: auto !important;
+    max-width: none !important;
+    transform: translateX(-50%) !important;
+}
+
+.plyr__tooltip::before {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -5px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-style: solid !important;
+    border-width: 5px 5px 0 5px !important;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent !important;
+}
+
+/* Исправление меню настроек Plyr - чтобы секция скорости была доступна */
+.plyr__menu__container {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 8px 0 !important;
+}
+
+.plyr__menu {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+.plyr__menu__container .plyr__control {
+    padding: 8px 16px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: ellipsis !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitem"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 40px !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitemradio"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 40px !important;
+    padding-right: 40px !important;
+}
+
+/* Улучшение отображения подменю (например, скорость) */
+.plyr__menu__container .plyr__menu {
+    position: absolute !important;
+    left: 100% !important;
+    top: 0 !important;
+    margin-left: 4px !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: visible !important;
+    min-width: 150px !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Убеждаемся, что подменю не обрезается */
+.plyr__control[aria-haspopup="true"] {
+    position: relative !important;
+}
+
+.plyr__control[aria-expanded="true"] .plyr__menu {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Исправление для секции скорости воспроизведения */
+.plyr__menu__container .plyr__control[data-plyr="speed"] {
+    position: relative !important;
+}
+
+.plyr__menu__container .plyr__control[data-plyr="speed"] .plyr__menu {
+    left: auto !important;
+    right: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 4px !important;
+}
+
+/* Улучшение видимости текста в tooltip */
+.plyr__tooltip__content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: #fff !important;
+    font-weight: 500 !important;
+}
 </style>
 
 <script>
