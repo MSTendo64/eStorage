@@ -700,7 +700,7 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
         # Настройки yt-dlp для Pinterest
         ydl_opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Предпочитаем MP4
-            'outtmpl': os.path.join(temp_dir, '%(id)s.mp4'),  # Используем ID и принудительно .mp4
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID
             'quiet': True,  # Уменьшаем вывод
             'no_warnings': False,
             'extract_flat': False,
@@ -709,11 +709,9 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
             'no_check_certificate': False,
-            # Конвертируем видео в MP4 формат
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
+            # Пытаемся конвертировать видео в MP4 формат (если FFmpeg доступен)
+            # Если FFmpeg недоступен, файл будет переименован в .mp4 после скачивания
+            'postprocessors': [],
         }
         
         logger.info(f"Attempting to download Pinterest video using yt-dlp: {pinterest_url}")
@@ -774,6 +772,18 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
                 if downloaded_files:
                     video_file = os.path.join(temp_dir, downloaded_files[0])
                     logger.info(f"Video downloaded successfully: {video_file} ({os.path.getsize(video_file)} bytes)")
+                    
+                    # Переименовываем файл в .mp4, если он еще не в этом формате
+                    name, ext = os.path.splitext(video_file)
+                    if ext.lower() != '.mp4':
+                        new_video_file = name + '.mp4'
+                        try:
+                            os.rename(video_file, new_video_file)
+                            video_file = new_video_file
+                            logger.info(f"Renamed video file to MP4: {new_video_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not rename file to MP4: {e}, using original file")
+                    
                     return video_file
                 else:
                     logger.warning("Video file not found after download")
@@ -822,8 +832,8 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
         # Настройки yt-dlp для TikTok
         # TikTok может требовать дополнительные опции для корректной работы
         ydl_opts = {
-            'format': 'best[ext=mp4]/best',  # Упрощаем формат для TikTok
-            'outtmpl': os.path.join(temp_dir, '%(id)s.mp4'),  # Используем ID и принудительно .mp4
+            'format': 'best[ext=mp4]/best',  # Упрощаем формат для TikTok, предпочитаем MP4
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID
             'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
@@ -838,11 +848,9 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                     'webpage_download': True,
                 }
             },
-            # Конвертируем видео в MP4 формат
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
+            # Пытаемся конвертировать видео в MP4 формат (если FFmpeg доступен)
+            # Если FFmpeg недоступен, файл будет переименован в .mp4 после скачивания
+            'postprocessors': [],
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.tiktok.com/',
@@ -935,6 +943,17 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                             pass
                         return None
                     
+                    # Переименовываем файл в .mp4, если он еще не в этом формате
+                    name, ext = os.path.splitext(video_file)
+                    if ext.lower() != '.mp4':
+                        new_video_file = name + '.mp4'
+                        try:
+                            os.rename(video_file, new_video_file)
+                            video_file = new_video_file
+                            logger.info(f"Renamed TikTok video file to MP4: {new_video_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not rename file to MP4: {e}, using original file")
+                    
                     return video_file
                 else:
                     logger.warning("TikTok video file not found after download")
@@ -1006,8 +1025,7 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             # Формат bestvideo+bestaudio автоматически объединит видео и аудио в один файл
             'format': 'bestvideo+bestaudio/best',
             # Используем название видео, yt-dlp автоматически очистит недопустимые символы
-            # Принудительно используем .mp4 расширение после конвертации
-            'outtmpl': os.path.join(temp_dir, '%(title)s.mp4'),
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
@@ -1016,11 +1034,9 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
             'no_check_certificate': False,
-            # Конвертируем видео в MP4 формат
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
+            # Пытаемся конвертировать видео в MP4 формат (если FFmpeg доступен)
+            # Если FFmpeg недоступен, файл будет переименован в .mp4 после скачивания
+            'postprocessors': [],
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
@@ -1130,6 +1146,17 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                         except:
                             pass
                         return None
+                    
+                    # Переименовываем файл в .mp4, если он еще не в этом формате
+                    name, ext = os.path.splitext(video_file)
+                    if ext.lower() != '.mp4':
+                        new_video_file = name + '.mp4'
+                        try:
+                            os.rename(video_file, new_video_file)
+                            video_file = new_video_file
+                            logger.info(f"Renamed YouTube video file to MP4: {new_video_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not rename file to MP4: {e}, using original file")
                     
                     return video_file
                 else:
