@@ -1333,14 +1333,26 @@
         transition: opacity 0.2s ease, visibility 0.2s ease !important;
     }
 
-    /* Показываем tooltip только при наведении */
-    .plyr__control:hover .plyr__tooltip,
-    .plyr__progress__container:hover .plyr__tooltip,
-    .plyr__progress:hover .plyr__tooltip,
-    .plyr__control[aria-expanded="true"] .plyr__tooltip,
-    .plyr__progress__container[aria-valuenow] .plyr__tooltip {
+    /* Показываем tooltip только при наведении - только один активный tooltip */
+    .plyr__control:hover > .plyr__tooltip:not([hidden]),
+    .plyr__control:hover .plyr__tooltip:not([hidden]):first-of-type,
+    .plyr__progress__container:hover > .plyr__tooltip:not([hidden]),
+    .plyr__progress:hover > .plyr__tooltip:not([hidden]) {
         opacity: 1 !important;
         visibility: visible !important;
+    }
+    
+    /* Скрываем все tooltip по умолчанию, кроме активного при hover */
+    .plyr__control:not(:hover) .plyr__tooltip,
+    .plyr__control .plyr__tooltip[hidden] {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* Убеждаемся, что показывается только один tooltip на элемент */
+    .plyr__control .plyr__tooltip:not(:first-of-type) {
+        display: none !important;
     }
 
     .plyr__tooltip::before {
@@ -2324,10 +2336,23 @@ function initUnifiedPlayer(selector, options = {}) {
             seek: true
         },
         // Настройки для меню - включаем скорость воспроизведения
-        settings: ['captions', 'quality', 'speed']
+        settings: ['captions', 'quality', 'speed'],
+        // Доступные скорости воспроизведения (массив чисел)
+        speed: {
+            selected: 1,
+            options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 4, 8]
+        }
     };
     
     const player = new Plyr(selector, { ...defaultOptions, ...options });
+    
+    // Убеждаемся, что настройка скорости доступна
+    if (player && player.config && player.config.settings) {
+        // Проверяем, что speed включен в настройки
+        if (!player.config.settings.includes('speed')) {
+            player.config.settings.push('speed');
+        }
+    }
     
     // Исправление меню настроек - убеждаемся, что подменю не обрезается
     if (player) {

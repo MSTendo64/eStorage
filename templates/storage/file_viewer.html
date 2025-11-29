@@ -242,12 +242,35 @@ html {
     font-size: 13px !important;
     white-space: nowrap !important;
     pointer-events: none !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
     display: block !important;
     min-width: auto !important;
     max-width: none !important;
     transform: translateX(-50%) !important;
+    transition: opacity 0.2s ease, visibility 0.2s ease !important;
+}
+
+/* Показываем tooltip только при наведении - только один активный tooltip */
+.plyr__control:hover > .plyr__tooltip:not([hidden]),
+.plyr__control:hover .plyr__tooltip:not([hidden]):first-of-type,
+.plyr__progress__container:hover > .plyr__tooltip:not([hidden]),
+.plyr__progress:hover > .plyr__tooltip:not([hidden]) {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Скрываем все tooltip по умолчанию, кроме активного при hover */
+.plyr__control:not(:hover) .plyr__tooltip,
+.plyr__control .plyr__tooltip[hidden] {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    display: none !important;
+}
+
+/* Убеждаемся, что показывается только один tooltip на элемент */
+.plyr__control .plyr__tooltip:not(:first-of-type) {
+    display: none !important;
 }
 
 .plyr__tooltip::before {
