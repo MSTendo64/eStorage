@@ -700,7 +700,7 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
         # Настройки yt-dlp для Pinterest
         ydl_opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Предпочитаем MP4
-            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID вместо title
+            'outtmpl': os.path.join(temp_dir, '%(id)s.mp4'),  # Используем ID и принудительно .mp4
             'quiet': True,  # Уменьшаем вывод
             'no_warnings': False,
             'extract_flat': False,
@@ -709,6 +709,11 @@ def download_pinterest_video_with_ytdlp(pinterest_url: str) -> Optional[str]:
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
             'no_check_certificate': False,
+            # Конвертируем видео в MP4 формат
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
         }
         
         logger.info(f"Attempting to download Pinterest video using yt-dlp: {pinterest_url}")
@@ -818,7 +823,7 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
         # TikTok может требовать дополнительные опции для корректной работы
         ydl_opts = {
             'format': 'best[ext=mp4]/best',  # Упрощаем формат для TikTok
-            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),  # Используем ID вместо title
+            'outtmpl': os.path.join(temp_dir, '%(id)s.mp4'),  # Используем ID и принудительно .mp4
             'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
@@ -833,6 +838,11 @@ def download_tiktok_video_with_ytdlp(tiktok_url: str) -> Optional[str]:
                     'webpage_download': True,
                 }
             },
+            # Конвертируем видео в MP4 формат
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.tiktok.com/',
@@ -996,7 +1006,8 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             # Формат bestvideo+bestaudio автоматически объединит видео и аудио в один файл
             'format': 'bestvideo+bestaudio/best',
             # Используем название видео, yt-dlp автоматически очистит недопустимые символы
-            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            # Принудительно используем .mp4 расширение после конвертации
+            'outtmpl': os.path.join(temp_dir, '%(title)s.mp4'),
             'quiet': False,  # Включаем вывод для диагностики
             'no_warnings': False,
             'extract_flat': False,
@@ -1005,9 +1016,11 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
             'no_check_certificate': False,
-            # Объединяем видео и аудио в один файл MP4 (если они были разделены)
-            # FFmpegVideoConvertor может не существовать, используем FFmpegMerger для объединения
-            'postprocessors': [],
+            # Конвертируем видео в MP4 формат
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
             # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
@@ -1933,9 +1946,17 @@ def upload_from_url(request):
                 
                 # Получаем имя файла из скачанного файла
                 original_filename = os.path.basename(downloaded_video_path)
-                # Если имя файла не имеет расширения, добавляем .mp4
-                if '.' not in original_filename:
-                    original_filename += '.mp4'
+                # Убеждаемся, что файл имеет расширение .mp4
+                import re
+                name, ext = os.path.splitext(original_filename)
+                if ext.lower() != '.mp4':
+                    original_filename = name + '.mp4'
+                # Очищаем имя файла от недопустимых символов для Windows
+                original_filename = re.sub(r'[<>:"/\\|?*]', '', original_filename)
+                # Ограничиваем длину имени файла
+                if len(original_filename) > 200:
+                    name, ext = os.path.splitext(original_filename)
+                    original_filename = name[:200] + ext
                 filename = generate_unique_filename(user_folder, original_filename)
                 file_path = os.path.join(user_folder, filename)
                 
