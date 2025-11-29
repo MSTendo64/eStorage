@@ -251,25 +251,25 @@ html {
     transition: opacity 0.2s ease, visibility 0.2s ease !important;
 }
 
-/* Показываем tooltip только при наведении - только один активный tooltip */
+/* Показываем tooltip только при наведении - показываем правильный tooltip в зависимости от состояния */
 .plyr__control:hover > .plyr__tooltip:not([hidden]),
-.plyr__control:hover .plyr__tooltip:not([hidden]):first-of-type,
+.plyr__control:hover .plyr__tooltip:not([hidden]),
 .plyr__progress__container:hover > .plyr__tooltip:not([hidden]),
 .plyr__progress:hover > .plyr__tooltip:not([hidden]) {
     opacity: 1 !important;
     visibility: visible !important;
 }
 
-/* Скрываем все tooltip по умолчанию, кроме активного при hover */
+/* Скрываем все tooltip по умолчанию */
 .plyr__control:not(:hover) .plyr__tooltip,
-.plyr__control .plyr__tooltip[hidden] {
+.plyr__control .plyr__tooltip[hidden],
+.plyr__progress__container:not(:hover) .plyr__tooltip {
     opacity: 0 !important;
     visibility: hidden !important;
-    display: none !important;
 }
 
-/* Убеждаемся, что показывается только один tooltip на элемент */
-.plyr__control .plyr__tooltip:not(:first-of-type) {
+/* Показываем только видимый tooltip (Plyr автоматически скрывает неактивные через [hidden]) */
+.plyr__control .plyr__tooltip[hidden] {
     display: none !important;
 }
 
@@ -288,10 +288,33 @@ html {
 
 /* Исправление меню настроек Plyr - чтобы секция скорости была доступна */
 .plyr__menu__container {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     max-height: 400px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding: 8px 0 !important;
+    position: absolute !important;
+    z-index: 10002 !important;
+}
+
+/* Убеждаемся, что меню настроек видно при открытии */
+.plyr__control[data-plyr="settings"][aria-expanded="true"] ~ .plyr__menu__container,
+.plyr__control[data-plyr="settings"][aria-expanded="true"] + .plyr__menu__container,
+.plyr__control[data-plyr="settings"][aria-expanded="true"] .plyr__menu__container {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Убеждаемся, что меню настроек не скрыто */
+.plyr__menu__container[hidden] {
+    display: none !important;
+}
+
+.plyr__menu__container:not([hidden]) {
+    display: block !important;
 }
 
 .plyr__menu {

@@ -1333,25 +1333,25 @@
         transition: opacity 0.2s ease, visibility 0.2s ease !important;
     }
 
-    /* Показываем tooltip только при наведении - только один активный tooltip */
+    /* Показываем tooltip только при наведении - показываем правильный tooltip в зависимости от состояния */
     .plyr__control:hover > .plyr__tooltip:not([hidden]),
-    .plyr__control:hover .plyr__tooltip:not([hidden]):first-of-type,
+    .plyr__control:hover .plyr__tooltip:not([hidden]),
     .plyr__progress__container:hover > .plyr__tooltip:not([hidden]),
     .plyr__progress:hover > .plyr__tooltip:not([hidden]) {
         opacity: 1 !important;
         visibility: visible !important;
     }
     
-    /* Скрываем все tooltip по умолчанию, кроме активного при hover */
+    /* Скрываем все tooltip по умолчанию */
     .plyr__control:not(:hover) .plyr__tooltip,
-    .plyr__control .plyr__tooltip[hidden] {
+    .plyr__control .plyr__tooltip[hidden],
+    .plyr__progress__container:not(:hover) .plyr__tooltip {
         opacity: 0 !important;
         visibility: hidden !important;
-        display: none !important;
     }
     
-    /* Убеждаемся, что показывается только один tooltip на элемент */
-    .plyr__control .plyr__tooltip:not(:first-of-type) {
+    /* Показываем только видимый tooltip (Plyr автоматически скрывает неактивные через [hidden]) */
+    .plyr__control .plyr__tooltip[hidden] {
         display: none !important;
     }
 
@@ -1376,10 +1376,23 @@
 
     /* Исправление меню настроек Plyr - чтобы секция скорости была доступна */
     .plyr__menu__container {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         max-height: 400px !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         padding: 8px 0 !important;
+        position: absolute !important;
+        z-index: 10002 !important;
+    }
+    
+    /* Убеждаемся, что меню настроек видно при открытии */
+    .plyr__control[data-plyr="settings"][aria-expanded="true"] ~ .plyr__menu__container,
+    .plyr__control[data-plyr="settings"][aria-expanded="true"] + .plyr__menu__container {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     .plyr__menu {
@@ -1430,6 +1443,29 @@
     .plyr__control[aria-haspopup="true"] {
         position: relative !important;
         z-index: 10000 !important;
+    }
+    
+    /* Убеждаемся, что главное меню настроек отображается */
+    .plyr__control[data-plyr="settings"] {
+        position: relative !important;
+    }
+    
+    /* Меню настроек должно быть видно при открытии */
+    .plyr__control[data-plyr="settings"][aria-expanded="true"] ~ .plyr__menu__container,
+    .plyr__control[data-plyr="settings"][aria-expanded="true"] + .plyr__menu__container,
+    .plyr__control[data-plyr="settings"][aria-expanded="true"] .plyr__menu__container {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    /* Убеждаемся, что меню настроек не скрыто */
+    .plyr__menu__container[hidden] {
+        display: none !important;
+    }
+    
+    .plyr__menu__container:not([hidden]) {
+        display: block !important;
     }
 
     .plyr__control[aria-expanded="true"] .plyr__menu {
@@ -2366,12 +2402,30 @@ function initUnifiedPlayer(selector, options = {}) {
         }
         
         if (playerContainer) {
-            // Отслеживаем изменения атрибута aria-expanded для скорости через MutationObserver
-            // Это не мешает работе кнопки настроек
+            // Отслеживаем изменения атрибута aria-expanded для настроек и скорости
             const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded') {
                         const target = mutation.target;
+                        
+                        // Обработка главного меню настроек
+                        if (target.getAttribute('data-plyr') === 'settings') {
+                            const isExpanded = target.getAttribute('aria-expanded') === 'true';
+                            if (isExpanded) {
+                                // Находим меню настроек
+                                setTimeout(() => {
+                                    const settingsMenu = playerContainer.querySelector('.plyr__menu__container');
+                                    if (settingsMenu) {
+                                        settingsMenu.removeAttribute('hidden');
+                                        settingsMenu.style.display = 'block';
+                                        settingsMenu.style.visibility = 'visible';
+                                        settingsMenu.style.opacity = '1';
+                                    }
+                                }, 10);
+                            }
+                        }
+                        
+                        // Обработка подменю скорости
                         if (target.getAttribute('data-plyr') === 'speed' && target.getAttribute('aria-expanded') === 'true') {
                             setTimeout(() => {
                                 const speedMenu = target.querySelector('.plyr__menu');
@@ -2397,7 +2451,7 @@ function initUnifiedPlayer(selector, options = {}) {
             // Наблюдаем за изменениями в контейнере плеера
             observer.observe(playerContainer, {
                 attributes: true,
-                attributeFilter: ['aria-expanded'],
+                attributeFilter: ['aria-expanded', 'hidden'],
                 subtree: true
             });
         }
