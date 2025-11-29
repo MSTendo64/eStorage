@@ -1208,6 +1208,7 @@
         flex-shrink: 0;
         background: rgba(var(--bs-body-bg-rgb, 255, 255, 255), 0.95);
         border-bottom: 1px solid rgba(var(--bs-border-color-rgb, 222, 226, 230), 0.5);
+        z-index: 1;
     }
     
     [data-bs-theme="dark"] .unified-player-header {
@@ -1308,15 +1309,18 @@
     .unified-player-content audio.video-js {
         width: 100%;
         height: auto;
-        min-height: 60px;
+        min-height: 80px;
         max-height: none;
+        background: transparent;
     }
     
     .unified-player-content.audio-container {
-        min-height: 60px;
+        min-height: 80px;
         height: auto;
-        align-items: flex-start;
-        padding: 10px;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+        background: #000;
     }
 
     .video-js .vjs-big-play-button {
@@ -1359,6 +1363,72 @@
     .video-js .vjs-menu-button-popup .vjs-menu {
         background-color: rgba(0, 0, 0, 0.9) !important;
         border-radius: 4px !important;
+        z-index: 10000 !important;
+    }
+    
+    /* Исправление для tooltip времени на полосе прокрутки */
+    .video-js .vjs-progress-control .vjs-time-tooltip {
+        white-space: nowrap !important;
+        width: auto !important;
+        min-width: auto !important;
+        padding: 2px 6px !important;
+        font-size: 0.9em !important;
+        line-height: 1.2 !important;
+        z-index: 10001 !important;
+    }
+    
+    /* Стили для аудио-плеера - улучшенный внешний вид */
+    .video-js.audio-player {
+        background: transparent !important;
+    }
+    
+    .video-js.audio-player .vjs-control-bar {
+        display: flex !important;
+        height: 50px !important;
+        padding: 0 10px !important;
+        position: relative !important;
+    }
+    
+    .video-js.audio-player .vjs-progress-control {
+        flex: 1 1 auto !important;
+        margin: 0 10px !important;
+    }
+    
+    /* Исправление для tooltip - предотвращение переноса текста */
+    .video-js .vjs-progress-control .vjs-mouse-display .vjs-time-tooltip,
+    .video-js .vjs-progress-control .vjs-play-progress .vjs-time-tooltip {
+        white-space: nowrap !important;
+        word-wrap: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
+        display: inline-block !important;
+        padding: 2px 6px !important;
+        font-size: 0.9em !important;
+        line-height: 1.2 !important;
+    }
+    
+    /* Улучшение отображения меню скорости для аудио */
+    .video-js.audio-player .vjs-menu-button-popup .vjs-menu {
+        bottom: 100% !important;
+        margin-bottom: 5px !important;
+        z-index: 10000 !important;
+    }
+    
+    /* Убеждаемся, что все меню Video.js выше заголовка */
+    .video-js .vjs-menu-button-popup,
+    .video-js .vjs-menu-button-popup .vjs-menu,
+    .video-js .vjs-menu-button-popup .vjs-menu-content {
+        z-index: 10000 !important;
+    }
+    
+    /* Улучшение для всех tooltip элементов */
+    .video-js .vjs-time-tooltip,
+    .video-js .vjs-progress-control .vjs-time-tooltip {
+        z-index: 10001 !important;
+        pointer-events: none !important;
     }
 
     .video-js .vjs-menu li.vjs-menu-item:focus,
