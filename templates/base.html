@@ -11,8 +11,7 @@
     {% endif %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" rel="stylesheet" />
+    <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
     <style>
         /* ========== ГЛОБАЛЬНЫЕ СТИЛИ И ПРЕДОТВРАЩЕНИЕ ПЕРЕПОЛНЕНИЯ ========== */
         * {
@@ -690,7 +689,7 @@
          data-background-image="{% if user.userprofile.background_image %}{{ user.userprofile.background_image.url }}{% endif %}"
          data-navbar-opacity="{{ user.userprofile.navbar_opacity }}"
          data-container-opacity="{{ user.userprofile.container_opacity }}"
-         data-video-player="{% if user.is_authenticated %}{{ user.userprofile.video_player|default:'plyr' }}{% else %}plyr{% endif %}"
+         data-video-player="{% if user.is_authenticated %}{{ user.userprofile.video_player|default:'videojs' }}{% else %}videojs{% endif %}"
          style="display: none;">
     </div>
 
@@ -935,8 +934,7 @@
     <!-- Bootstrap и другие библиотеки -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
+    <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/medium-zoom/1.0.6/medium-zoom.min.js"></script>
 
     <script>
@@ -1197,19 +1195,21 @@
     }
     
     .unified-player-header {
-        backdrop-filter: blur(10px);
-        padding: 0.5rem 1rem;
-        height: 40px;
-        min-height: 40px;
-        max-height: 40px;
+        backdrop-filter: none;
+        padding: 0.25rem 0.75rem;
+        height: 20px;
+        min-height: 20px;
+        max-height: 20px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         user-select: none;
         position: relative;
         flex-shrink: 0;
-        background: rgba(var(--bs-body-bg-rgb, 255, 255, 255), 0.95);
+        background: rgba(var(--bs-body-bg-rgb, 255, 255, 255), 0.98);
         border-bottom: 1px solid rgba(var(--bs-border-color-rgb, 222, 226, 230), 0.5);
+        z-index: 1;
+        will-change: auto;
     }
     
     [data-bs-theme="dark"] .unified-player-header {
@@ -1218,7 +1218,7 @@
     }
     
     .unified-player-title {
-        font-size: 0.95rem;
+        font-size: 0.75rem;
         margin: 0;
         font-weight: bold;
         position: absolute;
@@ -1226,11 +1226,12 @@
         top: 50%;
         transform: translateY(-50%);
         color: var(--bs-body-color, #1a1d21);
-        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        text-shadow: none;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: calc(100% - 120px);
+        max-width: calc(100% - 100px);
+        will-change: auto;
     }
     
     [data-bs-theme="dark"] .unified-player-title {
@@ -1242,7 +1243,20 @@
         margin-left: auto;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.25rem;
+    }
+    
+    .unified-player-actions .btn-close {
+        font-size: 0.65rem;
+        padding: 0.1rem;
+        width: 16px;
+        height: 16px;
+    }
+    
+    .unified-player-actions .btn {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+        line-height: 1.2;
     }
     
     .unified-player-content {
@@ -1257,8 +1271,7 @@
         justify-content: center;
     }
     
-    .unified-player-content video,
-    .unified-player-content audio {
+    .unified-player-content video {
         width: auto;
         height: auto;
         max-width: none;
@@ -1266,6 +1279,14 @@
         min-width: 100%;
         min-height: 100%;
         object-fit: fill;
+    }
+    
+    .unified-player-content audio {
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        min-width: 100%;
+        min-height: auto;
     }
     
     .resize-handle {
@@ -1292,25 +1313,148 @@
         border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
     }
     
-    .plyr {
-        --plyr-color-main: var(--bs-primary) !important;
-        --plyr-range-fill-background: var(--bs-primary) !important;
+    /* Стили для Video.js */
+    .video-js {
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* Стили для Video.js аудио-плеера */
+    .video-js.audio-player,
+    .unified-player-content audio.video-js {
+        width: 100%;
+        height: auto;
+        min-height: 80px;
+        max-height: none;
+        background: transparent;
+    }
+    
+    .unified-player-content.audio-container {
+        min-height: 80px;
+        height: auto;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+        background: #000;
     }
 
-    .plyr__control--overlaid {
-        background: var(--bs-primary) !important;
+    .video-js .vjs-big-play-button {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        border-radius: 50% !important;
+        width: 3em !important;
+        height: 3em !important;
+        line-height: 3em !important;
+        margin-top: -1.5em !important;
+        margin-left: -1.5em !important;
     }
 
-    .plyr--full-ui input[type=range] {
-        color: var(--bs-primary) !important;
+    .video-js .vjs-big-play-button:hover {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+        opacity: 0.8 !important;
     }
 
-    .plyr__control:hover {
-        background: var(--bs-primary) !important;
+    .video-js .vjs-control-bar {
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 50%, transparent 100%) !important;
     }
 
-    .plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
-        background: var(--bs-primary) !important;
+    .video-js .vjs-progress-control .vjs-progress-holder {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .video-js .vjs-progress-control .vjs-play-progress {
+        background-color: var(--bs-primary) !important;
+    }
+
+    .video-js .vjs-volume-control .vjs-volume-bar {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .video-js .vjs-volume-control .vjs-volume-level {
+        background-color: var(--bs-primary) !important;
+    }
+
+    .video-js .vjs-menu-button-popup .vjs-menu {
+        background-color: rgba(0, 0, 0, 0.9) !important;
+        border-radius: 4px !important;
+        z-index: 10000 !important;
+    }
+    
+    /* Исправление для tooltip времени на полосе прокрутки */
+    .video-js .vjs-progress-control .vjs-time-tooltip {
+        white-space: nowrap !important;
+        width: auto !important;
+        min-width: auto !important;
+        padding: 2px 6px !important;
+        font-size: 0.9em !important;
+        line-height: 1.2 !important;
+        z-index: 10001 !important;
+    }
+    
+    /* Стили для аудио-плеера - улучшенный внешний вид */
+    .video-js.audio-player {
+        background: transparent !important;
+    }
+    
+    .video-js.audio-player .vjs-control-bar {
+        display: flex !important;
+        height: 50px !important;
+        padding: 0 10px !important;
+        position: relative !important;
+    }
+    
+    .video-js.audio-player .vjs-progress-control {
+        flex: 1 1 auto !important;
+        margin: 0 10px !important;
+    }
+    
+    /* Исправление для tooltip - предотвращение переноса текста */
+    .video-js .vjs-progress-control .vjs-mouse-display .vjs-time-tooltip,
+    .video-js .vjs-progress-control .vjs-play-progress .vjs-time-tooltip {
+        white-space: nowrap !important;
+        word-wrap: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
+        display: inline-block !important;
+        padding: 2px 6px !important;
+        font-size: 0.9em !important;
+        line-height: 1.2 !important;
+    }
+    
+    /* Улучшение отображения меню скорости для аудио */
+    .video-js.audio-player .vjs-menu-button-popup .vjs-menu {
+        bottom: 100% !important;
+        margin-bottom: 5px !important;
+        z-index: 10000 !important;
+    }
+    
+    /* Убеждаемся, что все меню Video.js выше заголовка */
+    .video-js .vjs-menu-button-popup,
+    .video-js .vjs-menu-button-popup .vjs-menu,
+    .video-js .vjs-menu-button-popup .vjs-menu-content {
+        z-index: 10000 !important;
+    }
+    
+    /* Улучшение для всех tooltip элементов */
+    .video-js .vjs-time-tooltip,
+    .video-js .vjs-progress-control .vjs-time-tooltip {
+        z-index: 10001 !important;
+        pointer-events: none !important;
+    }
+
+    .video-js .vjs-menu li.vjs-menu-item:focus,
+    .video-js .vjs-menu li.vjs-menu-item:hover {
+        background-color: var(--bs-primary) !important;
+    }
+
+
+    /* Убеждаемся, что все элементы меню видны */
+    .plyr__menu__container .plyr__control[role="menuitemradio"] {
+        min-width: 120px !important;
     }
 
     /* Бордеры и акценты */
@@ -2112,7 +2256,7 @@
 // Получаем выбранный проигрыватель из настроек пользователя
 function getVideoPlayerType() {
     const playerType = document.getElementById('django-data')?.getAttribute('data-video-player');
-    return playerType || 'plyr';
+    return playerType || 'videojs';
 }
 
 // Инициализация нативного HTML5 проигрывателя
@@ -2155,7 +2299,7 @@ function initNativePlayer(selector, options = {}) {
     };
 }
 
-// Инициализация единого плеера (Plyr или Native)
+// Инициализация единого плеера (Video.js или Native)
 function initUnifiedPlayer(selector, options = {}) {
     const playerType = getVideoPlayerType();
     const mediaElement = typeof selector === 'string' ? document.querySelector(selector) : selector;
@@ -2165,40 +2309,80 @@ function initUnifiedPlayer(selector, options = {}) {
         return initNativePlayer(selector, options);
     }
     
-    // По умолчанию используем Plyr
+    // Определяем, является ли это аудио элементом
+    const isAudio = mediaElement && (mediaElement.tagName === 'AUDIO' || mediaElement.classList.contains('audio-player'));
+    
+    // По умолчанию используем Video.js
     const defaultOptions = {
-        controls: [
-            'play-large', 'play', 'progress', 'current-time', 'duration',
-            'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-        ],
-        // Убеждаемся, что перемотка работает правильно
-        seekTime: 10,
-        // Настройки для работы с видео
-        clickToPlay: true,
-        disableContextMenu: false,
-        // Не перезагружаем видео при изменении source, если уже загружено
-        resetOnEnd: false
+        controls: true,
+        autoplay: false,
+        preload: 'auto',
+        fluid: false,
+        responsive: true,
+        playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 4, 8],
+        html5: {
+            vhs: {
+                overrideNative: true
+            },
+            nativeVideoTracks: false,
+            nativeAudioTracks: false,
+            nativeTextTracks: false
+        },
+        plugins: {}
     };
     
-    const player = new Plyr(selector, { ...defaultOptions, ...options });
+    // Для аудио используем специальные настройки
+    if (isAudio) {
+        defaultOptions.fluid = false;
+        defaultOptions.responsive = false;
+    }
+    
+    // Если элемент уже является video-js элементом, используем его напрямую
+    let videoElement = mediaElement;
+    if (videoElement && !videoElement.classList.contains('video-js')) {
+        // Если это обычный video элемент, оборачиваем его в Video.js
+        if (videoElement.tagName === 'VIDEO' || videoElement.tagName === 'AUDIO') {
+            videoElement.classList.add('video-js');
+            if (isAudio) {
+                videoElement.classList.add('audio-player');
+            }
+            videoElement.setAttribute('data-setup', '{}');
+        }
+    }
+    
+    // Инициализируем Video.js
+    let player;
+    if (videojs && videojs.getPlayer) {
+        // Проверяем, не инициализирован ли уже плеер
+        const existingPlayer = videojs.getPlayer(videoElement);
+        if (existingPlayer) {
+            player = existingPlayer;
+        } else {
+            player = videojs(videoElement, { ...defaultOptions, ...options });
+        }
+    } else {
+        // Если videojs еще не загружен, используем нативный плеер
+        return initNativePlayer(selector, options);
+    }
     
     // Предотвращаем перезагрузку видео при перемотке
-    if (player && player.media) {
-        let savedTime = 0;
-        
-        // Сохраняем позицию перед любыми действиями, которые могут перезагрузить видео
-        player.media.addEventListener('timeupdate', function() {
-            savedTime = player.currentTime;
-        });
-        
-        // При перемотке просто переходим к нужной позиции, не перезагружая
-        player.media.addEventListener('seeking', function(e) {
-            // Если видео уже загружено, перемотка не должна вызывать перезагрузку
-            if (player.media.readyState >= 2) {
-                // Видео уже загружено, перемотка должна работать
-                return;
-            }
-        });
+    if (player && player.tech_ && player.tech_.el_) {
+        const techElement = player.tech_.el_;
+        if (techElement) {
+            let savedTime = 0;
+            
+            // Сохраняем позицию перед любыми действиями
+            player.on('timeupdate', function() {
+                savedTime = player.currentTime();
+            });
+            
+            // При перемотке просто переходим к нужной позиции
+            player.on('seeking', function() {
+                if (techElement.readyState >= 2) {
+                    return;
+                }
+            });
+        }
     }
     
     return player;
@@ -2239,11 +2423,11 @@ function updatePlayerHeaderColor(headerSelector, titleSelector) {
 // Создание HTML структуры единого плеера
 function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeAction = null, fileId = null) {
     const closeBtn = closeAction 
-        ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.75rem;" onclick="${closeAction}"></button>`
-        : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.75rem;"></button>';
+        ? `<button type="button" class="btn-close btn-close-sm" style="font-size: 0.65rem; padding: 0.1rem; width: 16px; height: 16px;" onclick="${closeAction}"></button>`
+        : '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" style="font-size: 0.65rem; padding: 0.1rem; width: 16px; height: 16px;"></button>';
     
     const downloadBtn = downloadUrl
-        ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.5rem;"><i class="fas fa-download"></i></a>`
+        ? `<a href="${downloadUrl}" class="btn btn-sm btn-success" download style="font-size: 0.65rem; padding: 0.15rem 0.4rem; line-height: 1.2;"><i class="fas fa-download"></i></a>`
         : '';
     
     // Определяем тип проигрывателя
@@ -2255,18 +2439,18 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
     switch(type) {
         case 'video':
             // Используем оригинальное качество видео
-            // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Plyr
-            const videoClass = playerType === 'native' ? 'native-video' : 'plyr-video';
-            content = `<video class="${videoClass}" playsinline controls preload="auto" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
+            // Если выбран нативный проигрыватель, используем класс для нативного, иначе для Video.js
+            const videoClass = playerType === 'native' ? 'native-video' : 'video-js vjs-default-skin';
+            content = `<video class="${videoClass}" playsinline controls preload="auto" data-setup="{}" style="width: 100%; height: 100%; max-width: none; max-height: none; object-fit: fill;">
                 <source src="${url}" type="video/mp4">
             </video>`;
             playerClass = videoClass;
             break;
         case 'audio':
-            content = `<audio class="plyr-audio" controls style="width: 100%;">
+            content = `<audio class="video-js vjs-default-skin audio-player" controls data-setup="{}" style="width: 100%; height: auto;">
                 <source src="${url}" type="audio/mpeg">
             </audio>`;
-            playerClass = 'plyr-audio';
+            playerClass = 'video-js audio-player';
             break;
         case 'image':
             content = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${filename || 'Image'}">`;
@@ -2311,6 +2495,9 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
         displayTitle = displayTitle.substring(0, 57) + '...';
     }
     
+    // Добавляем класс для аудио-контейнера
+    const contentClass = type === 'audio' ? 'unified-player-content audio-container' : 'unified-player-content';
+    
     return {
         html: `
             <div class="unified-player-header">
@@ -2320,7 +2507,7 @@ function createUnifiedPlayerHTML(type, url, filename, downloadUrl = null, closeA
                     ${closeBtn}
                 </div>
             </div>
-            <div class="unified-player-content">
+            <div class="${contentClass}">
                 ${content}
                 <div class="resize-handle"></div>
             </div>

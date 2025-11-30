@@ -92,8 +92,7 @@ html {
     object-fit: contain;
 }
 
-#previewContent video,
-#previewContent audio {
+#previewContent video {
     max-width: none;
     max-height: none;
     width: 100%;
@@ -101,15 +100,45 @@ html {
     object-fit: fill;
 }
 
+#previewContent audio,
+#previewContent .video-js.audio-player,
+#previewContent audio.video-js {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    min-height: 60px;
+    max-height: none;
+    object-fit: none;
+}
+
 /* Стили для плеера */
-.plyr {
+.video-js {
     width: 100%;
     height: 100%;
     max-width: none;
     max-height: none;
 }
 
-.plyr video {
+/* Стили для аудио-плеера */
+.video-js.audio-player,
+#previewContent audio.video-js {
+    width: 100%;
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    background: transparent;
+}
+
+#previewContent .audio-container {
+    min-height: 80px;
+    height: auto;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    background: #000;
+}
+
+.video-js video {
     width: 100%;
     height: 100%;
     max-width: none;
@@ -178,20 +207,32 @@ html {
         object-fit: contain;
     }
     
-    #previewContent audio {
+    #previewContent audio,
+    #previewContent .video-js.audio-player,
+    #previewContent audio.video-js {
         width: 100%;
         max-width: 100%;
         height: auto;
+        min-height: 80px;
     }
     
-    .plyr {
+    #previewContent .audio-container {
+        min-height: 80px;
+        height: auto;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+        background: #000;
+    }
+    
+    .video-js {
         width: 100%;
         height: 100%;
         max-width: 100%;
         max-height: 100%;
     }
     
-    .plyr video {
+    .video-js video {
         width: 100%;
         height: 100%;
         max-width: 100%;
@@ -199,7 +240,7 @@ html {
         object-fit: contain;
     }
     
-    .plyr-audio {
+    .video-js.audio {
         width: 100%;
         height: auto;
     }
@@ -225,9 +266,85 @@ html {
 
 /* Скрываем resize-handle для аудио */
 #previewContent audio ~ .resize-handle,
-.plyr-audio ~ .resize-handle,
+.video-js.audio ~ .resize-handle,
 .unified-player-content:has(audio) .resize-handle {
     display: none !important;
+    pointer-events: none !important;
+}
+
+/* Стили для Video.js в file_viewer */
+.video-js .vjs-control-bar {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 50%, transparent 100%) !important;
+}
+
+.video-js .vjs-menu-button-popup .vjs-menu {
+    background-color: rgba(0, 0, 0, 0.9) !important;
+    border-radius: 4px !important;
+    z-index: 10000 !important;
+}
+
+/* Исправление для tooltip времени на полосе прокрутки */
+.video-js .vjs-progress-control .vjs-time-tooltip {
+    white-space: nowrap !important;
+    width: auto !important;
+    min-width: auto !important;
+    padding: 2px 6px !important;
+    font-size: 0.9em !important;
+    line-height: 1.2 !important;
+    z-index: 10001 !important;
+}
+
+/* Стили для аудио-плеера - улучшенный внешний вид */
+.video-js.audio-player {
+    background: transparent !important;
+}
+
+.video-js.audio-player .vjs-control-bar {
+    display: flex !important;
+    height: 50px !important;
+    padding: 0 10px !important;
+    position: relative !important;
+}
+
+.video-js.audio-player .vjs-progress-control {
+    flex: 1 1 auto !important;
+    margin: 0 10px !important;
+}
+
+/* Исправление для tooltip - предотвращение переноса текста */
+.video-js .vjs-progress-control .vjs-mouse-display .vjs-time-tooltip,
+.video-js .vjs-progress-control .vjs-play-progress .vjs-time-tooltip {
+    white-space: nowrap !important;
+    word-wrap: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    display: inline-block !important;
+    padding: 2px 6px !important;
+    font-size: 0.9em !important;
+    line-height: 1.2 !important;
+}
+
+/* Улучшение отображения меню скорости для аудио */
+.video-js.audio-player .vjs-menu-button-popup .vjs-menu {
+    bottom: 100% !important;
+    margin-bottom: 5px !important;
+    z-index: 10000 !important;
+}
+
+/* Убеждаемся, что все меню Video.js выше заголовка */
+.video-js .vjs-menu-button-popup,
+.video-js .vjs-menu-button-popup .vjs-menu,
+.video-js .vjs-menu-button-popup .vjs-menu-content {
+    z-index: 10000 !important;
+}
+
+/* Улучшение для всех tooltip элементов */
+.video-js .vjs-time-tooltip,
+.video-js .vjs-progress-control .vjs-time-tooltip {
+    z-index: 10001 !important;
     pointer-events: none !important;
 }
 </style>
@@ -248,7 +365,7 @@ function handleWindowResize(e, resizeState, targetElement, isModal = false) {
     let newHeight = resizeStart.height + deltaY;
     
     // Минимальные размеры с учетом шапки и элементов управления плеера
-    const headerHeight = 24;
+    const headerHeight = 20;
     const controlsHeight = 80;
     const isMobile = window.innerWidth <= 767.98;
     const minWidth = isMobile ? window.innerWidth * 0.9 : 400;
@@ -545,7 +662,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
     // Очищаем предыдущий плеер если он существует
     if (globalPlayer) {
         try {
-            globalPlayer.destroy();
+            if (typeof globalPlayer.destroy === 'function') {
+                globalPlayer.destroy();
+            } else if (globalPlayer.dispose && typeof globalPlayer.dispose === 'function') {
+                globalPlayer.dispose();
+            }
         } catch(e) {
             console.error('Error destroying player:', e);
         }
@@ -631,11 +752,123 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         }
     }
     
-    // Инициализируем Plyr для видео/аудио
+    // Инициализируем Video.js для видео/аудио
     if (playerData.playerClass) {
-        const playerElement = previewContent.querySelector('.' + playerData.playerClass);
+        const playerElement = previewContent.querySelector('.' + playerData.playerClass.split(' ')[0]);
         if (playerElement) {
             globalPlayer = initUnifiedPlayer(playerElement);
+            
+            // Для аудио применяем специальные стили после инициализации
+            if (type === 'audio') {
+                setTimeout(() => {
+                    const audioContainer = previewContent.querySelector('.unified-player-content');
+                    if (audioContainer) {
+                        audioContainer.classList.add('audio-container');
+                        audioContainer.style.minHeight = '80px';
+                        audioContainer.style.height = 'auto';
+                        audioContainer.style.alignItems = 'center';
+                        audioContainer.style.justifyContent = 'center';
+                        audioContainer.style.padding = '15px';
+                        audioContainer.style.background = '#000';
+                    }
+                    if (playerElement) {
+                        playerElement.style.width = '100%';
+                        playerElement.style.height = 'auto';
+                        playerElement.style.minHeight = '80px';
+                        playerElement.style.background = 'transparent';
+                    }
+                }, 100);
+            }
+            
+            // Для видео добавляем обработчик для автоматической адаптации размера окна
+            if (type === 'video') {
+                // Получаем video элемент (может быть напрямую или через Video.js)
+                let videoElement = null;
+                if (playerElement.tagName === 'VIDEO') {
+                    videoElement = playerElement;
+                } else if (globalPlayer && globalPlayer.tech_ && globalPlayer.tech_.el_ && globalPlayer.tech_.el_.tagName === 'VIDEO') {
+                    videoElement = globalPlayer.tech_.el_;
+                } else if (globalPlayer && globalPlayer.el_ && globalPlayer.el_.querySelector('video')) {
+                    videoElement = globalPlayer.el_.querySelector('video');
+                }
+                
+                if (videoElement) {
+                    // Функция для адаптации размера окна под размер видео
+                    const adaptWindowToVideoSize = () => {
+                        if (!modalDialog || !modalContent) return;
+                        
+                        const videoWidth = videoElement.videoWidth;
+                        const videoHeight = videoElement.videoHeight;
+                        
+                        // Если размеры видео еще не загружены, ждем
+                        if (!videoWidth || !videoHeight) return;
+                        
+                        const isMobile = window.innerWidth <= 767.98;
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // Вычисляем соотношение сторон видео
+                        const videoAspectRatio = videoWidth / videoHeight;
+                        
+                        // Максимальные размеры с учетом viewport
+                        const maxWidth = isMobile ? Math.min(400, viewportWidth - 32) : Math.min(1200, viewportWidth * 0.7);
+                        const maxHeight = isMobile ? viewportHeight - 32 : viewportHeight * 0.85;
+                        
+                        // Вычисляем оптимальный размер окна на основе реального соотношения сторон видео
+                        let optimalWidth = maxWidth;
+                        let optimalHeight = optimalWidth / videoAspectRatio;
+                        
+                        // Если высота превышает максимум, пересчитываем по высоте
+                        if (optimalHeight > maxHeight) {
+                            optimalHeight = maxHeight;
+                            optimalWidth = optimalHeight * videoAspectRatio;
+                        }
+                        
+                        // Минимальные размеры
+                        const minWidth = isMobile ? viewportWidth * 0.9 : 400;
+                        const minHeight = isMobile ? viewportHeight * 0.7 : 300;
+                        
+                        // Убеждаемся, что размеры не меньше минимума
+                        if (optimalWidth < minWidth) {
+                            optimalWidth = minWidth;
+                            optimalHeight = optimalWidth / videoAspectRatio;
+                        }
+                        if (optimalHeight < minHeight) {
+                            optimalHeight = minHeight;
+                            optimalWidth = optimalHeight * videoAspectRatio;
+                        }
+                        
+                        // Применяем размеры к модальному окну
+                        modalDialog.style.width = optimalWidth + 'px';
+                        modalDialog.style.maxWidth = optimalWidth + 'px';
+                        modalDialog.style.height = optimalHeight + 'px';
+                        modalDialog.style.maxHeight = optimalHeight + 'px';
+                        
+                        modalContent.style.width = '100%';
+                        modalContent.style.height = '100%';
+                        modalContent.style.maxWidth = '100%';
+                        modalContent.style.maxHeight = '100%';
+                        
+                        // Обновляем размер modal-body
+                        const modalBody = modalContent.querySelector('.modal-body');
+                        if (modalBody) {
+                            const header = modalContent.querySelector('.unified-player-header');
+                            const headerHeight = header ? header.offsetHeight : 20;
+                            modalBody.style.height = (optimalHeight - headerHeight) + 'px';
+                            modalBody.style.minHeight = (optimalHeight - headerHeight) + 'px';
+                            modalBody.style.maxHeight = (optimalHeight - headerHeight) + 'px';
+                        }
+                    };
+                    
+                    // Обработчик для получения метаданных видео
+                    videoElement.addEventListener('loadedmetadata', adaptWindowToVideoSize);
+                    
+                    // Также проверяем, если метаданные уже загружены
+                    if (videoElement.readyState >= 1) {
+                        setTimeout(adaptWindowToVideoSize, 100);
+                    }
+                }
+            }
         }
     }
     
@@ -676,6 +909,24 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
             modalContent.style.height = size + 'px';
             modalContent.style.maxWidth = size + 'px';
             modalContent.style.maxHeight = size + 'px';
+        } else if (type === 'video') {
+            // Для видео устанавливаем временный размер (будет обновлен после загрузки метаданных)
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const maxWidth = isMobile ? Math.min(400, viewportWidth - 32) : Math.min(1200, viewportWidth * 0.7);
+            const maxHeight = isMobile ? viewportHeight - 32 : viewportHeight * 0.85;
+            
+            // Временный размер (16:9), будет обновлен после загрузки метаданных
+            const tempHeight = maxWidth / (16 / 9);
+            modalDialog.style.width = maxWidth + 'px';
+            modalDialog.style.maxWidth = maxWidth + 'px';
+            modalDialog.style.height = Math.min(tempHeight, maxHeight) + 'px';
+            modalDialog.style.maxHeight = maxHeight + 'px';
+            
+            modalContent.style.width = '100%';
+            modalContent.style.height = '100%';
+            modalContent.style.maxWidth = '100%';
+            modalContent.style.maxHeight = '100%';
         } else {
             // На мобильных используем нормальный размер (не на весь экран)
             if (isMobile) {
@@ -698,18 +949,14 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
                 const maxWidth = Math.min(1200, viewportWidth * 0.7);
                 const maxHeight = viewportHeight * 0.85;
                 
-                // Для видео используем соотношение 16:9, для других файлов - адаптивно
-                if (type === 'video') {
-                    const videoHeight = maxWidth / (16 / 9);
-                    modalDialog.style.width = maxWidth + 'px';
-                    modalDialog.style.maxWidth = maxWidth + 'px';
-                    modalDialog.style.height = Math.min(videoHeight, maxHeight) + 'px';
-                    modalDialog.style.maxHeight = maxHeight + 'px';
-                } else if (type === 'audio') {
+                if (type === 'audio') {
                     modalDialog.style.width = maxWidth + 'px';
                     modalDialog.style.maxWidth = maxWidth + 'px';
                     modalDialog.style.height = 'auto';
+                    modalDialog.style.minHeight = '160px';
                     modalDialog.style.maxHeight = '300px';
+                    modalContent.style.height = 'auto';
+                    modalContent.style.minHeight = '160px';
                 } else {
                     modalDialog.style.width = maxWidth + 'px';
                     modalDialog.style.maxWidth = maxWidth + 'px';
@@ -750,7 +997,11 @@ async function showPreview(url, type, fileId = null, filename = 'Просмот�
         // Уничтожаем плеер при закрытии
         if (globalPlayer) {
             try {
-                globalPlayer.destroy();
+                if (typeof globalPlayer.destroy === 'function') {
+                    globalPlayer.destroy();
+                } else if (globalPlayer.dispose && typeof globalPlayer.dispose === 'function') {
+                    globalPlayer.dispose();
+                }
                 globalPlayer = null;
             } catch(e) {
                 console.error('Error destroying player:', e);
@@ -903,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const playerData = createUnifiedPlayerHTML(playerType, fileUrl, filename, fileUrl, 'window.location.href=\'/\'', null);
         playerElement.innerHTML = playerData.html;
         
-        // Инициализируем Plyr для видео/аудио
+        // Инициализируем Video.js для видео/аудио
         if (playerData.playerClass) {
             const mediaElement = playerElement.querySelector('.' + playerData.playerClass);
             if (mediaElement) {
