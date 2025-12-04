@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Eventshock Storage{% endblock %}</title>
-    {% if system_settings.site_logo %}
-    <link rel="icon" href="{{ system_settings.site_logo.url }}">
-    <link rel="shortcut icon" href="{{ system_settings.site_logo.url }}">
-    <link rel="apple-touch-icon" href="{{ system_settings.site_logo.url }}">
+    {% if system_theme_logo %}
+    <link rel="icon" href="{{ system_theme_logo.url }}">
+    <link rel="shortcut icon" href="{{ system_theme_logo.url }}">
+    <link rel="apple-touch-icon" href="{{ system_theme_logo.url }}">
     {% endif %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -59,6 +59,7 @@
             --bs-secondary-rgb: 108, 117, 125;
             --bs-navbar-color: #1a1d21;
             --bs-container-color: #e9ecef;
+            --site-name-color: {{ system_settings.site_name_color|default:'#ffffff' }};
         }
         
         /* Стили для светлой темы с уменьшенной яркостью */
@@ -778,7 +779,57 @@
 <body>
     <!-- Добавляем переводы в глобальную область видимости -->
     {{ t|json_script:"translations" }}
+    {{ system_settings.get_logo_config|json_script:"logo-config" }}
     <script>
+        const logoConfigElement = document.getElementById('logo-config');
+        window.logoConfig = logoConfigElement ? JSON.parse(logoConfigElement.textContent) : null;
+
+        function resolveSystemTheme() {
+            if (typeof window === 'undefined' || !window.matchMedia) {
+                return 'dark';
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function normalizeThemeName(theme) {
+            if (!theme || theme === 'auto') {
+                return resolveSystemTheme();
+            }
+            const lowered = theme.toLowerCase();
+            if (lowered !== 'light' && lowered !== 'dark') {
+                return 'dark';
+            }
+            return lowered;
+        }
+
+        function getLogoUrlForTheme(theme) {
+            if (!window.logoConfig) {
+                return '';
+            }
+            const config = window.logoConfig;
+            const resolvedTheme = normalizeThemeName(theme);
+            if (config.mode === 'theme') {
+                if (resolvedTheme === 'light') {
+                    return config.light || config.dark || config.single || '';
+                }
+                return config.dark || config.light || config.single || '';
+            }
+            return config.single || config.dark || config.light || '';
+        }
+
+        function applyThemeBranding(theme) {
+            const logoUrl = getLogoUrlForTheme(theme);
+            if (!logoUrl) {
+                return;
+            }
+            document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(link => {
+                link.setAttribute('href', logoUrl);
+            });
+            document.querySelectorAll('[data-logo-role="navbar"]').forEach(img => {
+                img.setAttribute('src', logoUrl);
+            });
+        }
+
         // Функция для получения перевода
         function t(key) {
             try {
@@ -798,6 +849,11 @@
             }
         }
 
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme') || '{{ system_theme_name }}';
+            applyThemeBranding(normalizeThemeName(currentTheme));
+        });
+
         // Делаем функцию доступной глобально
         window.t = t;
     </script>
@@ -805,11 +861,11 @@
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/" style="max-width: calc(100% - 60px);">
-                {% if system_settings.site_logo %}
-                    <img src="{{ system_settings.site_logo.url }}" alt="Logo" 
+                {% if system_theme_logo %}
+                    <img src="{{ system_theme_logo.url }}" alt="Logo" data-logo-role="navbar"
                          class="me-2" style="height: 32px; max-width: 32px; object-fit: contain;">
                 {% endif %}
-                <span style="color: {{ system_settings.site_name_color }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold;">
+                <span class="navbar-brand-title">
                     {{ system_settings.site_name }}
                 </span>
             </a>
@@ -881,12 +937,13 @@
     function updateTheme() {
         const theme = document.documentElement.getAttribute('data-bs-theme');
         if (theme === 'auto') {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'dark');
+            const prefersDark = resolveSystemTheme() === 'dark';
+            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
         } else if (!theme) {
             // Если тема не установлена, используем темную по умолчанию
             document.documentElement.setAttribute('data-bs-theme', 'dark');
         }
+        applyThemeBranding(normalizeThemeName(document.documentElement.getAttribute('data-bs-theme')));
     }
 
     // Слушаем изменения системной темы
@@ -1812,6 +1869,7 @@
         mutations.forEach((mutation) => {
             if (mutation.attributeName === 'data-bs-theme') {
                 updateTextColors();
+                applyThemeBranding(normalizeThemeName(document.documentElement.getAttribute('data-bs-theme')));
             }
         });
     });
@@ -1855,6 +1913,14 @@
 
     .nav-link:hover {
         color: var(--bs-primary) !important;
+    }
+
+    .navbar-brand-title {
+        color: var(--site-name-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: bold;
     }
 
     /* Стили для боковой навигации в настройках */

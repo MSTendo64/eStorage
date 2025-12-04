@@ -27,16 +27,40 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Логотип сайта</label>
+                <label class="form-label d-block">Режим логотипа</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="logo_mode" id="logoModeSingle"
+                           value="single" {% if settings.logo_mode != 'theme' %}checked{% endif %}>
+                    <label class="form-check-label" for="logoModeSingle">
+                        Общий логотип
+                    </label>
+                    <small class="text-muted d-block ms-4">
+                        Одно изображение используется как логотип сайта и favicon во всех темах.
+                    </small>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="radio" name="logo_mode" id="logoModeTheme"
+                           value="theme" {% if settings.logo_mode == 'theme' %}checked{% endif %}>
+                    <label class="form-check-label" for="logoModeTheme">
+                        Зависит от темы
+                    </label>
+                    <small class="text-muted d-block ms-4">
+                        Отдельные изображения для светлой и тёмной тем. Они также используются как favicon.
+                    </small>
+                </div>
+            </div>
+
+            <div id="singleLogoFields" class="mb-3 {% if settings.logo_mode == 'theme' %}d-none{% endif %}">
+                <label class="form-label">Общий логотип и favicon</label>
                 {% if settings.site_logo %}
-                    <div class="mb-2">
+                    <div class="mb-2 d-flex align-items-center gap-3 flex-wrap">
                         <img src="{{ settings.site_logo.url }}" alt="Current logo" 
-                             style="max-height: 50px;">
-                        <div class="form-check">
+                             style="max-height: 50px; max-width: 120px; object-fit: contain;">
+                        <div class="form-check mb-0">
                             <input type="checkbox" class="form-check-input" 
                                    name="remove_logo" id="removeLogo">
                             <label class="form-check-label" for="removeLogo">
-                                Удалить логотип
+                                Удалить изображение
                             </label>
                         </div>
                     </div>
@@ -44,8 +68,59 @@
                 <input type="file" class="form-control" name="site_logo" 
                        accept="image/png,image/jpeg,image/svg+xml">
                 <small class="text-muted">
-                    Рекомендуемый размер: 32x32px. Поддерживаемые форматы: PNG, JPEG, SVG
+                    Рекомендуемый квадратный размер от 64×64px. Поддерживаемые форматы: PNG, JPEG, SVG.
                 </small>
+            </div>
+
+            <div id="themeLogoFields" class="{% if settings.logo_mode != 'theme' %}d-none{% endif %}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Логотип для светлой темы</label>
+                            {% if settings.logo_light %}
+                                <div class="mb-2 d-flex align-items-center gap-3 flex-wrap">
+                                    <img src="{{ settings.logo_light.url }}" alt="Light logo" 
+                                         style="max-height: 50px; max-width: 120px; object-fit: contain;">
+                                    <div class="form-check mb-0">
+                                        <input type="checkbox" class="form-check-input" 
+                                               name="remove_logo_light" id="removeLogoLight">
+                                        <label class="form-check-label" for="removeLogoLight">
+                                            Удалить изображение
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <input type="file" class="form-control" name="logo_light" 
+                                   accept="image/png,image/jpeg,image/svg+xml">
+                            <small class="text-muted">
+                                Будет показан на светлой теме и применён как favicon.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Логотип для тёмной темы</label>
+                            {% if settings.logo_dark %}
+                                <div class="mb-2 d-flex align-items-center gap-3 flex-wrap">
+                                    <img src="{{ settings.logo_dark.url }}" alt="Dark logo" 
+                                         style="max-height: 50px; max-width: 120px; object-fit: contain;">
+                                    <div class="form-check mb-0">
+                                        <input type="checkbox" class="form-check-input" 
+                                               name="remove_logo_dark" id="removeLogoDark">
+                                        <label class="form-check-label" for="removeLogoDark">
+                                            Удалить изображение
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <input type="file" class="form-control" name="logo_dark" 
+                                   accept="image/png,image/jpeg,image/svg+xml">
+                            <small class="text-muted">
+                                Используется на тёмной теме и для favicon.
+                            </small>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-3">
@@ -95,5 +170,18 @@ document.querySelector('#colorText').addEventListener('input', function(e) {
         document.querySelector('input[type="color"]').value = e.target.value;
     }
 });
+
+function toggleLogoFields() {
+    const checkedMode = document.querySelector('input[name="logo_mode"]:checked');
+    const mode = checkedMode ? checkedMode.value : 'single';
+    document.getElementById('singleLogoFields').classList.toggle('d-none', mode === 'theme');
+    document.getElementById('themeLogoFields').classList.toggle('d-none', mode !== 'theme');
+}
+
+document.querySelectorAll('input[name="logo_mode"]').forEach((radio) => {
+    radio.addEventListener('change', toggleLogoFields);
+});
+
+toggleLogoFields();
 </script>
 {% endblock %} 

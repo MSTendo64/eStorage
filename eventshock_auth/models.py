@@ -157,8 +157,22 @@ class ESIDToken(models.Model):
         super().save(*args, **kwargs)
 
 class SystemSettings(models.Model):
+    LOGO_MODE_SINGLE = 'single'
+    LOGO_MODE_THEME = 'theme'
+    LOGO_MODE_CHOICES = [
+        (LOGO_MODE_SINGLE, 'Общий логотип'),
+        (LOGO_MODE_THEME, 'По выбору темы'),
+    ]
+
     site_name = models.CharField(max_length=100, default='eStorage')
     site_logo = models.ImageField(upload_to='system/logo/', null=True, blank=True)
+    logo_mode = models.CharField(
+        max_length=16,
+        choices=LOGO_MODE_CHOICES,
+        default=LOGO_MODE_SINGLE,
+    )
+    logo_light = models.ImageField(upload_to='system/logo/', null=True, blank=True)
+    logo_dark = models.ImageField(upload_to='system/logo/', null=True, blank=True)
     site_name_color = models.CharField(max_length=7, default='#ffffff', help_text='HEX color code')
     proxy_url = models.CharField(max_length=500, null=True, blank=True, help_text='URL прокси-сервера для загрузки файлов (например: https://api.allorigins.win/raw?url= или https://corsproxy.io/?)')
     proxy_domains = models.TextField(null=True, blank=True, help_text='Список доменов (по одному на строку), для которых сразу использовать прокси при загрузке')
@@ -174,3 +188,36 @@ class SystemSettings(models.Model):
     def get_settings(cls):
         settings, _ = cls.objects.get_or_create(pk=1)
         return settings
+
+    def get_logo_for_theme(self, theme: str = 'dark'):
+        """
+        Возвращает файл логотипа, подходящий для указанной темы.
+        """
+        theme = (theme or 'dark').lower()
+        if theme not in ('light', 'dark'):
+            theme = 'dark'
+
+        if self.logo_mode == self.LOGO_MODE_THEME:
+            if theme == 'light':
+                if self.logo_light:
+                    return self.logo_light
+                if self.logo_dark:
+                    return self.logo_dark
+            else:
+                if self.logo_dark:
+                    return self.logo_dark
+                if self.logo_light:
+                    return self.logo_light
+
+        return self.site_logo or self.logo_dark or self.logo_light
+
+    def get_logo_config(self):
+        """
+        Возвращает словарь с URL логотипов для использования на клиенте.
+        """
+        return {
+            'mode': self.logo_mode,
+            'single': self.site_logo.url if self.site_logo else '',
+            'dark': self.logo_dark.url if self.logo_dark else '',
+            'light': self.logo_light.url if self.logo_light else '',
+        }

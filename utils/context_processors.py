@@ -15,6 +15,20 @@ def language_processor(request):
     }
 
 def system_settings(request):
+    settings = SystemSettings.get_settings()
+
+    user_theme = getattr(
+        getattr(getattr(request, 'user', None), 'userprofile', None),
+        'theme',
+        None,
+    ) or 'dark'
+
+    normalized_theme = user_theme.lower() if isinstance(user_theme, str) else 'dark'
+    if normalized_theme not in ('light', 'dark'):
+        normalized_theme = 'dark'
+
     return {
-        'system_settings': SystemSettings.get_settings()
-    } 
+        'system_settings': settings,
+        'system_theme_logo': settings.get_logo_for_theme(normalized_theme),
+        'system_theme_name': normalized_theme,
+    }
