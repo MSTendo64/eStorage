@@ -1130,67 +1130,6 @@
     </div>
 </div>
 
-<!-- Модальное окно выбора качества видео -->
-<div class="modal fade" id="videoQualityModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-sliders-h me-2"></i>
-                    Выбор качества видео
-                </h5>
-                <button type="button" class="btn-close" onclick="cancelVideoQualitySelection()" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">
-                    Выберите, в каком качестве сохранить видео.
-                </p>
-                <div class="list-group">
-                    <label class="list-group-item list-group-item-action">
-                        <div class="form-check">
-                            <input class="form-check-input me-2" type="radio" name="videoQuality" value="minimum" checked>
-                            <div>
-                                <div class="fw-semibold">Минимальная</div>
-                                <small class="text-muted d-block">
-                                    Максимальное сжатие (50% от размера оригинала).
-                                </small>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="list-group-item list-group-item-action">
-                        <div class="form-check">
-                            <input class="form-check-input me-2" type="radio" name="videoQuality" value="medium">
-                            <div>
-                                <div class="fw-semibold">Средняя</div>
-                                <small class="text-muted d-block">
-                                    Умеренное сжатие (~20% от размера оригинала).
-                                </small>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="list-group-item list-group-item-action">
-                        <div class="form-check">
-                            <input class="form-check-input me-2" type="radio" name="videoQuality" value="original">
-                            <div>
-                                <div class="fw-semibold">Оригинал</div>
-                                <small class="text-muted d-block">
-                                    Сохранить без сжатия и изменений.
-                                </small>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="cancelVideoQualitySelection()">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="confirmVideoQualitySelection()">
-                    Продолжить
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Модальное окно для переименования файла -->
 <div class="modal fade" id="renameFileModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -1395,90 +1334,6 @@
 <script>
 // Функции для работы с плеером (showPreview, globalPlayer, initDragAndResize) находятся в file_viewer.html
 let zoom = null;
-const VIDEO_HOST_HINTS = [
-    'youtube.com', 'youtu.be', 'tiktok.com', 'vimeo.com',
-    'dailymotion.com', 'rutube.ru', 'rutube.com', 'vk.com', 'video-cdn.net'
-];
-const VIDEO_EXTENSION_HINTS = ['.mp4', '.mov', '.m4v', '.avi', '.wmv', '.flv', '.webm', '.mkv', '.mpg', '.mpeg', '.3gp', '.ts', '.m2ts'];
-let pendingVideoUploadContext = null;
-let videoQualityModalInstance = null;
-
-function shouldPromptVideoQuality(fileUrl) {
-    try {
-        const parsed = new URL(fileUrl);
-        const host = parsed.hostname.toLowerCase();
-        if (VIDEO_HOST_HINTS.some((hint) => host.includes(hint))) {
-            return true;
-        }
-        const path = parsed.pathname.toLowerCase();
-        return VIDEO_EXTENSION_HINTS.some((ext) => path.endsWith(ext));
-    } catch (error) {
-        return false;
-    }
-}
-
-function getVideoQualityModal() {
-    if (!videoQualityModalInstance) {
-        const modalElement = document.getElementById('videoQualityModal');
-        if (!modalElement) {
-            return null;
-        }
-        videoQualityModalInstance = new bootstrap.Modal(modalElement);
-        modalElement.addEventListener('hidden.bs.modal', () => {
-            pendingVideoUploadContext = null;
-        });
-    }
-    return videoQualityModalInstance;
-}
-
-function showVideoQualitySelection(context) {
-    pendingVideoUploadContext = context;
-    const modal = getVideoQualityModal();
-    if (!modal) {
-        executeUploadFromUrl({
-            fileUrl: context.fileUrl,
-            folderId: context.folderId,
-            selectedQuality: null
-        });
-        return;
-    }
-    const defaultOption = document.querySelector('input[name="videoQuality"][value="minimum"]');
-    if (defaultOption) {
-        defaultOption.checked = true;
-    }
-    modal.show();
-}
-
-function confirmVideoQualitySelection() {
-    if (!pendingVideoUploadContext) {
-        cancelVideoQualitySelection();
-        return;
-    }
-    const selectedInput = document.querySelector('input[name="videoQuality"]:checked');
-    const selectedValue = selectedInput ? selectedInput.value : 'original';
-    const context = {
-        fileUrl: pendingVideoUploadContext.fileUrl,
-        folderId: pendingVideoUploadContext.folderId
-    };
-    pendingVideoUploadContext = null;
-    const modal = getVideoQualityModal();
-    if (modal) {
-        modal.hide();
-    }
-    executeUploadFromUrl({
-        fileUrl: context.fileUrl,
-        folderId: context.folderId,
-        selectedQuality: selectedValue
-    });
-}
-
-function cancelVideoQualitySelection() {
-    pendingVideoUploadContext = null;
-    const modal = getVideoQualityModal();
-    if (modal) {
-        modal.hide();
-    }
-}
 
 // Функции для работы с общим доступом к папкам
 async function showShareFolderModal(folderId) {
@@ -1530,7 +1385,11 @@ async function uploadFromUrl() {
     const urlInput = document.getElementById('fileUrl');
     const fileUrl = urlInput.value.trim();
     const errorDiv = document.getElementById('uploadUrlError');
+    const submitBtn = document.getElementById('uploadUrlSubmitBtn');
+    const cancelBtn = document.getElementById('uploadUrlCancelBtn');
+    const progressContainer = document.getElementById('uploadUrlProgressContainer');
     
+    // Скрываем предыдущие ошибки
     errorDiv.classList.add('d-none');
     
     if (!fileUrl) {
@@ -1539,6 +1398,7 @@ async function uploadFromUrl() {
         return;
     }
     
+    // Валидация URL
     try {
         const url = new URL(fileUrl);
         if (!url.protocol.startsWith('http')) {
@@ -1552,40 +1412,11 @@ async function uploadFromUrl() {
         return;
     }
     
+    // Получаем текущую папку из URL, если есть
     const urlParams = new URLSearchParams(window.location.search);
-    const folderParam = urlParams.get('folder');
-    const folderId = folderParam ? parseInt(folderParam) : null;
+    const folderId = urlParams.get('folder');
     
-    const context = { fileUrl, folderId };
-    
-    if (shouldPromptVideoQuality(fileUrl)) {
-        showVideoQualitySelection(context);
-        return;
-    }
-    
-    await executeUploadFromUrl({
-        fileUrl,
-        folderId,
-        selectedQuality: null
-    });
-}
-
-async function executeUploadFromUrl(params) {
-    const options = params || {};
-    const fileUrl = options.fileUrl;
-    const folderId = options.folderId;
-    const selectedQuality = options.selectedQuality || null;
-    
-    if (!fileUrl) {
-        return;
-    }
-    const errorDiv = document.getElementById('uploadUrlError');
-    const submitBtn = document.getElementById('uploadUrlSubmitBtn');
-    const cancelBtn = document.getElementById('uploadUrlCancelBtn');
-    const progressContainer = document.getElementById('uploadUrlProgressContainer');
-    
-    errorDiv.classList.add('d-none');
-    
+    // Блокируем кнопки и показываем прогресс
     submitBtn.disabled = true;
     cancelBtn.disabled = true;
     updateUploadUrlProgress(0, 'Подготовка к загрузке...');
@@ -1601,6 +1432,7 @@ async function executeUploadFromUrl(params) {
     }
     
     try {
+        // Определяем тип URL для показа соответствующих этапов
         const urlObj = new URL(fileUrl);
         const hostname = urlObj.hostname.toLowerCase();
         let urlType = 'файл';
@@ -1640,20 +1472,22 @@ async function executeUploadFromUrl(params) {
             },
             body: JSON.stringify({
                 url: fileUrl,
-                folder_id: Number.isInteger(folderId) ? folderId : null,
-                video_quality: selectedQuality
+                folder_id: folderId ? parseInt(folderId) : null
             })
         });
         
         updateUploadUrlProgress(30, 'Запрос отправлен, ожидание ответа...');
         
+        // Проверяем Content-Type перед парсингом JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
+            // Если ответ не JSON, читаем как текст для отображения ошибки
             const text = await response.text();
             submitBtn.disabled = false;
             cancelBtn.disabled = false;
             progressContainer.classList.add('d-none');
             
+            // Пытаемся найти ошибку в HTML (если это страница ошибки Django)
             let errorMessage = 'Ошибка при загрузке файла';
             if (text.includes('<title>')) {
                 const titleMatch = text.match(/<title>(.*?)<\/title>/);
@@ -1671,6 +1505,7 @@ async function executeUploadFromUrl(params) {
         
         updateUploadUrlProgress(40, isVideoPlatform ? 'Извлечение информации о видео...' : 'Получение информации о файле...');
         
+        // Симулируем прогресс во время обработки на сервере
         const progressInterval = setInterval(() => {
             const currentPercent = parseInt(document.getElementById('uploadUrlProgress').style.width) || 40;
             if (currentPercent < 85) {
@@ -1691,11 +1526,14 @@ async function executeUploadFromUrl(params) {
             
             updateUploadUrlProgress(100, 'Загрузка завершена!');
             
+            // Небольшая задержка перед закрытием для показа 100%
             setTimeout(() => {
+                // Закрываем модальное окно
                 const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFromUrlModal'));
                 if (modal) {
                     modal.hide();
                 }
+                // Обновляем страницу для отображения нового файла
                 location.reload();
             }, 500);
         } else {
@@ -1712,6 +1550,7 @@ async function executeUploadFromUrl(params) {
         
         let errorMessage = 'Ошибка при загрузке файла: ' + error.message;
         
+        // Специальная обработка ошибки парсинга JSON
         if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
             errorMessage = 'Ошибка: сервер вернул некорректный ответ. Возможно, проблема с авторизацией или доступом.';
         }
