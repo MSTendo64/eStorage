@@ -20,7 +20,7 @@ class UserProfile(models.Model):
         ('light', 'Светлая'),
         ('dark', 'Темная'),
         ('auto', 'Системная')
-    ], default='light')
+    ], default='dark')
     language = models.CharField(max_length=2, default='ru', choices=[
         ('ru', 'Русский'),
         ('en', 'English'),

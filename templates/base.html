@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-bs-theme="{{ user.userprofile.theme }}">
+<html lang="ru" data-bs-theme="{% if user.is_authenticated and user.userprofile.theme %}{{ user.userprofile.theme }}{% else %}dark{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -882,7 +882,10 @@
         const theme = document.documentElement.getAttribute('data-bs-theme');
         if (theme === 'auto') {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'dark');
+        } else if (!theme) {
+            // Если тема не установлена, используем темную по умолчанию
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
         }
     }
 
@@ -891,6 +894,11 @@
 
     // Вызываем при загрузке
     updateTheme();
+    
+    // Устанавливаем темную тему по умолчанию, если тема не установлена
+    if (!document.documentElement.getAttribute('data-bs-theme')) {
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+    }
 
     // Добавим функцию для сохранения настроек прозрачности
     function saveOpacitySettings(type, value) {
