@@ -1023,7 +1023,7 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
         ydl_opts = {
             # Приоритет: лучшее видео + лучший звук (объединяется автоматически), затем лучшее комбинированное, затем лучшее MP4, затем любое лучшее
             # Формат bestvideo+bestaudio автоматически объединит видео и аудио в один файл
-            'format': 'bestvideo+bestaudio[language=ru]/best',
+            'format': 'bestvideo+bestaudio[language=ru]',
             # Используем название видео, yt-dlp автоматически очистит недопустимые символы
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'quiet': False,  # Включаем вывод для диагностики
