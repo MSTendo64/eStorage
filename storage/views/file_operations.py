@@ -24,6 +24,7 @@ from ..helpers import (
     get_file_path
 )
 from ..constants import SUCCESS_FILE_UPLOADED, SUCCESS_FILE_DELETED, ERROR_FILE_NOT_FOUND
+from ..utils import apply_video_quality_profile, is_video_filename
 from eventshock_auth.models import UserProfile
 
 logger = __import__('logging').getLogger(__name__)
@@ -1682,6 +1683,7 @@ def upload_from_url(request):
     
     try:
         # Получаем URL из POST или JSON
+        video_quality = None
         if request.content_type == 'application/json':
             try:
                 data = json.loads(request.body)
@@ -1689,12 +1691,33 @@ def upload_from_url(request):
                 return create_json_response(False, 'Некорректный JSON в запросе', status=400)
             file_url = data.get('url', '').strip()
             folder_id = data.get('folder_id', None)
+            video_quality = data.get('video_quality')
         else:
             file_url = request.POST.get('url', '').strip()
             folder_id = request.POST.get('folder_id', None)
+            video_quality = request.POST.get('video_quality')
         
         if not file_url:
             return create_json_response(False, 'URL не указан', status=400)
+        
+        if video_quality is not None:
+            if isinstance(video_quality, str):
+                video_quality = video_quality.strip().lower()
+            else:
+                video_quality = str(video_quality).strip().lower()
+            if video_quality == '':
+                video_quality = None
+        valid_quality_options = {None, 'minimum', 'medium', 'original'}
+        if video_quality not in valid_quality_options:
+            return create_json_response(False, 'Некорректный параметр качества видео', status=400)
+        
+        def should_process_video_quality(filename_hint, content_type_hint):
+            if not video_quality:
+                return False
+            content_type_lower = (content_type_hint or '').lower()
+            if 'video' in content_type_lower:
+                return True
+            return is_video_filename(filename_hint)
         
         # Валидация URL
         try:
@@ -1774,6 +1797,13 @@ def upload_from_url(request):
                 try:
                     import shutil
                     shutil.move(downloaded_video_path, file_path)
+                    
+                    if video_quality:
+                        success, error_message = apply_video_quality_profile(file_path, video_quality)
+                        if not success:
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                            return create_json_response(False, error_message, status=500)
                     
                     # Получаем размер файла
                     actual_size = os.path.getsize(file_path)
@@ -1992,6 +2022,13 @@ def upload_from_url(request):
                     import shutil
                     shutil.move(downloaded_video_path, file_path)
                     
+                    if video_quality:
+                        success, error_message = apply_video_quality_profile(file_path, video_quality)
+                        if not success:
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                            return create_json_response(False, error_message, status=500)
+                        
                     # Получаем размер файла
                     actual_size = os.path.getsize(file_path)
                     logger.info(f"File moved successfully, size: {actual_size} bytes")
@@ -2148,6 +2185,13 @@ def upload_from_url(request):
                     try:
                         import shutil
                         shutil.move(downloaded_video_path, file_path)
+                        
+                        if video_quality:
+                            success, error_message = apply_video_quality_profile(file_path, video_quality)
+                            if not success:
+                                if os.path.exists(file_path):
+                                    os.remove(file_path)
+                                return create_json_response(False, error_message, status=500)
                         
                         # Получаем размер файла
                         actual_size = os.path.getsize(file_path)
@@ -2537,6 +2581,13 @@ def upload_from_url(request):
             
             # Получаем реальный размер файла
             try:
+                if should_process_video_quality(filename, content_type):
+                    success, error_message = apply_video_quality_profile(file_path, video_quality)
+                    if not success:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                        return create_json_response(False, error_message, status=500)
+                
                 actual_size = os.path.getsize(file_path)
                 logger.info(f"File saved, actual size: {actual_size} bytes")
             except OSError as e:
