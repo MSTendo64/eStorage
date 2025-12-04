@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/userinfo/', views.UserInfoView.as_view(), name='user-info'),
     path('settings/profile/', views.settings_profile, name='settings_profile'),
     path('settings/appearance/', views.settings_appearance, name='settings_appearance'),
+    path('settings/security/', views.settings_security, name='settings_security'),
     path('settings/api/', views.settings_api, name='settings_api'),
     path('settings/api/create-key/', views.create_api_key, name='create_api_key'),
     path('settings/api/create-token/', views.create_esid_token, name='create_esid_token'),

@@ -40,6 +40,14 @@
                             <a href="{% url 'esadmin:user_edit' user.id %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            {% if user.id != request.user.id %}
+                            <form method="post" action="{% url 'esadmin:user_delete' user.id %}" class="d-inline delete-user-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger" data-username="{{ user.username }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -48,4 +56,17 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-user-form').forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            const button = form.querySelector('button');
+            const username = button ? button.dataset.username : 'этот пользователь';
+            if (!confirm(`Удалить ${username} вместе со всеми его файлами? Это действие необратимо.`)) {
+                event.preventDefault();
+            }
+        });
+    });
+});
+</script>
 {% endblock %} 

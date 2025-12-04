@@ -16,6 +16,10 @@
                class="list-group-item list-group-item-action {% if active_tab == 'general' %}active{% endif %}">
                 <i class="fas fa-cog me-2"></i> Общее
             </a>
+            <a href="{% url 'settings_security' %}" 
+               class="list-group-item list-group-item-action {% if active_tab == 'security' %}active{% endif %}">
+                <i class="fas fa-shield-alt me-2"></i> Безопасность
+            </a>
             {% if user.userprofile.developer_mode %}
             <a href="{% url 'settings_api' %}" 
                class="list-group-item list-group-item-action {% if active_tab == 'api' %}active{% endif %}">

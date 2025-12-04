@@ -7,7 +7,7 @@
 from .dashboard_views import dashboard, system_stats_ajax
 
 # User operations
-from .user_operations import users_list, user_detail, user_edit, user_create
+from .user_operations import users_list, user_detail, user_edit, user_create, user_delete
 
 # Storage operations
 from .storage_operations import storage_stats
@@ -24,6 +24,7 @@ __all__ = [
     'user_detail',
     'user_edit',
     'user_create',
+    'user_delete',
     # Storage
     'storage_stats',
     # System

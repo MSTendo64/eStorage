@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,6 +9,8 @@ from oauth2_provider.views.generic import ProtectedResourceView
 from oauth2_provider.models import AccessToken
 from .models import UserProfile, LinkedAccount, OAuthApplication, APIKey, ESIDToken
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from datetime import timedelta
 import uuid
 import os
@@ -175,8 +177,6 @@ def settings_profile(request):
         user = request.user
         user.username = request.POST.get('username')
         user.email = request.POST.get('email')
-        user.first_name = request.POST.get('first_name')
-        user.last_name = request.POST.get('last_name')
         
         # Сначала сохраняем изменения пользователя
         user.save()
@@ -218,6 +218,38 @@ def settings_profile(request):
         return redirect('settings_profile')
         
     return render(request, 'eventshock_auth/settings/profile.html', {'active_tab': 'profile'})
+
+
+@login_required
+@ensure_csrf_cookie
+def settings_security(request):
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if not request.user.check_password(current_password):
+            messages.error(request, 'Текущий пароль указан неверно.')
+            return redirect('settings_security')
+
+        if new_password != confirm_password:
+            messages.error(request, 'Новый пароль и подтверждение не совпадают.')
+            return redirect('settings_security')
+
+        try:
+            validate_password(new_password, request.user)
+        except ValidationError as errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('settings_security')
+
+        request.user.set_password(new_password)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        messages.success(request, 'Пароль успешно обновлён.')
+        return redirect('settings_security')
+
+    return render(request, 'eventshock_auth/settings/security.html', {'active_tab': 'security'})
 
 @login_required
 @ensure_csrf_cookie

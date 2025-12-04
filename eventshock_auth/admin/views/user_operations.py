@@ -5,9 +5,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.views.decorators.http import require_POST
+from django.db import transaction
 from ...models import UserProfile
 from ..helpers import get_user_storage_stats, validate_storage_quota
 from .dashboard_views import is_superuser
+from storage.models import UserFile
 
 
 @user_passes_test(is_superuser)
@@ -132,4 +135,37 @@ def user_create(request):
     return render(request, 'eventshock_auth/admin/user_create.html', {
         'active_tab': 'users'
     })
+
+
+@user_passes_test(is_superuser)
+@require_POST
+def user_delete(request, user_id):
+    """
+    Удаление пользователя вместе с его файлами и профилем.
+    """
+    user = get_object_or_404(User, id=user_id)
+
+    if user.id == request.user.id:
+        messages.error(request, 'Нельзя удалить собственную учетную запись.')
+        return redirect('esadmin:users')
+
+    with transaction.atomic():
+        # Удаляем пользовательские файлы с диска
+        user_files = UserFile.objects.filter(user=user)
+        for user_file in user_files:
+            if user_file.file:
+                user_file.file.delete(save=False)
+        user_files.delete()
+
+        # Удаляем аватар, если он есть
+        profile = UserProfile.objects.filter(user=user).first()
+        if profile:
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+            profile.delete()
+
+        user.delete()
+
+    messages.success(request, 'Пользователь и все его файлы успешно удалены.')
+    return redirect('esadmin:users')
 

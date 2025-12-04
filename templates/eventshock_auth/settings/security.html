@@ -1,0 +1,32 @@
+{% extends 'eventshock_auth/settings/base.html' %}
+
+{% block settings_content %}
+<h3>Безопасность</h3>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Смена пароля</h5>
+        <p class="text-muted">Обновите пароль аккаунта. После смены вы останетесь авторизованы.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label" for="currentPassword">Текущий пароль</label>
+                <input type="password" id="currentPassword" name="current_password" class="form-control" required
+                       autocomplete="current-password">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="newPassword">Новый пароль</label>
+                <input type="password" id="newPassword" name="new_password" class="form-control" required
+                       autocomplete="new-password">
+                <small class="text-muted">Минимальные требования зависят от политик безопасности системы.</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="confirmPassword">Подтвердите новый пароль</label>
+                <input type="password" id="confirmPassword" name="confirm_password" class="form-control" required
+                       autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Обновить пароль</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
