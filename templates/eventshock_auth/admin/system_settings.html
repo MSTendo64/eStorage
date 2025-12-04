@@ -27,27 +27,18 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label d-block">Режим логотипа</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="logo_mode" id="logoModeSingle"
-                           value="single" {% if settings.logo_mode != 'theme' %}checked{% endif %}>
-                    <label class="form-check-label" for="logoModeSingle">
-                        Общий логотип
-                    </label>
-                    <small class="text-muted d-block ms-4">
-                        Одно изображение используется как логотип сайта и favicon во всех темах.
-                    </small>
-                </div>
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="radio" name="logo_mode" id="logoModeTheme"
-                           value="theme" {% if settings.logo_mode == 'theme' %}checked{% endif %}>
-                    <label class="form-check-label" for="logoModeTheme">
-                        Зависит от темы
-                    </label>
-                    <small class="text-muted d-block ms-4">
-                        Отдельные изображения для светлой и тёмной тем. Они также используются как favicon.
-                    </small>
-                </div>
+                <label class="form-label" for="logoModeSelect">Режим логотипа</label>
+                <select class="form-select" id="logoModeSelect" name="logo_mode">
+                    <option value="single" {% if settings.logo_mode != 'theme' %}selected{% endif %}>
+                        Общий логотип (одно изображение для всех тем)
+                    </option>
+                    <option value="theme" {% if settings.logo_mode == 'theme' %}selected{% endif %}>
+                        Зависит от темы (разные изображения для светлой и тёмной)
+                    </option>
+                </select>
+                <small class="text-muted d-block mt-1">
+                    Определяет, используются ли раздельные логотипы и favicon для светлой/тёмной тем.
+                </small>
             </div>
 
             <div id="singleLogoFields" class="mb-3 {% if settings.logo_mode == 'theme' %}d-none{% endif %}">
@@ -172,16 +163,13 @@ document.querySelector('#colorText').addEventListener('input', function(e) {
 });
 
 function toggleLogoFields() {
-    const checkedMode = document.querySelector('input[name="logo_mode"]:checked');
-    const mode = checkedMode ? checkedMode.value : 'single';
+    const select = document.getElementById('logoModeSelect');
+    const mode = select ? select.value : 'single';
     document.getElementById('singleLogoFields').classList.toggle('d-none', mode === 'theme');
     document.getElementById('themeLogoFields').classList.toggle('d-none', mode !== 'theme');
 }
 
-document.querySelectorAll('input[name="logo_mode"]').forEach((radio) => {
-    radio.addEventListener('change', toggleLogoFields);
-});
-
+document.getElementById('logoModeSelect').addEventListener('change', toggleLogoFields);
 toggleLogoFields();
 </script>
 {% endblock %} 
