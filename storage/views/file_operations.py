@@ -1019,7 +1019,7 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
         # Создаем временную директорию для загрузки
         temp_dir = tempfile.mkdtemp()
         
-        # Настройки yt-dlp для YouTube с оптимизациями
+        # Настройки yt-dlp для YouTube
         ydl_opts = {
             'format': 'bestvideo+bestaudio/best',
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
@@ -1030,47 +1030,44 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             'writethumbnail': False,
             'noplaylist': True,
             'ignoreerrors': False,
-            'no_check_certificate': True,  # Меньше проблем с SSL
-            # Увеличиваем таймауты
-            'socket_timeout': 30,
-            'extractor_retries': 3,
-            'retries': 10,  # Увеличиваем количество попыток
-            'fragment_retries': 10,
-            'skip_unavailable_fragments': True,
-            # Увеличиваем таймаут соединения
-            'connect_timeout': 30,
-            # Оптимизации для медленных соединений
+            'no_check_certificate': False,
+            'postprocessors': [],
+            
+            # КРИТИЧНО ВАЖНО: настройки таймаутов и повторов
+            'socket_timeout': 30,  # Таймаут сокета в секундах
+            'extractor_retries': 3,  # Количество попыток для экстрактора
+            'retries': 10,  # Общее количество попыток при ошибках загрузки
+            'fragment_retries': 10,  # Попытки для фрагментов (для DASH/m3u8)
+            'skip_unavailable_fragments': True,  # Пропускать недоступные фрагменты
+            'retry_sleep_functions': {
+                'http': lambda n: 3 + 2 * n,  # Пауза между HTTP-повторами
+                'fragment': lambda n: 3,  # Пауза для фрагментов
+            },
+            
+            # Настройки буфера и загрузки
             'buffersize': 1024 * 1024,  # 1MB буфер
-            'http_chunk_size': 10485760,  # 10MB чанки
-            # Используем более простые форматы для стабильности
-            'prefer_free_formats': True,
-            'format_sort': ['res', 'ext:mp4:m4a', 'codec:h264', 'size', 'br'],
-            # Настройки для объединения потоков
-            'merge_output_format': 'mp4',
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
-            # User-Agent и заголовки
+            'http_chunk_size': 1048576,  # 1MB чанки
+            
+            # User-Agent для обхода блокировок
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
-            'headers': {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
-                'Accept-Encoding': 'gzip, deflate',
+            
+            # Дополнительные параметры для обхода ограничений
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],  # Использовать разные клиенты
+                    'skip': ['hls', 'dash'],  # Пропустить HLS/DASH если проблемы
+                }
             },
-            # Убираем geo-restriction если есть
-            'geo_bypass': True,
-            'geo_bypass_country': 'US',
-            # Лимит скорости (0 - без ограничений)
-            'ratelimit': 0,
-            # Кэширование
-            'cachedir': False,
-            # Очистка
-            'restrictfilenames': True,  # Более безопасные имена файлов
-            'windowsfilenames': True,  # Для совместимости с Windows
-            'trim_file_name': 200,  # Ограничиваем длину имени файла
+            
+            # Настройки для медленных соединений
+            'throttledratelimit': 0,  # Не ограничивать скорость при повторных попытках
+            
+            # Прокси (раскомментировать если нужно)
+            # 'proxy': 'http://proxy:port/',
+            
+            # Куки (если нужно обойти возрастные ограничения)
+            # 'cookiefile': 'cookies.txt',
         }
         
         logger.info(f"Attempting to download YouTube video using yt-dlp: {youtube_url}")
@@ -1078,28 +1075,9 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                # Пытаемся получить информацию с несколькими попытками
+                # Получаем информацию о видео
                 logger.info("Extracting video info...")
-                
-                # Функция с повторными попытками
-                def extract_with_retry(url, max_retries=3):
-                    for attempt in range(max_retries):
-                        try:
-                            info = ydl.extract_info(url, download=False)
-                            return info
-                        except (yt_dlp.utils.DownloadError, 
-                                yt_dlp.utils.ExtractorError,
-                                ConnectionError,
-                                TimeoutError) as e:
-                            if attempt < max_retries - 1:
-                                wait_time = (attempt + 1) * 5  # Увеличивающаяся задержка
-                                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait_time} seconds...")
-                                time.sleep(wait_time)
-                            else:
-                                raise
-                    return None
-                
-                info = extract_with_retry(youtube_url)
+                info = ydl.extract_info(youtube_url, download=False)
                 
                 if not info:
                     logger.warning("yt-dlp could not extract video info from YouTube URL")
@@ -1109,8 +1087,17 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                         pass
                     return None
                 
-                logger.info(f"Video info extracted. Title: {info.get('title', 'N/A')[:50]}..., ID: {info.get('id', 'N/A')}")
+                logger.info(f"Video info extracted. Title: {info.get('title', 'N/A')}, ID: {info.get('id', 'N/A')}")
                 logger.info(f"Duration: {info.get('duration', 'N/A')} seconds")
+                
+                # Если видео приватное или недоступно
+                if info.get('availability') == 'private' or info.get('availability') == 'subscriber_only':
+                    logger.error(f"YouTube video is private or requires subscription: {youtube_url}")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                    return None
                 
                 # Проверяем, есть ли видео
                 if info.get('_type') == 'playlist':
@@ -1124,117 +1111,88 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                             pass
                         return None
                     
-                    # Пытаемся скачать несколько видео из плейлиста
-                    for i, entry in enumerate(entries[:3]):  # Пробуем первые 3
-                        try:
-                            video_url = entry.get('url') or entry.get('webpage_url')
-                            if video_url:
-                                logger.info(f"Trying video {i+1} from playlist: {video_url}")
-                                info = extract_with_retry(video_url)
-                                if info:
-                                    break
-                        except:
-                            continue
-                    
-                    if not info:
-                        logger.warning("Could not extract any video from playlist")
+                    first_video_url = entries[0].get('url') or entries[0].get('webpage_url')
+                    if first_video_url:
+                        logger.info(f"Extracting first video from playlist: {first_video_url}")
+                        info = ydl.extract_info(first_video_url, download=False)
+                    else:
+                        logger.warning("Could not get URL of first video in playlist")
                         try:
                             shutil.rmtree(temp_dir)
                         except:
                             pass
                         return None
                 
-                # Логируем доступные форматы для диагностики
-                if 'formats' in info:
-                    video_formats = [f for f in info['formats'] if f.get('vcodec') != 'none']
-                    audio_formats = [f for f in info['formats'] if f.get('acodec') != 'none']
-                    logger.info(f"Found {len(video_formats)} video formats and {len(audio_formats)} audio formats")
-                    
-                    # Выбираем оптимальный формат
-                    preferred_formats = []
-                    # Сначала ищем MP4
+                # Проверяем наличие видео URL или форматов
+                has_video = False
+                if 'url' in info:
+                    has_video = True
+                    logger.info(f"Found direct video URL")
+                elif 'formats' in info and info['formats']:
+                    logger.info(f"Found {len(info['formats'])} formats")
                     for fmt in info['formats']:
-                        if fmt.get('ext') == 'mp4' and fmt.get('vcodec') != 'none':
-                            preferred_formats.append(fmt.get('format_id'))
-                    
-                    if preferred_formats:
-                        ydl.params['format'] = '+'.join(preferred_formats[:3])
-                        logger.info(f"Using preferred formats: {ydl.params['format']}")
+                        if fmt.get('vcodec') != 'none':
+                            has_video = True
+                            logger.info(f"Found video format: {fmt.get('format_id', 'N/A')}, resolution: {fmt.get('resolution', 'N/A')}")
+                            break
                 
-                logger.info(f"Starting download with retry mechanism...")
-                
-                # Функция для скачивания с повторными попытками
-                def download_with_retry(url, max_retries=3):
-                    for attempt in range(max_retries):
-                        try:
-                            ydl.download([url])
-                            return True
-                        except (yt_dlp.utils.DownloadError,
-                                ConnectionError,
-                                TimeoutError,
-                                OSError) as e:
-                            if attempt < max_retries - 1:
-                                wait_time = (attempt + 1) * 10  # Увеличивающаяся задержка
-                                logger.warning(f"Download attempt {attempt + 1} failed: {e}. Retrying in {wait_time} seconds...")
-                                time.sleep(wait_time)
-                                
-                                # Очищаем частично скачанные файлы
-                                for f in os.listdir(temp_dir):
-                                    if f.endswith('.part'):
-                                        try:
-                                            os.remove(os.path.join(temp_dir, f))
-                                        except:
-                                            pass
-                            else:
-                                raise
-                    return False
-                
-                # Скачиваем видео
-                download_success = download_with_retry(youtube_url)
-                
-                if not download_success:
-                    logger.error("All download attempts failed")
+                if not has_video:
+                    logger.warning("No video found in YouTube URL")
                     try:
                         shutil.rmtree(temp_dir)
                     except:
                         pass
                     return None
                 
+                logger.info(f"yt-dlp found video, starting download...")
+                
+                # Скачиваем видео с обработкой таймаутов
+                max_attempts = 2
+                for attempt in range(max_attempts):
+                    try:
+                        if attempt > 0:
+                            logger.info(f"Retry attempt {attempt + 1}/{max_attempts}")
+                            # Увеличиваем таймауты при повторных попытках
+                            ydl.params['socket_timeout'] = 30 + (attempt * 10)
+                        
+                        ydl.download([youtube_url])
+                        break  # Успешно скачали
+                        
+                    except yt_dlp.utils.DownloadError as e:
+                        error_msg = str(e)
+                        
+                        # Если это таймаут и есть еще попытки
+                        if ('timed out' in error_msg or 'timeout' in error_msg.lower()) and attempt < max_attempts - 1:
+                            logger.warning(f"Timeout during download (attempt {attempt + 1}), retrying...")
+                            time.sleep(5)  # Пауза перед повторной попыткой
+                            continue
+                        else:
+                            raise  # Передаем дальше если это не таймаут или попытки кончились
+                
                 logger.info(f"Download completed, checking temp directory: {temp_dir}")
                 
-                # Даем время для завершения записи файла
-                time.sleep(2)
-                
                 # Ищем скачанный файл
-                for _ in range(5):  # Проверяем несколько раз
-                    all_files = os.listdir(temp_dir)
-                    downloaded_files = [
-                        f for f in all_files
-                        if os.path.isfile(os.path.join(temp_dir, f)) 
-                        and not f.endswith(('.json', '.description', '.info', '.jpg', '.png', '.webp', '.info.json', '.part'))
-                        and not f.startswith('.')
-                    ]
-                    
-                    if downloaded_files:
-                        break
-                    time.sleep(1)
-                
+                all_files = os.listdir(temp_dir)
                 logger.info(f"Files in temp directory: {all_files}")
+                
+                # Ищем файлы по расширениям видео
+                video_extensions = {'.mp4', '.webm', '.mkv', '.flv', '.avi', '.mov', '.wmv', '.m4v'}
+                downloaded_files = [
+                    f for f in all_files
+                    if os.path.isfile(os.path.join(temp_dir, f)) 
+                    and os.path.splitext(f)[1].lower() in video_extensions
+                ]
+                
                 logger.info(f"Filtered video files: {downloaded_files}")
                 
                 if downloaded_files:
-                    # Выбираем самый большой файл (скорее всего видео)
-                    video_file = max(
-                        downloaded_files,
-                        key=lambda f: os.path.getsize(os.path.join(temp_dir, f)),
-                        default=downloaded_files[0]
-                    )
-                    video_file = os.path.join(temp_dir, video_file)
-                    
+                    # Берем самый большой файл (скорее всего это видео)
+                    downloaded_files.sort(key=lambda f: os.path.getsize(os.path.join(temp_dir, f)), reverse=True)
+                    video_file = os.path.join(temp_dir, downloaded_files[0])
                     file_size = os.path.getsize(video_file)
-                    logger.info(f"YouTube video downloaded successfully: {video_file} ({file_size / 1024 / 1024:.2f} MB)")
                     
-                    # Проверяем, что файл не пустой и достаточно большой
+                    logger.info(f"YouTube video downloaded successfully: {video_file} ({file_size} bytes)")
+                    
                     if file_size == 0:
                         logger.warning("Downloaded file is empty")
                         try:
@@ -1243,52 +1201,22 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                             pass
                         return None
                     
-                    # Минимальный размер для видео (например, 100KB)
-                    if file_size < 100 * 1024:
-                        logger.warning(f"Downloaded file is too small ({file_size} bytes), might be corrupted")
-                        # Но все равно возвращаем файл, пусть клиент решит
-                    
-                    # Переименовываем файл в .mp4, если он еще не в этом формате
+                    # Переименовываем файл в .mp4, если нужно
                     name, ext = os.path.splitext(video_file)
-                    if ext.lower() not in ['.mp4', '.mkv', '.avi', '.mov', '.webm']:
-                        # Проверяем MIME тип
+                    if ext.lower() != '.mp4':
+                        new_video_file = name + '.mp4'
                         try:
-                            import mimetypes
-                            mime_type, _ = mimetypes.guess_type(video_file)
-                            if mime_type and 'video' in mime_type:
-                                new_video_file = name + '.mp4'
-                                try:
-                                    os.rename(video_file, new_video_file)
-                                    video_file = new_video_file
-                                    logger.info(f"Renamed YouTube video file to MP4: {new_video_file}")
-                                except Exception as e:
-                                    logger.warning(f"Could not rename file to MP4: {e}, using original file")
-                        except:
-                            pass
+                            # Копируем с новым расширением
+                            shutil.copy2(video_file, new_video_file)
+                            os.remove(video_file)  # Удаляем оригинал
+                            video_file = new_video_file
+                            logger.info(f"Renamed YouTube video file to MP4: {new_video_file}")
+                        except Exception as e:
+                            logger.warning(f"Could not rename file to MP4: {e}, using original file")
                     
                     return video_file
                 else:
                     logger.warning("YouTube video file not found after download")
-                    # Пробуем найти .part файлы (возможно скачивание прервалось)
-                    part_files = [f for f in all_files if f.endswith('.part')]
-                    if part_files:
-                        logger.info(f"Found incomplete downloads: {part_files}")
-                        # Пытаемся переименовать самый большой .part файл
-                        part_file = max(
-                            part_files,
-                            key=lambda f: os.path.getsize(os.path.join(temp_dir, f))
-                        )
-                        part_path = os.path.join(temp_dir, part_file)
-                        new_name = os.path.splitext(part_file)[0] + '.mp4'
-                        new_path = os.path.join(temp_dir, new_name)
-                        try:
-                            os.rename(part_path, new_path)
-                            if os.path.getsize(new_path) > 0:
-                                logger.info(f"Recovered incomplete download: {new_path}")
-                                return new_path
-                        except Exception as e:
-                            logger.warning(f"Could not recover incomplete download: {e}")
-                    
                     try:
                         shutil.rmtree(temp_dir)
                     except:
@@ -1296,26 +1224,23 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                     return None
                     
             except yt_dlp.utils.DownloadError as e:
-                logger.error(f"yt-dlp DownloadError: {e}")
+                logger.error(f"yt-dlp DownloadError: {e}", exc_info=True)
                 error_msg = str(e)
                 
-                # Более детальная обработка ошибок
-                if 'SSL' in error_msg or 'handshake' in error_msg:
-                    logger.error("SSL/TLS handshake failed. Try updating certifi or system certificates")
-                elif 'timed out' in error_msg:
-                    logger.error("Connection timed out. Check your internet connection")
-                elif 'HTTP Error 429' in error_msg:
-                    logger.error("Too many requests. YouTube is blocking your IP. Try using proxies or wait")
-                elif 'Private video' in error_msg or 'private' in error_msg.lower():
+                # Анализируем ошибку
+                if 'Private video' in error_msg or 'private' in error_msg.lower():
                     logger.error("YouTube video is private or unavailable")
                 elif 'not available' in error_msg.lower() or 'unavailable' in error_msg.lower():
                     logger.error("YouTube video is not available")
                 elif 'age-restricted' in error_msg.lower():
-                    logger.error("YouTube video is age-restricted. Try adding cookies")
+                    logger.error("YouTube video is age-restricted. Consider using cookies.")
                 elif 'copyright' in error_msg.lower() or 'blocked' in error_msg.lower():
                     logger.error("YouTube video is blocked due to copyright")
+                elif 'timed out' in error_msg or 'timeout' in error_msg.lower():
+                    logger.error("Connection to YouTube timed out. Check your internet connection.")
+                elif 'SSL' in error_msg or 'handshake' in error_msg:
+                    logger.error("SSL handshake failed. This might be a network issue or firewall blocking.")
                 
-                # Удаляем временную директорию при ошибке
                 try:
                     shutil.rmtree(temp_dir)
                 except Exception as cleanup_error:
@@ -1323,14 +1248,6 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                 return None
             except Exception as e:
                 logger.error(f"Error downloading YouTube video with yt-dlp: {e}", exc_info=True)
-                # Логируем детали ошибки для диагностики
-                error_details = {
-                    'error_type': type(e).__name__,
-                    'error_message': str(e),
-                    'youtube_url': youtube_url[:100] if youtube_url else None,
-                }
-                logger.error(f"yt-dlp error details: {error_details}")
-                # Удаляем временную директорию при ошибке
                 try:
                     shutil.rmtree(temp_dir)
                 except Exception as cleanup_error:
@@ -1339,7 +1256,6 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
                 
     except ImportError:
         logger.warning("yt-dlp is not installed, cannot download YouTube videos")
-        # Попробуйте установить: pip install yt-dlp[default]
         return None
     except Exception as e:
         logger.error(f"Error in download_youtube_video_with_ytdlp: {e}", exc_info=True)
