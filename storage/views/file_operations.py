@@ -1030,14 +1030,10 @@ def download_youtube_video_with_ytdlp(youtube_url: str) -> Optional[str]:
             'no_warnings': False,
             'extract_flat': False,
             'writeinfojson': False,
-            'retries': 10,
-            'socket_timeout': 30,
-            'fragment_retries': 10,
             'writethumbnail': False,
             'noplaylist': True,  # Только одно видео
             'ignoreerrors': False,
-            'no_check_certificate': True,
-            'nocheckcertificate': True,
+            'no_check_certificate': False,
             # Пытаемся конвертировать видео в MP4 формат (если FFmpeg доступен)
             # Если FFmpeg недоступен, файл будет переименован в .mp4 после скачивания
             'postprocessors': [],
