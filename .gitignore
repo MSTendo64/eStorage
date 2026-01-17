@@ -165,3 +165,6 @@ nginx.conf
 templates/eventshock_auth/admin/backup_plan.html
 templates/eventshock_auth/admin/security_policy.html
 templates/eventshock_auth/admin/diagrams.html
+
+
+media/
