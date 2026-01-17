@@ -3,6 +3,7 @@
 """
 import os
 import logging
+from urllib.parse import quote
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse, FileResponse
 from django.shortcuts import render
@@ -42,7 +43,25 @@ def get_file_metadata(request, file_id):
             )
         
         try:
-            file_path = file.file.path
+            from ..helpers import get_file_path, download_file_from_s3
+            import tempfile
+            
+            # Если файл в S3 хранилище, нужно скачать его для получения метаданных
+            if file.storage and file.storage.storage_type == 's3':
+                # Скачиваем файл из S3 во временный файл
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_file_path = temp_file.name
+                temp_file.close()
+                
+                s3_key = f"{file.user.id}/{file.filename}"
+                if not download_file_from_s3(file.storage, s3_key, temp_file_path):
+                    return create_json_response(False, 'Ошибка при скачивании файла из S3', status=500)
+                
+                file_path = temp_file_path
+            else:
+                file_path = get_file_path(file)
+                if not file_path or not os.path.exists(file_path):
+                    raise Http404("Файл не найден")
         except Exception as e:
             logger.error(f"Error getting file path: {e}")
             return create_json_response(
@@ -59,7 +78,15 @@ def get_file_metadata(request, file_id):
                 status=404
             )
         
-        metadata = _get_video_metadata_with_qualities(file_path)
+        try:
+            metadata = _get_video_metadata_with_qualities(file_path)
+        finally:
+            # Удаляем временный файл S3 после получения метаданных
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
         
         if metadata:
             return JsonResponse({'success': True, 'metadata': metadata})
@@ -96,7 +123,25 @@ def get_public_file_metadata(request, token):
             )
         
         try:
-            file_path = file.file.path
+            from ..helpers import get_file_path, download_file_from_s3
+            import tempfile
+            
+            # Если файл в S3 хранилище, нужно скачать его для получения метаданных
+            if file.storage and file.storage.storage_type == 's3':
+                # Скачиваем файл из S3 во временный файл
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_file_path = temp_file.name
+                temp_file.close()
+                
+                s3_key = f"{file.user.id}/{file.filename}"
+                if not download_file_from_s3(file.storage, s3_key, temp_file_path):
+                    return create_json_response(False, 'Ошибка при скачивании файла из S3', status=500)
+                
+                file_path = temp_file_path
+            else:
+                file_path = get_file_path(file)
+                if not file_path or not os.path.exists(file_path):
+                    raise Http404("Файл не найден")
         except Exception as e:
             logger.error(f"Error getting file path: {e}")
             return create_json_response(
@@ -113,7 +158,15 @@ def get_public_file_metadata(request, token):
                 status=404
             )
         
-        metadata = _get_video_metadata_with_qualities(file_path)
+        try:
+            metadata = _get_video_metadata_with_qualities(file_path)
+        finally:
+            # Удаляем временный файл S3 после получения метаданных
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
         
         if metadata:
             return JsonResponse({'success': True, 'metadata': metadata})
@@ -146,7 +199,10 @@ def get_video_quality(request, file_id, quality):
             return create_json_response(False, 'Файл не является видео', status=400)
         
         try:
-            file_path = file.file.path
+            from ..helpers import get_file_path
+            file_path = get_file_path(file)
+            if not file_path or not os.path.exists(file_path):
+                raise Http404("Файл не найден")
         except Exception as e:
             logger.error(f"Error getting file path: {e}")
             return create_json_response(
@@ -170,18 +226,49 @@ def get_video_quality(request, file_id, quality):
                 status=500
             )
         
+        # Если файл в S3 хранилище, нужно скачать его для просмотра
+        if file.storage and file.storage.storage_type == 's3':
+            from ..helpers import download_file_from_s3
+            import tempfile
+            
+            # Скачиваем файл из S3 во временный файл
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            temp_file_path = temp_file.name
+            temp_file.close()
+            
+            s3_key = f"{file.user.id}/{file.filename}"
+            if not download_file_from_s3(file.storage, s3_key, temp_file_path):
+                return create_json_response(False, 'Ошибка при скачивании файла из S3', status=500)
+            
+            # Используем временный файл для получения метаданных
+            file_path = temp_file_path
+        
         # Если запрошенное качество равно или выше исходного, возвращаем оригинал
         if target_height >= original_height:
-            file_handle = open(file_path, 'rb')
+            # Для S3 файлов используем временный файл
+            if file.storage and file.storage.storage_type == 's3':
+                file_handle = open(file_path, 'rb')
+            else:
+                file_handle = open(file_path, 'rb')
             response = FileResponse(file_handle, content_type='video/mp4')
             response['Content-Disposition'] = f'inline; filename="{file.filename}"'
             response['Accept-Ranges'] = 'bytes'
+            # Для S3 файлов удаляем временный файл после отправки
+            if file.storage and file.storage.storage_type == 's3':
+                import atexit
+                atexit.register(lambda: os.remove(file_path) if os.path.exists(file_path) else None)
             return response
         
         # Получаем или создаем видео в нужном качестве
         quality_path = get_video_quality_path(file_path, target_height)
         
         if not quality_path:
+            # Удаляем временный файл S3 если он был создан
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
             return create_json_response(
                 False,
                 'Не удалось перекодировать видео. Убедитесь, что ffmpeg установлен.',
@@ -192,6 +279,10 @@ def get_video_quality(request, file_id, quality):
         response = FileResponse(file_handle, content_type='video/mp4')
         response['Content-Disposition'] = f'inline; filename="{file.filename}"'
         response['Accept-Ranges'] = 'bytes'
+        # Удаляем временный файл S3 после отправки
+        if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+            import atexit
+            atexit.register(lambda: os.remove(file_path) if os.path.exists(file_path) else None)
         return response
         
     except UserFile.DoesNotExist:
@@ -221,7 +312,25 @@ def get_public_video_quality(request, token, quality):
             return create_json_response(False, 'Файл не является видео', status=400)
         
         try:
-            file_path = file.file.path
+            from ..helpers import get_file_path, download_file_from_s3
+            import tempfile
+            
+            # Если файл в S3 хранилище, нужно скачать его для просмотра
+            if file.storage and file.storage.storage_type == 's3':
+                # Скачиваем файл из S3 во временный файл
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_file_path = temp_file.name
+                temp_file.close()
+                
+                s3_key = f"{file.user.id}/{file.filename}"
+                if not download_file_from_s3(file.storage, s3_key, temp_file_path):
+                    return create_json_response(False, 'Ошибка при скачивании файла из S3', status=500)
+                
+                file_path = temp_file_path
+            else:
+                file_path = get_file_path(file)
+                if not file_path or not os.path.exists(file_path):
+                    raise Http404("Файл не найден")
         except Exception as e:
             logger.error(f"Error getting file path: {e}")
             return create_json_response(
@@ -235,10 +344,22 @@ def get_public_video_quality(request, token, quality):
         
         metadata = get_video_metadata(file_path)
         if not metadata:
+            # Удаляем временный файл S3 если он был создан
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
             return create_json_response(False, 'Не удалось получить метаданные видео', status=500)
         
         original_height = metadata.get('height')
         if not original_height:
+            # Удаляем временный файл S3 если он был создан
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
             return create_json_response(
                 False,
                 'Не удалось определить исходное разрешение видео',
@@ -250,11 +371,21 @@ def get_public_video_quality(request, token, quality):
             response = FileResponse(file_handle, content_type='video/mp4')
             response['Content-Disposition'] = f'inline; filename="{file.filename}"'
             response['Accept-Ranges'] = 'bytes'
+            # Удаляем временный файл S3 после отправки
+            if file.storage and file.storage.storage_type == 's3':
+                import atexit
+                atexit.register(lambda: os.remove(file_path) if os.path.exists(file_path) else None)
             return response
         
         quality_path = get_video_quality_path(file_path, target_height)
         
         if not quality_path:
+            # Удаляем временный файл S3 если он был создан
+            if file.storage and file.storage.storage_type == 's3' and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
             return create_json_response(
                 False,
                 'Не удалось перекодировать видео. Убедитесь, что ffmpeg установлен.',
@@ -265,6 +396,10 @@ def get_public_video_quality(request, token, quality):
         response = FileResponse(file_handle, content_type='video/mp4')
         response['Content-Disposition'] = f'inline; filename="{file.filename}"'
         response['Accept-Ranges'] = 'bytes'
+        # Удаляем временный файл S3 после отправки
+        if file.storage and file.storage.storage_type == 's3':
+            import atexit
+            atexit.register(lambda: os.remove(file_path) if os.path.exists(file_path) else None)
         return response
         
     except UserFile.DoesNotExist:
@@ -302,10 +437,42 @@ def public_file(request, token):
             })
             
         # Для остальных файлов - скачивание
-        from django.http import HttpResponse
-        response = HttpResponse(file.file, content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{file.filename}"'
-        return response
+        from django.http import HttpResponse, FileResponse, HttpResponseRedirect
+        from ..helpers import get_file_for_response, generate_s3_presigned_url
+        import os
+        
+        # Проверяем, если файл в S3 хранилище, используем presigned URL
+        if file.storage and file.storage.storage_type == 's3':
+            s3_key = f"{file.user.id}/{file.filename}"
+            presigned_url = generate_s3_presigned_url(file.storage, s3_key, expiration=3600)
+            if presigned_url:
+                # Перенаправляем на presigned URL для прямого скачивания
+                return HttpResponseRedirect(presigned_url)
+        
+        # Для локальных файлов используем стандартный метод
+        file_path, is_temp, temp_path = get_file_for_response(file)
+        if not file_path:
+            raise Http404("Файл не найден")
+        
+        try:
+            response = FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
+            encoded_filename = quote(file.filename)
+            response['Content-Disposition'] = f'attachment; filename="{encoded_filename}"'
+            
+            # Если это временный файл, удаляем его после отправки
+            if is_temp and temp_path:
+                import atexit
+                atexit.register(lambda: os.remove(temp_path) if os.path.exists(temp_path) else None)
+            
+            return response
+        except Exception as e:
+            # Удаляем временный файл в случае ошибки
+            if is_temp and temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            raise
         
     except UserFile.DoesNotExist:
         raise Http404("Файл не найден или недоступен")

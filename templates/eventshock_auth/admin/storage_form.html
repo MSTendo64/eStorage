@@ -1,0 +1,290 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+
+{% block admin_content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-{% if storage %}edit{% else %}plus{% endif %} me-2"></i>
+            {% if storage %}Редактирование хранилища{% else %}Создание хранилища{% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label for="name" class="form-label">Название хранилища *</label>
+                <input type="text" class="form-control" id="name" name="name" 
+                       value="{% if storage %}{{ storage.name }}{% endif %}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="storage_type" class="form-label">Тип хранилища *</label>
+                <select class="form-select" id="storage_type" name="storage_type" required>
+                    <option value="local" {% if storage and storage.storage_type == 'local' %}selected{% endif %}>Локальное хранилище</option>
+                    <option value="s3" {% if storage and storage.storage_type == 's3' %}selected{% endif %}>S3-совместимое хранилище</option>
+                </select>
+                <small class="form-text text-muted">S3-совместимое хранилище поддерживает MinIO, DigitalOcean Spaces, Wasabi, Backblaze B2 и другие S3-совместимые сервисы</small>
+            </div>
+            
+            <div class="mb-3">
+                <label for="max_size" class="form-label">Максимальный размер *</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="max_size" name="max_size" 
+                           value="{% if storage and display_size %}{% if display_size|floatformat:0 == display_size|floatformat:2 %}{{ display_size|floatformat:0 }}{% else %}{{ display_size|floatformat:2 }}{% endif %}{% elif not storage %}100{% endif %}" 
+                           step="0.01" required
+                           data-original-bytes="{% if storage and storage.max_size %}{{ storage.max_size }}{% else %}0{% endif %}">
+                    <select class="form-select" id="size_unit" name="size_unit" style="max-width: 150px;">
+                        <option value="bytes" {% if storage and size_unit == 'bytes' %}selected{% endif %}>Байты</option>
+                        <option value="mb" {% if storage and size_unit == 'mb' %}selected{% elif not storage %}selected{% endif %}>Мегабайты (MB)</option>
+                        <option value="gb" {% if storage and size_unit == 'gb' %}selected{% endif %}>Гигабайты (GB)</option>
+                        <option value="tb" {% if storage and size_unit == 'tb' %}selected{% endif %}>Терабайты (TB)</option>
+                    </select>
+                </div>
+                <small class="form-text text-muted">Выберите единицу измерения и введите размер</small>
+            </div>
+            
+            <div class="mb-3">
+                <label for="priority" class="form-label">Приоритет</label>
+                <input type="number" class="form-control" id="priority" name="priority" 
+                       value="{% if storage %}{{ storage.priority }}{% else %}0{% endif %}">
+                <small class="form-text text-muted">Чем выше число, тем выше приоритет при выборе хранилища</small>
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
+                       {% if not storage or storage.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">
+                    Активно
+                </label>
+            </div>
+            
+            <!-- Локальное хранилище -->
+            <div id="local_storage_fields">
+                <div class="mb-3">
+                    <label for="local_path" class="form-label">Локальный путь *</label>
+                    <input type="text" class="form-control" id="local_path" name="local_path" 
+                           value="{% if storage and storage.local_path %}{{ storage.local_path }}{% endif %}"
+                           placeholder="/path/to/storage">
+                    <small class="form-text text-muted">Абсолютный путь к директории хранилища</small>
+                </div>
+            </div>
+            
+            <!-- S3-совместимое хранилище -->
+            <div id="s3_storage_fields" style="display: none;">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Поддерживаемые сервисы:</strong> MinIO, DigitalOcean Spaces, Wasabi, Backblaze B2, 
+                    Yandex Object Storage, Cloudflare R2 и другие S3-совместимые хранилища.
+                </div>
+                
+                <div class="mb-3">
+                    <label for="s3_endpoint_url" class="form-label">Endpoint URL *</label>
+                    <input type="text" class="form-control" id="s3_endpoint_url" name="s3_endpoint_url" 
+                           value="{% if storage and storage.s3_endpoint_url %}{{ storage.s3_endpoint_url }}{% endif %}"
+                           placeholder="https://s3.amazonaws.com или https://minio.example.com">
+                    <small class="form-text text-muted">URL эндпоинта S3-совместимого сервиса (обязательно для не-Amazon сервисов)</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="s3_access_key" class="form-label">Access Key ID *</label>
+                    <input type="text" class="form-control" id="s3_access_key" name="s3_access_key" 
+                           value="{% if storage and storage.s3_access_key %}{{ storage.s3_access_key }}{% endif %}"
+                           placeholder="Ваш Access Key">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="s3_secret_key" class="form-label">Secret Access Key *</label>
+                    <input type="password" class="form-control" id="s3_secret_key" name="s3_secret_key" 
+                           value="{% if storage and storage.s3_secret_key %}{{ storage.s3_secret_key }}{% endif %}"
+                           placeholder="Ваш Secret Key">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="s3_bucket_name" class="form-label">Bucket Name *</label>
+                    <input type="text" class="form-control" id="s3_bucket_name" name="s3_bucket_name" 
+                           value="{% if storage and storage.s3_bucket_name %}{{ storage.s3_bucket_name }}{% endif %}"
+                           placeholder="Имя bucket">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="s3_region" class="form-label">Region (опционально)</label>
+                    <input type="text" class="form-control" id="s3_region" name="s3_region" 
+                           value="{% if storage and storage.s3_region %}{{ storage.s3_region }}{% endif %}"
+                           placeholder="us-east-1 или оставьте пустым">
+                    <small class="form-text text-muted">Регион (необязательно для некоторых сервисов, например MinIO)</small>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'esadmin:storage_management' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Назад
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const storageTypeSelect = document.getElementById('storage_type');
+    const localFields = document.getElementById('local_storage_fields');
+    const s3Fields = document.getElementById('s3_storage_fields');
+    const maxSizeInput = document.getElementById('max_size');
+    const sizeUnitSelect = document.getElementById('size_unit');
+    
+    // Сохраняем исходное значение в байтах (если редактируем)
+    let originalBytes = 0;
+    {% if storage and storage.max_size %}
+        // Если редактируем хранилище, используем значение из data-атрибута
+        // Это безопаснее для больших чисел, чем встраивание в JavaScript
+        const originalBytesAttr = maxSizeInput.getAttribute('data-original-bytes');
+        if (originalBytesAttr) {
+            originalBytes = parseFloat(originalBytesAttr);
+        }
+    {% elif maxSizeInput.value %}
+        // Если значение уже есть в поле (новое хранилище с дефолтным значением)
+        const currentValue = parseFloat(maxSizeInput.value);
+        const currentUnit = sizeUnitSelect.value;
+        if (currentValue > 0) {
+            // Конвертируем в байты
+            if (currentUnit === 'mb') {
+                originalBytes = currentValue * 1024 * 1024;
+            } else if (currentUnit === 'gb') {
+                originalBytes = currentValue * 1024 * 1024 * 1024;
+            } else if (currentUnit === 'tb') {
+                originalBytes = currentValue * 1024 * 1024 * 1024 * 1024;
+            } else {
+                originalBytes = currentValue;
+            }
+        }
+    {% endif %}
+    
+    // Функция для форматирования числа (убирает .00 для целых чисел)
+    function formatNumber(num) {
+        if (num % 1 === 0) {
+            return num.toString();
+        }
+        return num.toFixed(2).replace(/\.?0+$/, '');
+    }
+    
+    // Обработчик изменения единицы измерения - конвертируем значение
+    sizeUnitSelect.addEventListener('change', function() {
+        const currentValue = parseFloat(maxSizeInput.value);
+        if (isNaN(currentValue) || currentValue === 0) return;
+        
+        // Получаем текущую единицу из data-атрибута или из select
+        const oldUnit = maxSizeInput.getAttribute('data-unit') || sizeUnitSelect.value;
+        const newUnit = sizeUnitSelect.value;
+        
+        // Конвертируем из старой единицы в байты
+        let bytes = 0;
+        if (oldUnit === 'mb') {
+            bytes = currentValue * 1024 * 1024;
+        } else if (oldUnit === 'gb') {
+            bytes = currentValue * 1024 * 1024 * 1024;
+        } else if (oldUnit === 'tb') {
+            bytes = currentValue * 1024 * 1024 * 1024 * 1024;
+        } else {
+            bytes = currentValue;
+        }
+        
+        // Конвертируем из байтов в новую единицу
+        let newValue = 0;
+        if (newUnit === 'mb') {
+            newValue = bytes / (1024 * 1024);
+        } else if (newUnit === 'gb') {
+            newValue = bytes / (1024 * 1024 * 1024);
+        } else if (newUnit === 'tb') {
+            newValue = bytes / (1024 * 1024 * 1024 * 1024);
+        } else {
+            newValue = bytes;
+        }
+        
+        maxSizeInput.value = formatNumber(newValue);
+        maxSizeInput.setAttribute('data-unit', newUnit);
+    });
+    
+    // Инициализация при загрузке страницы - конвертируем из байтов в выбранную единицу
+    if (originalBytes > 0) {
+        const currentUnit = sizeUnitSelect.value;
+        let displayValue = originalBytes;
+        
+        if (currentUnit === 'mb') {
+            displayValue = originalBytes / (1024 * 1024);
+        } else if (currentUnit === 'gb') {
+            displayValue = originalBytes / (1024 * 1024 * 1024);
+        } else if (currentUnit === 'tb') {
+            displayValue = originalBytes / (1024 * 1024 * 1024 * 1024);
+        }
+        
+        maxSizeInput.value = formatNumber(displayValue);
+        maxSizeInput.setAttribute('data-unit', currentUnit);
+    } else {
+        // Для нового хранилища устанавливаем единицу по умолчанию
+        maxSizeInput.setAttribute('data-unit', sizeUnitSelect.value);
+    }
+    
+    // Обработчик отправки формы - НЕ меняем значение, сервер сам конвертирует
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const currentValue = parseFloat(maxSizeInput.value);
+        if (isNaN(currentValue) || currentValue <= 0) {
+            e.preventDefault();
+            alert('Пожалуйста, введите корректный размер хранилища');
+            return false;
+        }
+        
+        // Проверяем, что значение не слишком большое
+        const currentUnit = sizeUnitSelect.value;
+        let maxBytes = 0;
+        
+        if (currentUnit === 'mb') {
+            maxBytes = currentValue * 1024 * 1024;
+        } else if (currentUnit === 'gb') {
+            maxBytes = currentValue * 1024 * 1024 * 1024;
+        } else if (currentUnit === 'tb') {
+            maxBytes = currentValue * 1024 * 1024 * 1024 * 1024;
+        } else {
+            maxBytes = currentValue;
+        }
+        
+        // Проверяем, что значение не превышает максимальное для BigInteger
+        // SQLite INTEGER может хранить до 2^63 - 1 (9223372036854775807)
+        const MAX_BIGINT = 9223372036854775807;
+        if (maxBytes > MAX_BIGINT) {
+            e.preventDefault();
+            alert('Размер хранилища слишком большой. Максимальное значение: ~8 ЭБ (эксабайт)');
+            return false;
+        }
+        
+        // НЕ меняем значение в поле - сервер сам конвертирует на основе size_unit
+    });
+    
+    function toggleFields() {
+        if (storageTypeSelect.value === 'local') {
+            localFields.style.display = 'block';
+            s3Fields.style.display = 'none';
+            // Делаем локальные поля обязательными
+            document.getElementById('local_path').required = true;
+            document.getElementById('s3_access_key').required = false;
+            document.getElementById('s3_secret_key').required = false;
+            document.getElementById('s3_bucket_name').required = false;
+        } else {
+            localFields.style.display = 'none';
+            s3Fields.style.display = 'block';
+            // Делаем S3 поля обязательными
+            document.getElementById('local_path').required = false;
+            document.getElementById('s3_access_key').required = true;
+            document.getElementById('s3_secret_key').required = true;
+            document.getElementById('s3_bucket_name').required = true;
+        }
+    }
+    
+    storageTypeSelect.addEventListener('change', toggleFields);
+    toggleFields(); // Вызываем при загрузке страницы
+});
+</script>
+{% endblock %}

@@ -9,6 +9,9 @@
     <link rel="shortcut icon" href="{{ system_settings.site_logo.url }}">
     <link rel="apple-touch-icon" href="{{ system_settings.site_logo.url }}">
     {% endif %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
@@ -26,6 +29,10 @@
             padding: 0;
         }
 
+        html {
+            font-size: calc(16px - 1.33px); /* Уменьшаем базовый размер шрифта на 1pt (1pt = 1.33px) */
+        }
+        
         body {
             position: relative;
             min-height: 100vh;
@@ -59,6 +66,37 @@
             --bs-secondary-rgb: 108, 117, 125;
             --bs-navbar-color: #1a1d21;
             --bs-container-color: #e9ecef;
+            --font-family-base: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        /* Применяем шрифт Montserrat ко всем элементам */
+        * {
+            font-family: var(--font-family-base) !important;
+        }
+        
+        /* Исключения для моноширинных шрифтов (код, редакторы) */
+        code, pre, .line-numbers, textarea.code-editor, .text-editor-container textarea,
+        .line-numbers div, .code-block, .monospace {
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace !important;
+        }
+        
+        /* Исключения для иконок Font Awesome */
+        .fas, .far, .fal, .fab, .fa, [class^="fa-"], [class*=" fa-"] {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 6 Pro" !important;
+        }
+        
+        /* Исключения для иконок Video.js проигрывателя */
+        .video-js, .video-js *, 
+        .vjs-icon, .vjs-icon *, 
+        [class^="vjs-icon-"], [class*=" vjs-icon-"],
+        .vjs-control, .vjs-control *,
+        .vjs-big-play-button, .vjs-big-play-button *,
+        .vjs-play-control, .vjs-play-control *,
+        .vjs-volume-control, .vjs-volume-control *,
+        .vjs-menu-button, .vjs-menu-button *,
+        .vjs-time-control, .vjs-time-control *,
+        .vjs-progress-control, .vjs-progress-control * {
+            font-family: "VideoJS", Arial, Helvetica, sans-serif !important;
         }
         
         /* Стили для светлой темы с уменьшенной яркостью */
@@ -770,7 +808,13 @@
         }
         
         body {
-            font-family: '{{ user.userprofile.font_family_name }}', system-ui, -apple-system, sans-serif !important;
+            font-family: '{{ user.userprofile.font_family_name }}', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+    </style>
+    {% else %}
+    <style>
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
     </style>
     {% endif %}
@@ -3013,7 +3057,7 @@ window.prompt = function(message, defaultValue = '', title = 'Ввод') {
      }
      
      body {
-         font-size: 16px;
+         font-size: calc(16px - 1.33px); /* Уменьшаем размер шрифта на 1pt */
      }
  }
  </style>

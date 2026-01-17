@@ -9,6 +9,7 @@ import tarfile
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 import base64
+import shutil
 
 
 def generate_short_token():
@@ -195,6 +196,237 @@ class MountedFolder(models.Model):
         verbose_name = 'Примонтированная папка'
         verbose_name_plural = 'Примонтированные папки'
 
+
+class Storage(models.Model):
+    """Модель для хранения информации о хранилищах"""
+    STORAGE_TYPES = [
+        ('local', 'Локальное хранилище'),
+        ('s3', 'S3-совместимое хранилище'),
+    ]
+    
+    name = models.CharField(max_length=255, verbose_name='Название хранилища')
+    storage_type = models.CharField(max_length=10, choices=STORAGE_TYPES, default='local', verbose_name='Тип хранилища')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+    max_size = models.BigIntegerField(verbose_name='Максимальный размер (в байтах)', 
+                                      help_text='Максимальный размер хранилища в байтах')
+    priority = models.IntegerField(default=0, verbose_name='Приоритет', 
+                                    help_text='Чем выше число, тем выше приоритет при выборе хранилища')
+    
+    # Для локального хранилища
+    local_path = models.CharField(max_length=500, null=True, blank=True, 
+                                  verbose_name='Локальный путь',
+                                  help_text='Абсолютный путь к директории хранилища')
+    
+    # Для S3-совместимого хранилища
+    s3_access_key = models.CharField(max_length=255, null=True, blank=True, verbose_name='Access Key ID',
+                                     help_text='Access Key для S3-совместимого сервиса')
+    s3_secret_key = models.CharField(max_length=255, null=True, blank=True, verbose_name='Secret Access Key',
+                                     help_text='Secret Key для S3-совместимого сервиса')
+    s3_bucket_name = models.CharField(max_length=255, null=True, blank=True, verbose_name='Bucket Name',
+                                       help_text='Имя bucket в S3-совместимом хранилище')
+    s3_endpoint_url = models.CharField(max_length=500, null=True, blank=True, verbose_name='Endpoint URL',
+                                       help_text='URL эндпоинта (обязательно для не-Amazon сервисов: MinIO, DigitalOcean Spaces и т.д.)')
+    s3_region = models.CharField(max_length=100, null=True, blank=True, verbose_name='Region',
+                                 help_text='Регион (опционально для некоторых сервисов)')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+    
+    class Meta:
+        ordering = ['-priority', 'name']
+        verbose_name = 'Хранилище'
+        verbose_name_plural = 'Хранилища'
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_storage_type_display()})"
+    
+    def clean(self):
+        """Валидация хранилища"""
+        if self.storage_type == 'local':
+            if not self.local_path:
+                raise ValidationError('Для локального хранилища необходимо указать путь')
+            # Проверяем, что путь существует или может быть создан
+            if not os.path.exists(self.local_path):
+                try:
+                    os.makedirs(self.local_path, exist_ok=True)
+                except Exception as e:
+                    raise ValidationError(f'Не удалось создать директорию: {str(e)}')
+        elif self.storage_type == 's3':
+            if not all([self.s3_access_key, self.s3_secret_key, self.s3_bucket_name]):
+                raise ValidationError('Для S3-совместимого хранилища необходимо указать Access Key, Secret Key и Bucket Name')
+            # Endpoint URL рекомендуется для не-Amazon сервисов
+            if not self.s3_endpoint_url:
+                # Не делаем обязательным, но предупреждаем
+                pass
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def get_used_size(self):
+        """Возвращает используемый размер хранилища в байтах"""
+        from django.db.models import Sum
+        total = UserFile.objects.filter(storage=self).aggregate(
+            total=Sum('file_size'))['total'] or 0
+        return total
+    
+    def get_available_size(self):
+        """Возвращает доступный размер хранилища в байтах"""
+        used = self.get_used_size()
+        return max(0, self.max_size - used)
+    
+    def _format_size(self, size_bytes):
+        """Вспомогательный метод для форматирования размера"""
+        size = float(size_bytes)
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024.0:
+                # Если число целое, отображаем без десятичных знаков
+                if size == int(size):
+                    return f"{int(size)} {unit}"
+                # Иначе отображаем с 2 знаками после запятой, убирая лишние нули
+                return f"{size:.2f} {unit}".rstrip('0').rstrip('.')
+            size /= 1024.0
+        # Для очень больших размеров (PB)
+        if size == int(size):
+            return f"{int(size)} PB"
+        return f"{size:.2f} PB".rstrip('0').rstrip('.')
+    
+    def get_used_size_formatted(self):
+        """Возвращает отформатированный размер используемого хранилища"""
+        return self._format_size(self.get_used_size())
+    
+    def get_available_size_formatted(self):
+        """Возвращает отформатированный размер доступного хранилища"""
+        return self._format_size(self.get_available_size())
+    
+    def get_max_size_formatted(self):
+        """Возвращает отформатированный максимальный размер хранилища"""
+        return self._format_size(self.max_size)
+    
+    def get_usage_percent(self):
+        """Возвращает процент использования хранилища"""
+        if self.max_size == 0:
+            return 0
+        used = self.get_used_size()
+        return min(round((used / self.max_size) * 100, 1), 100)
+    
+    def get_files_count(self):
+        """Возвращает количество файлов в хранилище"""
+        return UserFile.objects.filter(storage=self).count()
+    
+    def can_store_file(self, file_size):
+        """Проверяет, может ли хранилище вместить файл указанного размера"""
+        return self.is_active and self.get_available_size() >= file_size
+    
+    def get_storage_path(self, user_id, filename):
+        """Возвращает путь к файлу в хранилище"""
+        if self.storage_type == 'local':
+            user_folder = os.path.join(self.local_path, str(user_id))
+            return os.path.join(user_folder, filename)
+        elif self.storage_type == 's3':
+            # Для S3 возвращаем путь относительно bucket
+            return f"{user_id}/{filename}"
+        return None
+    
+    def test_s3_connection(self):
+        """
+        Проверяет подключение к S3-совместимому хранилищу.
+        Возвращает кортеж (success: bool, message: str)
+        """
+        if self.storage_type != 's3':
+            return False, 'Это не S3 хранилище'
+        
+        if not all([self.s3_access_key, self.s3_secret_key, self.s3_bucket_name]):
+            return False, 'Не указаны все необходимые реквизиты (Access Key, Secret Key, Bucket Name)'
+        
+        import asyncio
+        try:
+            # Запускаем асинхронную функцию в синхронном контексте
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(self._test_s3_connection_async())
+            finally:
+                loop.close()
+        except Exception as e:
+            return False, f'Ошибка при проверке подключения: {str(e)}'
+    
+    async def _test_s3_connection_async(self):
+        """
+        Асинхронная функция для проверки подключения к S3-совместимому хранилищу.
+        Возвращает кортеж (success: bool, message: str)
+        """
+        if self.storage_type != 's3':
+            return False, 'Это не S3 хранилище'
+        
+        if not all([self.s3_access_key, self.s3_secret_key, self.s3_bucket_name]):
+            return False, 'Не указаны все необходимые реквизиты (Access Key, Secret Key, Bucket Name)'
+        
+        try:
+            import aioboto3
+            from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
+            
+            # Создаем сессию aioboto3
+            session = aioboto3.Session()
+            
+            # Конфигурация для S3 клиента
+            s3_config = {
+                'aws_access_key_id': self.s3_access_key,
+                'aws_secret_access_key': self.s3_secret_key,
+            }
+            
+            if self.s3_endpoint_url:
+                s3_config['endpoint_url'] = self.s3_endpoint_url
+            
+            if self.s3_region:
+                s3_config['region_name'] = self.s3_region
+            
+            # Пытаемся получить информацию о bucket
+            async with session.client('s3', **s3_config) as s3_client:
+                try:
+                    await s3_client.head_bucket(Bucket=self.s3_bucket_name)
+                    # Пытаемся выполнить простую операцию (list objects)
+                    await s3_client.list_objects_v2(Bucket=self.s3_bucket_name, MaxKeys=1)
+                    return True, 'Подключение успешно. Хранилище доступно.'
+                except ClientError as e:
+                    error_code = e.response.get('Error', {}).get('Code', '')
+                    if error_code == '403':
+                        return False, 'Доступ запрещен. Проверьте права доступа (Access Key и Secret Key).'
+                    elif error_code == '404':
+                        return False, f'Bucket "{self.s3_bucket_name}" не найден. Проверьте имя bucket.'
+                    else:
+                        return False, f'Ошибка подключения: {str(e)}'
+                except EndpointConnectionError as e:
+                    return False, f'Не удалось подключиться к эндпоинту. Проверьте Endpoint URL: {str(e)}'
+                except NoCredentialsError:
+                    return False, 'Неверные учетные данные (Access Key или Secret Key)'
+                except Exception as e:
+                    return False, f'Неожиданная ошибка: {str(e)}'
+                    
+        except ImportError:
+            return False, 'Библиотека aioboto3 не установлена. Установите: pip install aioboto3'
+        except Exception as e:
+            return False, f'Ошибка при инициализации S3 клиента: {str(e)}'
+    
+    def get_s3_connection_status(self):
+        """
+        Возвращает статус подключения к S3 хранилищу.
+        Возвращает словарь с информацией о статусе.
+        """
+        if self.storage_type != 's3':
+            return {
+                'status': 'not_applicable',
+                'message': 'Не применимо для локального хранилища',
+                'is_available': None
+            }
+        
+        success, message = self.test_s3_connection()
+        return {
+            'status': 'success' if success else 'error',
+            'message': message,
+            'is_available': success
+        }
+
 class UserFile(models.Model):
     FILE_TYPES = [
         ('image', 'Изображение'),
@@ -216,6 +448,8 @@ class UserFile(models.Model):
     public_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
     file_size = models.BigIntegerField(default=0)
     folder = models.ForeignKey(Folder, on_delete=models.SET_NULL, null=True, blank=True, related_name='files')
+    storage = models.ForeignKey('Storage', on_delete=models.SET_NULL, null=True, blank=True, 
+                                related_name='files', verbose_name='Хранилище')
     
     # Добавляем поля для информации о видео
     title = models.CharField(max_length=255, null=True, blank=True)
@@ -380,6 +614,41 @@ class UserFile(models.Model):
         if self.is_public and self.public_token:
             return reverse('public_file', args=[self.public_token])
         return None
+    
+    def get_view_url(self, request=None):
+        """
+        Возвращает URL для просмотра файла через raw_file эндпоинт.
+        Работает для файлов в хранилищах и стандартной папке media.
+        """
+        from urllib.parse import quote
+        from .models import DownloadToken
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Создаем или получаем токен для скачивания
+        download_token, created = DownloadToken.objects.get_or_create(
+            file=self,
+            defaults={
+                'token': generate_short_token(),
+                'expires_at': timezone.now() + timedelta(days=1)
+            }
+        )
+        
+        # Если токен истек, создаем новый
+        if not download_token.is_valid():
+            download_token.token = generate_short_token()
+            download_token.expires_at = timezone.now() + timedelta(days=1)
+            download_token.save()
+        
+        # Кодируем имя файла для URL
+        encoded_filename = quote(self.filename, safe='')
+        
+        # Если request передан, возвращаем полный URL
+        if request:
+            return request.build_absolute_uri(f'/storage/raw/{encoded_filename}?token={download_token.token}')
+        
+        # Иначе возвращаем относительный URL
+        return f'/storage/raw/{encoded_filename}?token={download_token.token}'
     
     def get_file_size_formatted(self):
         """Возвращает отформатированный размер файла"""

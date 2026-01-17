@@ -10,7 +10,7 @@ from .dashboard_views import dashboard, system_stats_ajax
 from .user_operations import users_list, user_detail, user_edit, user_create
 
 # Storage operations
-from .storage_operations import storage_stats
+from .storage_operations import storage_stats, storage_management, storage_create, storage_edit, storage_delete, storage_test_connection
 
 # System operations
 from .system_operations import system_logs, system_settings
@@ -26,6 +26,11 @@ __all__ = [
     'user_create',
     # Storage
     'storage_stats',
+    'storage_management',
+    'storage_create',
+    'storage_edit',
+    'storage_delete',
+    'storage_test_connection',
     # System
     'system_logs',
     'system_settings',

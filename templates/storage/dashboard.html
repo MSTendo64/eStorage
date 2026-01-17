@@ -482,15 +482,22 @@
 
 <div class="loading-overlay" id="loadingOverlay">
     <div class="text-center">
-        <div class="spinner-border loading-spinner text-light" role="status">
-            <span class="visually-hidden">{{ t.common.loading }}</span>
-        </div>
         <div class="loading-text" id="loadingText">{{ t.common.please_wait }}</div>
         <div class="progress-container d-none" id="progressContainer">
-            <div class="progress upload-progress">
-                <div class="progress-bar" role="progressbar" style="width: 0%" id="uploadProgress"></div>
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     id="uploadProgress" 
+                     style="width: 0%;"
+                     aria-valuenow="0" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                    <span id="progressText">0%</span>
+                </div>
             </div>
-            <small class="text-light" id="progressText">0%</small>
+            <div class="text-center mt-2">
+                <small class="text-light" id="progressStatus">Загрузка файла...</small>
+            </div>
         </div>
     </div>
 </div>
@@ -808,16 +815,17 @@
                         </div>
                         <div class="file-card-actions">
                             <div class="btn-group-grid-desktop">
+                                {% load storage_tags %}
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
                                         <i class="fas fa-play"></i>
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
                                         <i class="fas fa-music"></i>
                                     </button>
                                 {% elif file.is_archive %}
@@ -828,15 +836,15 @@
                                         <i class="fas fa-box-open"></i>
                                     </button>
                                 {% elif file.is_text %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-alt"></i>
                                     </button>
                                 {% elif file.is_document %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-pdf"></i>
                                     </button>
                                 {% elif file.is_code %}
-                                    <button class="btn btn-sm btn-info" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info" onclick="showPreview('{% file_view_url file %}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-code"></i>
                                     </button>
                                 {% endif %}
@@ -979,16 +987,17 @@
                         </div>
                         <div class="file-card-actions">
                             <div class="btn-group-grid">
+                                {% load storage_tags %}
                                 {% if file.is_image %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'image', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 {% elif file.is_video %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'video', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.play }}">
                                         <i class="fas fa-play"></i>
                                     </button>
                                 {% elif file.is_audio %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'audio', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.listen }}">
                                         <i class="fas fa-music"></i>
                                     </button>
                                 {% elif file.is_archive %}
@@ -999,15 +1008,15 @@
                                         <i class="fas fa-box-open"></i>
                                     </button>
                                 {% elif file.is_text %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-alt"></i>
                                     </button>
                                 {% elif file.is_document %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'document', null, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-pdf"></i>
                                     </button>
                                 {% elif file.is_code %}
-                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{{ file.file.url }}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
+                                    <button class="btn btn-sm btn-info mb-1" onclick="showPreview('{% file_view_url file %}', 'text', {{ file.id }}, '{{ file.filename|escapejs }}')" title="{{ t.storage.file_list.actions.preview }}">
                                         <i class="fas fa-file-code"></i>
                                     </button>
                                 {% endif %}
@@ -1104,18 +1113,18 @@
                         </div>
                     </div>
                     <div id="uploadUrlProgressContainer" class="d-none mb-3">
-                        <div class="progress" style="height: 25px;">
+                        <div class="progress" style="height: 20px;">
                             <div class="progress-bar progress-bar-striped progress-bar-animated" 
                                  role="progressbar" 
                                  id="uploadUrlProgress" 
-                                 style="width: 0%"
+                                 style="width: 0%;"
                                  aria-valuenow="0" 
                                  aria-valuemin="0" 
                                  aria-valuemax="100">
                                 <span id="uploadUrlProgressText">0%</span>
                             </div>
                         </div>
-                        <small class="text-muted" id="uploadUrlStatus">Подготовка к загрузке...</small>
+                        <small class="text-muted text-center d-block mt-2" id="uploadUrlStatus">Подготовка к загрузке...</small>
                     </div>
                     <div id="uploadUrlError" class="alert alert-danger d-none" role="alert"></div>
                 </form>
@@ -1348,13 +1357,16 @@ function showUploadFromUrlModal() {
     document.getElementById('uploadUrlProgressContainer').classList.add('d-none');
     document.getElementById('uploadUrlSubmitBtn').disabled = false;
     document.getElementById('uploadUrlCancelBtn').disabled = false;
-    document.getElementById('uploadUrlProgress').style.width = '0%';
-    document.getElementById('uploadUrlProgress').setAttribute('aria-valuenow', '0');
+    const progressBar = document.getElementById('uploadUrlProgress');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', 0);
+    }
     document.getElementById('uploadUrlProgressText').textContent = '0%';
     modal.show();
 }
 
-// Функция для обновления прогресс-бара загрузки по URL
+// Функция для обновления прогресс-бара загрузки по URL с анимацией наполнения
 function updateUploadUrlProgress(percent, status) {
     const progressBar = document.getElementById('uploadUrlProgress');
     const progressText = document.getElementById('uploadUrlProgressText');
@@ -1366,13 +1378,15 @@ function updateUploadUrlProgress(percent, status) {
     }
     
     if (progressBar) {
-        const roundedPercent = Math.round(percent);
-        progressBar.style.width = roundedPercent + '%';
+        const roundedPercent = Math.min(100, Math.max(0, Math.round(percent)));
+        
+        // Обновляем ширину прогресс-бара
+        progressBar.style.width = `${roundedPercent}%`;
         progressBar.setAttribute('aria-valuenow', roundedPercent);
-    }
-    
-    if (progressText) {
-        progressText.textContent = Math.round(percent) + '%';
+        
+        if (progressText) {
+            progressText.textContent = `${roundedPercent}%`;
+        }
     }
     
     if (statusText && status) {
@@ -1507,7 +1521,8 @@ async function uploadFromUrl() {
         
         // Симулируем прогресс во время обработки на сервере
         const progressInterval = setInterval(() => {
-            const currentPercent = parseInt(document.getElementById('uploadUrlProgress').style.width) || 40;
+            const progressBar = document.getElementById('uploadUrlProgress');
+            const currentPercent = progressBar ? parseFloat(progressBar.style.width) || 40 : 40;
             if (currentPercent < 85) {
                 const newPercent = Math.min(currentPercent + 2, 85);
                 updateUploadUrlProgress(newPercent, isVideoPlatform ? 'Скачивание видео...' : 'Скачивание файла...');
@@ -1997,39 +2012,24 @@ function hideLoading() {
     }
 }
 
-function updateProgress(percent) {
+// Храним текущий прогресс для правильной анимации
+let currentProgress = 0;
+
+function updateProgress(percent, status = null) {
     const progressBar = document.getElementById('uploadProgress');
     const progressText = document.getElementById('progressText');
+    const progressStatus = document.getElementById('progressStatus');
+    
     if (progressBar && progressText) {
-        // Округляем до одного знака после запятой
-        const roundedPercent = Math.round(percent * 10) / 10;
+        const roundedPercent = Math.min(100, Math.max(0, Math.round(percent)));
         
-        // Анимируем прогресс-бар с помощью requestAnimationFrame
-        const currentWidth = parseFloat(progressBar.style.width) || 0;
-        const targetWidth = roundedPercent;
+        // Обновляем ширину прогресс-бара
+        progressBar.style.width = `${roundedPercent}%`;
+        progressBar.setAttribute('aria-valuenow', roundedPercent);
+        progressText.textContent = `${roundedPercent}%`;
         
-        function animate() {
-            const diff = targetWidth - currentWidth;
-            const step = diff * 0.1; // Плавный шаг анимации
-            
-            if (Math.abs(diff) > 0.1) {
-                const newWidth = currentWidth + step;
-                progressBar.style.width = `${newWidth}%`;
-                progressText.textContent = `${roundedPercent}%`;
-                requestAnimationFrame(animate);
-            } else {
-                progressBar.style.width = `${targetWidth}%`;
-                progressText.textContent = `${roundedPercent}%`;
-            }
-        }
-        
-        requestAnimationFrame(animate);
-        
-        // Если загрузка завершена, ждем 1 секунду перд скрытием
-        if (roundedPercent >= 100) {
-            setTimeout(() => {
-                hideLoading();
-            }, 1000);
+        if (progressStatus && status) {
+            progressStatus.textContent = status;
         }
     }
 }
@@ -2103,16 +2103,12 @@ function hideLoading() {
     
     overlay.style.display = 'none';
     progressContainer.classList.add('d-none');
-    progressBar.style.width = '0%';
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', 0);
+    }
 }
 
-function updateProgress(percent) {
-    const progressBar = document.getElementById('uploadProgress');
-    const progressText = document.getElementById('progressText');
-    
-    progressBar.style.width = percent + '%';
-    progressText.textContent = Math.round(percent) + '%';
-}
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
@@ -2169,8 +2165,7 @@ async function deleteFile(fileId, fileName) {
 
 // Обновим функцию для скачивания одного файла
 function downloadFile(fileId) {
-    showLoading('Подготовка файла для скачивания...');
-    
+    // Для быстрого скачивания как у MEGA - сразу создаем ссылку и скачиваем
     const csrfToken = getCsrfToken();
     fetch(`/storage/generate-link/${fileId}/`, {
         method: 'POST',
@@ -2184,16 +2179,18 @@ function downloadFile(fileId) {
             // Создаем полный URL для скачивания
             const fullUrl = window.location.origin + data.download_url;
             
-            // Создаем скрытый iframe для скачивания
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = fullUrl;
-            document.body.appendChild(iframe);
+            // Создаем временную ссылку и сразу кликаем по ней для моментального скачивания
+            const link = document.createElement('a');
+            link.href = fullUrl;
+            link.download = ''; // Браузер сам определит имя файла из заголовков
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
             
-            // Удаляем iframe после начала скачивания
+            // Удаляем ссылку после клика
             setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 2000);
+                document.body.removeChild(link);
+            }, 100);
         } else {
             alert('Ошибка при подготовке файла для скачивания');
         }
@@ -2937,15 +2934,18 @@ function uploadFileChunked(file, chunkSize, callback) {
         // Обработка прогресса загрузки текущего чанка
         xhr.upload.onprogress = function(e) {
             if (e.lengthComputable) {
-                // Вычисляем общий прогресс: загружено байт + текущий чанк
-                const currentChunkProgress = e.loaded / e.total;
+                // e.loaded - количество байт текущего чанка, которые уже загружены
+                // e.total - размер текущего чанка (обычно равен chunkSize)
                 const chunkSize = end - start;
-                const currentChunkLoaded = chunkSize * currentChunkProgress;
+                // Реальное количество загруженных байт текущего чанка (не больше размера чанка)
+                const currentChunkLoaded = Math.min(e.loaded, chunkSize);
+                // Общий прогресс = уже загруженные байты (из предыдущих чанков) + текущий чанк
                 const totalLoaded = uploadedBytes + currentChunkLoaded;
-                const totalPercent = Math.round((totalLoaded / file.size) * 100);
+                // Прогресс загрузки на сервер: 0-90%
+                const uploadPercent = Math.min(90, Math.max(0, Math.round((totalLoaded / file.size) * 90)));
                 
-                updateProgress(totalPercent);
-                showLoading(`Загрузка файла: ${file.name} (${totalPercent}%) - чанк ${currentChunk + 1}/${totalChunks}`, true);
+                updateProgress(uploadPercent, `Загрузка на сервер: ${uploadPercent}% - чанк ${currentChunk + 1}/${totalChunks}`);
+                showLoading(`Загрузка файла: ${file.name} (${uploadPercent}%) - чанк ${currentChunk + 1}/${totalChunks}`, true);
             }
         };
 
@@ -2974,26 +2974,24 @@ function uploadFileChunked(file, chunkSize, callback) {
                         return;
                     }
                     
-                    // Обновляем счетчик загруженных байт
-                    uploadedBytes += (end - start);
-                    
+                    // Обновляем счетчик загруженных байт только после успешной загрузки чанка
                     if (response.status === 'complete') {
-                        // Загрузка завершена
-                        updateProgress(100);
-                        showLoading('Загрузка завершена!', true);
-                        setTimeout(() => {
-                            hideLoading();
-                            if (callback) callback(true);
-                            // Перезагружаем страницу для обновления списка файлов
-                            setTimeout(() => location.reload(), 500);
-                        }, 500);
-                    } else {
+                        // Файл загружен на сервер, теперь загружается в хранилище
+                        uploadedBytes = file.size; // Все байты загружены
+                        updateProgress(90, 'Загрузка в хранилище...');
+                        // Отслеживаем прогресс загрузки в хранилище
+                        // callback будет вызван в pollStorageUploadProgress после завершения
+                        pollStorageUploadProgress(response.file_id || null, callback);
+                    } else if (response.status === 'chunk_uploaded') {
+                        // Чанк успешно загружен, обновляем счетчик
+                        uploadedBytes += (end - start);
+                        currentChunkUploaded = 0; // Сбрасываем счетчик текущего чанка
                         // Продолжаем загрузку следующего чанка
                         currentChunk++;
                         start = end;
-                        const percent = Math.round((uploadedBytes / file.size) * 100);
-                        updateProgress(percent);
-                        showLoading(`Загрузка файла: ${file.name} (${percent}%) - чанк ${currentChunk}/${totalChunks}`, true);
+                        const uploadPercent = Math.min(90, Math.round((uploadedBytes / file.size) * 90));
+                        updateProgress(uploadPercent, `Загрузка на сервер: ${uploadPercent}% - чанк ${currentChunk}/${totalChunks}`);
+                        showLoading(`Загрузка файла: ${file.name} (${uploadPercent}%) - чанк ${currentChunk}/${totalChunks}`, true);
                         // Небольшая задержка перед следующим чанком для стабильности
                         setTimeout(() => uploadChunk(), 100);
                     }
@@ -3099,87 +3097,378 @@ function uploadFileChunked(file, chunkSize, callback) {
     });
 }
 
-// Обновим функцию handleFiles для последовательной загрузки
+// Функция для отслеживания прогресса загрузки в хранилище
+function pollStorageUploadProgress(fileId, callback = null) {
+    // Плавно доводим прогресс до 100% с анимацией
+    let currentProgressValue = 90;
+    const targetProgress = 100;
+    
+    // Анимация прогресса от 90% до 100%
+    const animateToComplete = () => {
+        if (currentProgressValue < targetProgress) {
+            // Плавно увеличиваем прогресс
+            const step = Math.max(0.5, (targetProgress - currentProgressValue) * 0.08);
+            currentProgressValue = Math.min(targetProgress, currentProgressValue + step);
+            updateProgress(currentProgressValue, 'Загрузка в хранилище...');
+            
+            if (currentProgressValue < targetProgress - 0.5) {
+                requestAnimationFrame(animateToComplete);
+            } else {
+                // Достигли 100%
+                currentProgressValue = 100;
+                updateProgress(100, 'Загрузка завершена!');
+                // Вызываем callback если он передан
+                if (callback) {
+                    callback(true);
+                }
+                // Ждем немного перед перезагрузкой, чтобы пользователь увидел 100%
+                setTimeout(() => {
+                    hideLoading();
+                    location.reload();
+                }, 1000);
+            }
+        } else {
+            // Уже на 100%
+            updateProgress(100, 'Загрузка завершена!');
+            if (callback) {
+                callback(true);
+            }
+            setTimeout(() => {
+                hideLoading();
+                location.reload();
+            }, 1000);
+        }
+    };
+    
+    // Начинаем анимацию через небольшую задержку, чтобы дать время серверу начать загрузку в хранилище
+    setTimeout(() => {
+        animateToComplete();
+    }, 300);
+}
+
+// Асинхронная загрузка файлов с поддержкой параллельной загрузки
 let uploadQueue = [];
-let isUploading = false;
+let activeUploads = new Map(); // Map<fileId, {file, progress, status}>
 let uploadStats = { success: 0, failed: 0, total: 0 };
+const MAX_CONCURRENT_UPLOADS = 5; // Максимальное количество одновременных загрузок
+let uploadIdCounter = 0;
 
 function handleFiles(files) {
     if (files.length === 0) return;
     
-    // Добавляем файлы в очередь
-    uploadQueue.push(...Array.from(files));
-    uploadStats.total = uploadQueue.length;
+    // Добавляем файлы в очередь с уникальными ID
+    Array.from(files).forEach(file => {
+        const fileId = `upload_${++uploadIdCounter}_${Date.now()}`;
+        uploadQueue.push({ file, id: fileId });
+    });
+    
+    uploadStats.total = uploadQueue.length + activeUploads.size;
     uploadStats.success = 0;
     uploadStats.failed = 0;
     
-    // Запускаем загрузку, если она еще не идет
-    if (!isUploading) {
-        processUploadQueue();
-    }
+    // Запускаем загрузку
+    processUploadQueue();
 }
 
-function processUploadQueue(success) {
-    // Если был передан параметр success, обновляем статистику
-    if (success !== undefined) {
-        if (success) {
-            uploadStats.success++;
+function processUploadQueue() {
+    // Запускаем новые загрузки, пока не достигнем лимита
+    while (activeUploads.size < MAX_CONCURRENT_UPLOADS && uploadQueue.length > 0) {
+        const item = uploadQueue.shift();
+        const { file, id } = item;
+        
+        // Добавляем в активные загрузки
+        activeUploads.set(id, {
+            file: file,
+            progress: 0,
+            status: 'uploading',
+            startTime: Date.now()
+        });
+        
+        // Обновляем общий прогресс
+        updateOverallProgress();
+        
+        // Определяем, какой метод загрузки использовать
+        if (file.size > 10 * 1024 * 1024) {
+            // Используем chunked upload для больших файлов
+            uploadFileChunkedAsync(file, id, 5 * 1024 * 1024);
         } else {
-            uploadStats.failed++;
+            // Используем обычную загрузку для маленьких файлов
+            uploadFileSimpleAsync(file, id);
         }
     }
     
-    if (uploadQueue.length === 0) {
-        isUploading = false;
+    // Если все файлы загружены, проверяем завершение
+    if (uploadQueue.length === 0 && activeUploads.size === 0) {
+        checkAllUploadsComplete();
+    }
+}
+
+function uploadFileChunkedAsync(file, fileId, chunkSize) {
+    const encodedFilename = encodeURIComponent(file.name);
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    let currentChunk = 0;
+    let start = 0;
+    let uploadedBytes = 0;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    
+    // Обновляем статус файла
+    const updateFileProgress = (progress, status) => {
+        const uploadInfo = activeUploads.get(fileId);
+        if (uploadInfo) {
+            uploadInfo.progress = progress;
+            uploadInfo.status = status;
+            updateOverallProgress();
+        }
+    };
+    
+    function uploadChunk() {
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+        
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            activeUploads.delete(fileId);
+            uploadStats.failed++;
+            updateOverallProgress();
+            processUploadQueue(); // Запускаем следующий файл
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', chunk);
+        formData.append('chunk', currentChunk);
+        formData.append('chunks', totalChunks);
+        formData.append('file_size', file.size);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/storage/upload-chunk/${encodedFilename}/`, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRFToken', csrfToken);
+        xhr.timeout = 300000;
+
+        // Обработка прогресса загрузки текущего чанка
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const chunkSize = end - start;
+                const currentChunkLoaded = Math.min(e.loaded, chunkSize);
+                const totalLoaded = uploadedBytes + currentChunkLoaded;
+                const uploadPercent = Math.min(90, Math.max(0, Math.round((totalLoaded / file.size) * 90)));
+                updateFileProgress(uploadPercent, 'uploading');
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                retryCount = 0;
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        activeUploads.delete(fileId);
+                        uploadStats.failed++;
+                        updateOverallProgress();
+                        processUploadQueue();
+                        return;
+                    }
+                    
+                    if (response.status === 'complete') {
+                        uploadedBytes = file.size;
+                        updateFileProgress(90, 'storing');
+                        pollStorageUploadProgressAsync(response.file_id || null, fileId);
+                    } else if (response.status === 'chunk_uploaded') {
+                        uploadedBytes += (end - start);
+                        currentChunk++;
+                        start = end;
+                        const uploadPercent = Math.min(90, Math.round((uploadedBytes / file.size) * 90));
+                        updateFileProgress(uploadPercent, 'uploading');
+                        setTimeout(() => uploadChunk(), 100);
+                    }
+                } catch (error) {
+                    console.error('Parse error:', error);
+                    activeUploads.delete(fileId);
+                    uploadStats.failed++;
+                    updateOverallProgress();
+                    processUploadQueue();
+                }
+            } else {
+                if (retryCount < MAX_RETRIES && xhr.status >= 500) {
+                    retryCount++;
+                    setTimeout(() => uploadChunk(), 2000);
+                } else {
+                    activeUploads.delete(fileId);
+                    uploadStats.failed++;
+                    updateOverallProgress();
+                    processUploadQueue();
+                }
+            }
+        };
+
+        xhr.onerror = function() {
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                setTimeout(() => uploadChunk(), 2000);
+            } else {
+                activeUploads.delete(fileId);
+                uploadStats.failed++;
+                updateOverallProgress();
+                processUploadQueue();
+            }
+        };
+
+        xhr.ontimeout = function() {
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                setTimeout(() => uploadChunk(), 1000);
+            } else {
+                activeUploads.delete(fileId);
+                uploadStats.failed++;
+                updateOverallProgress();
+                processUploadQueue();
+            }
+        };
+
+        xhr.send(formData);
+    }
+    
+    uploadChunk();
+}
+
+function uploadFileSimpleAsync(file, fileId) {
+    // Реализация простой загрузки (аналогично uploadFileSimple, но асинхронно)
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/storage/dashboard/', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 90);
+            const uploadInfo = activeUploads.get(fileId);
+            if (uploadInfo) {
+                uploadInfo.progress = percent;
+                updateOverallProgress();
+            }
+        }
+    };
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            activeUploads.delete(fileId);
+            uploadStats.success++;
+            updateOverallProgress();
+            processUploadQueue();
+        } else {
+            activeUploads.delete(fileId);
+            uploadStats.failed++;
+            updateOverallProgress();
+            processUploadQueue();
+        }
+    };
+
+    xhr.onerror = function() {
+        activeUploads.delete(fileId);
+        uploadStats.failed++;
+        updateOverallProgress();
+        processUploadQueue();
+    };
+
+    xhr.send(formData);
+}
+
+function pollStorageUploadProgressAsync(fileId, uploadId) {
+    let currentProgressValue = 90;
+    const targetProgress = 100;
+    
+    const animateToComplete = () => {
+        if (currentProgressValue < targetProgress) {
+            const step = Math.max(0.5, (targetProgress - currentProgressValue) * 0.08);
+            currentProgressValue = Math.min(targetProgress, currentProgressValue + step);
+            
+            const uploadInfo = activeUploads.get(uploadId);
+            if (uploadInfo) {
+                uploadInfo.progress = currentProgressValue;
+                uploadInfo.status = 'storing';
+                updateOverallProgress();
+            }
+            
+            if (currentProgressValue < targetProgress - 0.5) {
+                requestAnimationFrame(animateToComplete);
+            } else {
+                currentProgressValue = 100;
+                const uploadInfo = activeUploads.get(uploadId);
+                if (uploadInfo) {
+                    uploadInfo.progress = 100;
+                    uploadInfo.status = 'complete';
+                }
+                setTimeout(() => {
+                    activeUploads.delete(uploadId);
+                    uploadStats.success++;
+                    updateOverallProgress();
+                    processUploadQueue();
+                }, 500);
+            }
+        } else {
+            activeUploads.delete(uploadId);
+            uploadStats.success++;
+            updateOverallProgress();
+            processUploadQueue();
+        }
+    };
+    
+    setTimeout(() => {
+        animateToComplete();
+    }, 300);
+}
+
+function updateOverallProgress() {
+    const totalFiles = uploadStats.total;
+    const completedFiles = uploadStats.success + uploadStats.failed;
+    const activeCount = activeUploads.size;
+    
+    // Вычисляем общий прогресс
+    let totalProgress = 0;
+    activeUploads.forEach((info, id) => {
+        totalProgress += info.progress;
+    });
+    
+    // Добавляем прогресс завершенных файлов (100% каждый)
+    totalProgress += completedFiles * 100;
+    
+    // Общий прогресс в процентах
+    const overallPercent = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
+    
+    // Обновляем UI
+    const statusText = activeCount > 0 
+        ? `Загрузка файлов: ${completedFiles + activeCount}/${totalFiles} (активных: ${activeCount})`
+        : `Загрузка завершена: ${completedFiles}/${totalFiles}`;
+    
+    updateProgress(overallPercent, statusText);
+    showLoading(statusText, true);
+}
+
+function checkAllUploadsComplete() {
+    if (uploadQueue.length === 0 && activeUploads.size === 0) {
         updateStorageProgress();
         
-        // Показываем итоговую статистику
         const total = uploadStats.success + uploadStats.failed;
         if (total > 0) {
             if (uploadStats.failed === 0) {
-                // Все файлы загружены успешно
                 setTimeout(() => {
                     location.reload();
-                }, 500);
+                }, 1000);
             } else {
-                // Есть ошибки
                 hideLoading();
                 const message = `Загрузка завершена. Успешно: ${uploadStats.success}, Ошибок: ${uploadStats.failed}`;
                 alert(message);
                 setTimeout(() => {
                     location.reload();
-                }, 500);
+                }, 1000);
             }
-        } else {
-            setTimeout(() => {
-                location.reload();
-            }, 500);
         }
-        return;
-    }
-    
-    isUploading = true;
-    const file = uploadQueue.shift();
-    
-    showLoading('Загрузка файла: ' + file.name + ` (${uploadStats.success + uploadStats.failed + 1}/${uploadStats.total})`, true);
-    
-    // Определяем, какой метод загрузки использовать
-    if (file.size > 10 * 1024 * 1024) {
-        // Используем chunked upload для больших файлов
-        uploadFileChunked(file, 5 * 1024 * 1024, function(success) {
-            // После завершения загрузки одного файла, загружаем следующий
-            setTimeout(() => {
-                processUploadQueue(success);
-            }, 100);
-        });
-    } else {
-        // Используем обычную загрузку для маленьких файлов
-        uploadFileSimple(file, function(success) {
-            // После завершения загрузки одного файла, загружаем следующий
-            setTimeout(() => {
-                processUploadQueue(success);
-            }, 100);
-        });
     }
 }
 

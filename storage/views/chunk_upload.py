@@ -12,7 +12,15 @@ from django.http import JsonResponse
 from eventshock_auth.models import UserProfile
 
 from ..models import UserFile, DownloadToken
-from ..helpers import ensure_user_folder_exists, generate_unique_filename
+from ..helpers import (
+    ensure_user_folder_exists, 
+    generate_unique_filename,
+    select_optimal_storage,
+    ensure_storage_user_folder_exists,
+    has_any_storage,
+    upload_file_to_s3,
+    sanitize_filename
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,18 +62,37 @@ def upload_chunk(request, filename):
                 'available': profile.storage_quota - profile.get_used_storage()
             }, status=400)
         
-        # Декодируем имя файла если оно было закодировано
+        # Декодируем и обрабатываем имя файла
         try:
-            filename = urllib.parse.unquote(filename)
-        except Exception:
-            pass
+            # Декодируем имя файла если оно было закодировано
+            try:
+                filename = urllib.parse.unquote(filename)
+            except Exception:
+                pass
+            
+            # Обрабатываем возможные проблемы с кодировкой
+            if isinstance(filename, bytes):
+                try:
+                    filename = filename.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        filename = filename.decode('cp1251')
+                    except UnicodeDecodeError:
+                        filename = filename.decode('latin-1', errors='replace')
+            
+            # Очищаем имя файла от недопустимых символов
+            filename = sanitize_filename(filename)
+        except Exception as e:
+            logger.error(f"Ошибка при обработке имени файла '{filename}': {e}", exc_info=True)
+            return JsonResponse({
+                'error': f'Ошибка при обработке имени файла: {str(e)}'
+            }, status=400)
         
-        # Путь для временного файла
+        # Путь для временного файла (используем безопасное имя)
         os.makedirs(settings.FILE_UPLOAD_TEMP_DIR, exist_ok=True)
-        temp_path = os.path.join(
-            settings.FILE_UPLOAD_TEMP_DIR,
-            f"{request.user.id}_{filename}.part"
-        )
+        # Используем только безопасные символы для временного файла
+        safe_temp_name = f"{request.user.id}_{hash(filename) % 1000000}.part"
+        temp_path = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, safe_temp_name)
         
         # Записываем чанк
         with open(temp_path, 'ab') as f:
@@ -74,12 +101,36 @@ def upload_chunk(request, filename):
         
         # Если это последний чанк
         if chunk_number == total_chunks - 1:
-            # Перемещаем файл в постоянное хранилище
-            user_folder = ensure_user_folder_exists(request.user.id)
+            # Получаем размер файла
+            actual_file_size = os.path.getsize(temp_path) if os.path.exists(temp_path) else file_size
+            
+            # Выбираем оптимальное хранилище
+            selected_storage = select_optimal_storage(actual_file_size)
+            if not selected_storage:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                return JsonResponse({
+                    'error': 'Нет доступного хранилища для загрузки файла'
+                }, status=400)
+            
+            # Подготовка папки пользователя в выбранном хранилище
+            if selected_storage.storage_type == 'local':
+                user_folder = ensure_storage_user_folder_exists(selected_storage, request.user.id)
+                if not user_folder:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    return JsonResponse({
+                        'error': 'Ошибка при создании папки в хранилище'
+                    }, status=500)
+            else:
+                # Для обратной совместимости используем стандартную папку
+                user_folder = ensure_user_folder_exists(request.user.id)
             
             # Генерируем уникальное имя файла
             unique_filename = generate_unique_filename(user_folder, filename)
             final_path = os.path.join(user_folder, unique_filename)
+            
+            # Определяем путь для сохранения в БД
             db_file_path = f'{request.user.id}/{unique_filename}'
             
             # Проверяем на дубликаты в БД
@@ -106,29 +157,68 @@ def upload_chunk(request, filename):
                     # Сиротская запись в БД - удаляем
                     existing_file.delete()
             
-            os.rename(temp_path, final_path)
-            
-            # Получаем размер файла
-            file_size = os.path.getsize(final_path) if os.path.exists(final_path) else 0
+            # Обрабатываем файл в зависимости от типа хранилища
+            if selected_storage and selected_storage.storage_type == 's3':
+                # Для S3 загружаем файл в хранилище
+                s3_key = f"{request.user.id}/{unique_filename}"
+                if upload_file_to_s3(selected_storage, temp_path, s3_key):
+                    # Удаляем временный файл после успешной загрузки
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                    logger.info(f"Файл успешно загружен в S3 хранилище '{selected_storage.name}'")
+                else:
+                    # Если загрузка в S3 не удалась, удаляем временный файл и возвращаем ошибку
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                    return JsonResponse({
+                        'error': f'Ошибка при загрузке файла в S3 хранилище "{selected_storage.name}". Проверьте настройки подключения.'
+                    }, status=500)
+                # Для S3 не нужно перемещать файл, он уже в S3
+                actual_file_size = os.path.getsize(temp_path) if os.path.exists(temp_path) else actual_file_size
+            else:
+                # Для локального хранилища или media перемещаем файл
+                os.rename(temp_path, final_path)
+                actual_file_size = os.path.getsize(final_path) if os.path.exists(final_path) else actual_file_size
             
             # Создаем запись в БД
             file = UserFile.objects.create(
                 user=request.user,
                 file=db_file_path,
                 filename=unique_filename,
-                file_size=file_size
+                file_size=actual_file_size,
+                storage=selected_storage  # Может быть None, если хранилищ нет
             )
             
             # Создаем токен для скачивания при загрузке файла
             DownloadToken.get_or_create_valid_token(file)
             
-            return JsonResponse({'status': 'complete', 'filename': unique_filename})
+            return JsonResponse({
+                'status': 'complete', 
+                'filename': unique_filename,
+                'file_id': file.id  # Добавляем ID файла для отслеживания прогресса
+            })
         
         return JsonResponse({'status': 'chunk_uploaded', 'chunk': chunk_number + 1})
         
+    except OSError as e:
+        logger.error(f"OS error in upload chunk: {e}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Ошибка файловой системы: {str(e)}. Возможно, недостаточно места на диске.'
+        }, status=500)
+    except PermissionError as e:
+        logger.error(f"Permission error in upload chunk: {e}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'Ошибка доступа: {str(e)}. Проверьте права доступа к папке.'
+        }, status=500)
     except Exception as e:
         logger.error(f"Upload chunk error: {e}\n{traceback.format_exc()}")
-        return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({
+            'error': f'Ошибка при загрузке файла: {str(e)}'
+        }, status=400)
 
 
 @login_required

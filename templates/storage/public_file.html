@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
+{% load storage_tags %}
 
 {% block title %}Просмотр {{ file.filename }}{% endblock %}
 
 {% block content %}
-{% include 'storage/file_viewer.html' with modal_mode=False file_type=file_type filename=file.filename file_url=file.file.url file_token=file.public_token %}
+{% file_view_url file as file_view_url_value %}
+{% include 'storage/file_viewer.html' with modal_mode=False file_type=file_type filename=file.filename file_url=file_view_url_value file_token=file.public_token %}
 {% endblock %} 

@@ -20,7 +20,11 @@
                 </a>
                 <a href="{% url 'esadmin:storage_stats' %}" 
                    class="list-group-item list-group-item-action {% if active_tab == 'storage' %}active{% endif %}">
-                    <i class="fas fa-hdd me-2"></i>Хранилище
+                    <i class="fas fa-hdd me-2"></i>Статистика хранилища
+                </a>
+                <a href="{% url 'esadmin:storage_management' %}" 
+                   class="list-group-item list-group-item-action {% if active_tab == 'storage_management' %}active{% endif %}">
+                    <i class="fas fa-server me-2"></i>Управление хранилищами
                 </a>
                 <a href="{% url 'esadmin:system_logs' %}" 
                    class="list-group-item list-group-item-action {% if active_tab == 'logs' %}active{% endif %}">

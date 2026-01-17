@@ -363,17 +363,46 @@ def shared_file_download(request, token, file_id):
             register_link_access(access, user)
         
         # Скачиваем файл
-        file_path = file.file.path
-        encoded_filename = quote(file.filename)
+        from ..helpers import get_file_for_response, generate_s3_presigned_url
+        from django.http import HttpResponseRedirect
+        import os
         
-        response = FileResponse(open(file_path, 'rb'))
-        response['Content-Type'] = 'application/octet-stream'
-        response['Content-Disposition'] = (
-            f'attachment; filename="{encoded_filename}"; '
-            f'filename*=UTF-8\'\'{encoded_filename}'
-        )
+        # Проверяем, если файл в S3 хранилище, используем presigned URL
+        if file.storage and file.storage.storage_type == 's3':
+            s3_key = f"{file.user.id}/{file.filename}"
+            presigned_url = generate_s3_presigned_url(file.storage, s3_key, expiration=3600)
+            if presigned_url:
+                # Перенаправляем на presigned URL для прямого скачивания
+                return HttpResponseRedirect(presigned_url)
         
-        return response
+        # Для локальных файлов используем стандартный метод
+        file_path, is_temp, temp_path = get_file_for_response(file)
+        if not file_path:
+            raise Http404("Файл не найден")
+        
+        try:
+            encoded_filename = quote(file.filename)
+            response = FileResponse(open(file_path, 'rb'))
+            response['Content-Type'] = 'application/octet-stream'
+            response['Content-Disposition'] = (
+                f'attachment; filename="{encoded_filename}"; '
+                f'filename*=UTF-8\'\'{encoded_filename}'
+            )
+            
+            # Если это временный файл, удаляем его после отправки
+            if is_temp and temp_path:
+                import atexit
+                atexit.register(lambda: os.remove(temp_path) if os.path.exists(temp_path) else None)
+            
+            return response
+        except Exception as e:
+            # Удаляем временный файл в случае ошибки
+            if is_temp and temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            raise
         
     except Http404:
         raise

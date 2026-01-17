@@ -21,7 +21,11 @@ from ..helpers import (
     validate_file_size,
     validate_storage_quota,
     create_json_response,
-    get_file_path
+    get_file_path,
+    select_optimal_storage,
+    ensure_storage_user_folder_exists,
+    has_any_storage,
+    upload_file_to_s3
 )
 from ..constants import SUCCESS_FILE_UPLOADED, SUCCESS_FILE_DELETED, ERROR_FILE_NOT_FOUND
 from eventshock_auth.models import UserProfile
@@ -44,19 +48,115 @@ def dashboard(request):
         quota_error = validate_storage_quota(request.user, uploaded_file.size, request)
         if quota_error:
             return quota_error
+        
+        # Проверяем, есть ли хотя бы одно хранилище в системе
+        if has_any_storage():
+            # Если есть хранилища, файлы должны загружаться только в хранилища
+            selected_storage = select_optimal_storage(uploaded_file.size)
+            if not selected_storage:
+                logger.warning(f"Не удалось выбрать хранилище для файла размером {uploaded_file.size} байт")
+                error_msg = 'Нет доступного хранилища для загрузки файла. Проверьте, что хранилища активны и имеют достаточно места.'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return create_json_response(False, error_msg, status=400)
+                messages.error(request, error_msg)
+                return redirect('dashboard')
             
-        # Подготовка папки пользователя
-        user_folder = ensure_user_folder_exists(request.user.id)
+            logger.info(f"Выбрано хранилище '{selected_storage.name}' (тип: {selected_storage.storage_type}) для файла размером {uploaded_file.size} байт")
+        else:
+            # Если хранилищ нет, используем старую логику с media папкой
+            logger.info("Хранилища не настроены, используем стандартную папку media")
+            selected_storage = None
+        
+        # Подготовка папки пользователя в выбранном хранилище
+        if selected_storage:
+            if selected_storage.storage_type == 'local':
+                user_folder = ensure_storage_user_folder_exists(selected_storage, request.user.id)
+                if not user_folder:
+                    error_msg = 'Ошибка при создании папки в хранилище'
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return create_json_response(False, error_msg, status=500)
+                    messages.error(request, error_msg)
+                    return redirect('dashboard')
+            else:
+                # Для S3 используем стандартную папку как временное хранилище
+                user_folder = ensure_user_folder_exists(request.user.id)
+        else:
+            # Если хранилищ нет, используем стандартную папку media
+            user_folder = ensure_user_folder_exists(request.user.id)
         
         # Генерация уникального имени файла
-        filename = generate_unique_filename(user_folder, uploaded_file.name)
-        file_path = os.path.join(user_folder, filename)
+        try:
+            # Получаем имя файла, обрабатывая возможные проблемы с кодировкой
+            original_name = uploaded_file.name
+            if isinstance(original_name, bytes):
+                # Если имя файла в байтах, пытаемся декодировать
+                try:
+                    original_name = original_name.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        original_name = original_name.decode('cp1251')
+                    except UnicodeDecodeError:
+                        original_name = original_name.decode('latin-1', errors='replace')
+            
+            filename = generate_unique_filename(user_folder, original_name)
+        except Exception as e:
+            logger.error(f"Ошибка при обработке имени файла '{uploaded_file.name}': {e}", exc_info=True)
+            error_msg = f'Ошибка при обработке имени файла: {str(e)}'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return create_json_response(False, error_msg, status=400)
+            messages.error(request, error_msg)
+            return redirect('dashboard')
         
         # Сохранение файла
         try:
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
+            if selected_storage:
+                if selected_storage.storage_type == 'local':
+                    # Для локального хранилища используем путь в хранилище
+                    file_path = os.path.join(user_folder, filename)
+                    logger.info(f"Сохранение файла в локальное хранилище '{selected_storage.name}' по пути: {file_path}")
+                    with open(file_path, 'wb+') as destination:
+                        for chunk in uploaded_file.chunks():
+                            destination.write(chunk)
+                elif selected_storage.storage_type == 's3':
+                    # Загружаем файл в S3
+                    # Сначала сохраняем во временный файл
+                    import tempfile
+                    temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', tempfile.gettempdir())
+                    os.makedirs(temp_dir, exist_ok=True)
+                    import uuid as uuid_module
+                    temp_file_path = os.path.join(temp_dir, f"temp_{request.user.id}_{uuid_module.uuid4().hex}_{filename}")
+                    
+                    with open(temp_file_path, 'wb+') as destination:
+                        for chunk in uploaded_file.chunks():
+                            destination.write(chunk)
+                    
+                    # Загружаем в S3
+                    s3_key = f"{request.user.id}/{filename}"
+                    if upload_file_to_s3(selected_storage, temp_file_path, s3_key):
+                        # Удаляем временный файл после успешной загрузки
+                        try:
+                            os.remove(temp_file_path)
+                        except:
+                            pass
+                        logger.info(f"Файл успешно загружен в S3 хранилище '{selected_storage.name}'")
+                    else:
+                        # Если загрузка в S3 не удалась, удаляем временный файл и возвращаем ошибку
+                        try:
+                            os.remove(temp_file_path)
+                        except:
+                            pass
+                        error_msg = f'Ошибка при загрузке файла в S3 хранилище "{selected_storage.name}". Проверьте настройки подключения.'
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return create_json_response(False, error_msg, status=500)
+                        messages.error(request, error_msg)
+                        return redirect('dashboard')
+            else:
+                # Если хранилищ нет, используем стандартную папку media
+                file_path = os.path.join(user_folder, filename)
+                logger.info(f"Сохранение файла в стандартную папку media по пути: {file_path}")
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
             
             # Получаем текущую папку для загрузки
             folder_id = request.POST.get('folder_id', None)
@@ -67,13 +167,17 @@ def dashboard(request):
                 except Folder.DoesNotExist:
                     pass
             
+            # Определяем путь для сохранения в БД
+            db_file_path = f'{request.user.id}/{filename}'
+            
             # Создание записи в БД
             file = UserFile.objects.create(
                 user=request.user,
-                file=f'{request.user.id}/{filename}',
+                file=db_file_path,
                 filename=filename,
                 file_size=uploaded_file.size,
-                folder=folder
+                folder=folder,
+                storage=selected_storage  # Может быть None, если хранилищ нет
             )
             
             # Создаем токен для скачивания при загрузке файла
@@ -85,8 +189,22 @@ def dashboard(request):
             messages.success(request, SUCCESS_FILE_UPLOADED)
             return redirect('dashboard')
             
+        except OSError as e:
+            logger.error(f"OS error uploading file '{uploaded_file.name}': {e}", exc_info=True)
+            error_msg = f'Ошибка файловой системы при загрузке файла: {str(e)}. Возможно, недостаточно места на диске или недопустимое имя файла.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return create_json_response(False, error_msg, status=500)
+            messages.error(request, error_msg)
+            return redirect('dashboard')
+        except PermissionError as e:
+            logger.error(f"Permission error uploading file '{uploaded_file.name}': {e}", exc_info=True)
+            error_msg = f'Ошибка доступа при загрузке файла: {str(e)}. Проверьте права доступа к папке.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return create_json_response(False, error_msg, status=500)
+            messages.error(request, error_msg)
+            return redirect('dashboard')
         except Exception as e:
-            logger.error(f"Error uploading file: {e}")
+            logger.error(f"Error uploading file '{uploaded_file.name}': {e}", exc_info=True)
             error_msg = f'Ошибка при загрузке файла: {str(e)}'
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -255,12 +373,16 @@ def _parse_range_header(range_header, file_size):
         return None, None
 
 
-@login_required
 def download_file(request, token):
-    """Скачивание файла по токену - отдает файл напрямую через nginx (X-Accel-Redirect)"""
+    """
+    Скачивание файла по токену.
+    Токен обеспечивает безопасность, поэтому авторизация не требуется.
+    """
     try:
         # Используем универсальную функцию поиска для обратной совместимости
         from ..models import find_token_in_model
+        import tempfile
+        
         download_token = find_token_in_model(DownloadToken, 'token', token)
         if not download_token:
             raise Http404("Токен не найден")
@@ -268,35 +390,73 @@ def download_file(request, token):
             raise Http404("Ссылка устарела")
             
         file = download_token.file
-        file_path = file.file.path
         
-        if not os.path.exists(file_path):
-            raise Http404("Файл не найден на диске")
-        
-        # Получаем относительный путь от MEDIA_ROOT для X-Accel-Redirect
-        # file.file хранит путь вида "1/filename.ext" относительно MEDIA_ROOT
-        internal_path = f"/protected_media/{file.file.name}"
-        
-        # Создаем ответ с X-Accel-Redirect
-        # Nginx перехватит этот заголовок и отдаст файл напрямую
-        response = HttpResponse()
-        response['X-Accel-Redirect'] = internal_path
-        response['Content-Type'] = 'application/octet-stream'
-        
-        # Content-Disposition: attachment - файл будет скачан
-        encoded_filename = quote(file.filename)
-        response['Content-Disposition'] = (
-            f'attachment; filename="{encoded_filename}"; '
-            f'filename*=UTF-8\'\'{encoded_filename}'
-        )
-        response['Accept-Ranges'] = 'bytes'
-        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response['Pragma'] = 'no-cache'
-        response['Expires'] = '0'
-        
-        # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
-        
-        return response
+        # Проверяем тип хранилища
+        if file.storage and file.storage.storage_type == 's3':
+            # Для S3 файлов используем presigned URL для прямого скачивания
+            from ..helpers import generate_s3_presigned_url
+            
+            s3_key = f"{file.user.id}/{file.filename}"
+            # Генерируем presigned URL с Content-Disposition: attachment для скачивания
+            presigned_url = generate_s3_presigned_url(
+                file.storage, 
+                s3_key, 
+                expiration=3600,
+                response_content_disposition=f'attachment; filename="{quote(file.filename)}"'
+            )
+            
+            if presigned_url:
+                # Перенаправляем пользователя на presigned URL для прямого скачивания из S3
+                from django.http import HttpResponseRedirect
+                return HttpResponseRedirect(presigned_url)
+            else:
+                # Если не удалось сгенерировать presigned URL, используем fallback - скачиваем через сервер
+                from ..helpers import download_file_from_s3
+                
+                # Создаем временный файл для скачивания из S3
+                temp_file = tempfile.NamedTemporaryFile(delete=False)
+                temp_file_path = temp_file.name
+                temp_file.close()
+                
+                if download_file_from_s3(file.storage, s3_key, temp_file_path):
+                    # Отдаем файл напрямую через FileResponse
+                    encoded_filename = quote(file.filename)
+                    response = FileResponse(open(temp_file_path, 'rb'))
+                    response['Content-Type'] = 'application/octet-stream'
+                    response['Content-Disposition'] = (
+                        f'attachment; filename="{encoded_filename}"; '
+                        f'filename*=UTF-8\'\'{encoded_filename}'
+                    )
+                    response['Accept-Ranges'] = 'bytes'
+                    # Удаляем временный файл после отправки ответа
+                    import atexit
+                    atexit.register(lambda: os.remove(temp_file_path) if os.path.exists(temp_file_path) else None)
+                    return response
+                else:
+                    raise Http404("Ошибка при скачивании файла из S3 хранилища")
+        else:
+            # Для локальных файлов используем стандартный путь
+            file_path = get_file_path(file)
+            if not file_path or not os.path.exists(file_path):
+                raise Http404("Файл не найден на диске")
+            
+            # Для локальных хранилищ отдаем файл напрямую через FileResponse
+            # Это работает для файлов как в стандартной папке media, так и в локальных хранилищах
+            encoded_filename = quote(file.filename)
+            response = FileResponse(open(file_path, 'rb'))
+            response['Content-Type'] = 'application/octet-stream'
+            response['Content-Disposition'] = (
+                f'attachment; filename="{encoded_filename}"; '
+                f'filename*=UTF-8\'\'{encoded_filename}'
+            )
+            response['Accept-Ranges'] = 'bytes'
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            
+            # НЕ помечаем токен как использованный - он может использоваться многократно в течение дня
+            
+            return response
             
     except DownloadToken.DoesNotExist:
         raise Http404("Ссылка недействительна")
@@ -358,14 +518,103 @@ def raw_file(request, filename):
                 f"URL='{decoded_filename}' vs DB='{file.filename}'"
             )
         
-        file_path = file.file.path
+        # Проверяем тип хранилища
+        # Для просмотра файлов (inline) всегда используем сервер, чтобы контролировать Content-Type и Content-Disposition
+        if file.storage and file.storage.storage_type == 's3':
+            # Для S3 файлов скачиваем через сервер для просмотра
+            from ..helpers import download_file_from_s3
+            import tempfile
+            
+            # Создаем временный файл для скачивания из S3
+            temp_file = tempfile.NamedTemporaryFile(delete=False)
+            temp_file_path = temp_file.name
+            temp_file.close()
+            
+            s3_key = f"{file.user.id}/{file.filename}"
+            if download_file_from_s3(file.storage, s3_key, temp_file_path):
+                # Отдаем файл напрямую через FileResponse для просмотра
+                encoded_filename = quote(file.filename)
+                response = FileResponse(open(temp_file_path, 'rb'))
+                
+                # Определяем Content-Type на основе типа файла
+                if file.is_image:
+                    if file.filename.lower().endswith(('.jpg', '.jpeg')):
+                        response['Content-Type'] = 'image/jpeg'
+                    elif file.filename.lower().endswith('.png'):
+                        response['Content-Type'] = 'image/png'
+                    elif file.filename.lower().endswith('.gif'):
+                        response['Content-Type'] = 'image/gif'
+                    elif file.filename.lower().endswith('.webp'):
+                        response['Content-Type'] = 'image/webp'
+                    else:
+                        response['Content-Type'] = 'image/*'
+                elif file.is_video:
+                    response['Content-Type'] = 'video/mp4'
+                elif file.is_audio:
+                    response['Content-Type'] = 'audio/mpeg'
+                elif file.is_text or file.is_code:
+                    response['Content-Type'] = 'text/plain; charset=utf-8'
+                elif file.is_document:
+                    if file.filename.lower().endswith('.pdf'):
+                        response['Content-Type'] = 'application/pdf'
+                else:
+                    response['Content-Type'] = 'application/octet-stream'
+                
+                response['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
+                response['Accept-Ranges'] = 'bytes'
+                response['Cache-Control'] = 'public, max-age=3600'
+                
+                # Удаляем временный файл после отправки ответа
+                import atexit
+                atexit.register(lambda: os.remove(temp_file_path) if os.path.exists(temp_file_path) else None)
+                return response
+            else:
+                raise Http404("Ошибка при скачивании файла из S3 хранилища")
         
-        if not os.path.exists(file_path):
+        # Для локальных файлов используем стандартный путь
+        file_path = get_file_path(file)
+        if not file_path or not os.path.exists(file_path):
             logger.error(f"File not found on disk: {file_path} for file_id={file.id}")
             raise Http404("Файл не найден на диске")
         
         # Получаем относительный путь от MEDIA_ROOT для X-Accel-Redirect
-        # file.file хранит путь вида "1/filename.ext" относительно MEDIA_ROOT
+        # Для файлов в хранилище используем полный путь, для остальных - относительный
+        if file.storage and file.storage.storage_type == 'local':
+            # Для локального хранилища нужно использовать полный путь или настроить nginx
+            # Пока используем FileResponse напрямую
+            encoded_filename = quote(file.filename)
+            response = FileResponse(open(file_path, 'rb'))
+            
+            # Определяем Content-Type на основе типа файла
+            if file.is_image:
+                if file.filename.lower().endswith(('.jpg', '.jpeg')):
+                    response['Content-Type'] = 'image/jpeg'
+                elif file.filename.lower().endswith('.png'):
+                    response['Content-Type'] = 'image/png'
+                elif file.filename.lower().endswith('.gif'):
+                    response['Content-Type'] = 'image/gif'
+                elif file.filename.lower().endswith('.webp'):
+                    response['Content-Type'] = 'image/webp'
+                else:
+                    response['Content-Type'] = 'image/*'
+            elif file.is_video:
+                response['Content-Type'] = 'video/mp4'
+            elif file.is_audio:
+                response['Content-Type'] = 'audio/mpeg'
+            elif file.is_text or file.is_code:
+                response['Content-Type'] = 'text/plain; charset=utf-8'
+            elif file.is_document:
+                if file.filename.lower().endswith('.pdf'):
+                    response['Content-Type'] = 'application/pdf'
+            else:
+                response['Content-Type'] = 'application/octet-stream'
+            
+            response['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
+            response['Accept-Ranges'] = 'bytes'
+            response['Cache-Control'] = 'public, max-age=3600'
+            return response
+        
+        # Для файлов без хранилища используем X-Accel-Redirect
         internal_path = f"/protected_media/{file.file.name}"
         
         # Создаем ответ с X-Accel-Redirect
@@ -2124,8 +2373,52 @@ def upload_from_url(request):
                         except Folder.DoesNotExist:
                             pass
                     
-                    # Подготовка папки пользователя
-                    user_folder = ensure_user_folder_exists(request.user.id)
+                    # Получаем размер файла перед выбором хранилища
+                    actual_size = os.path.getsize(downloaded_video_path)
+                    logger.info(f"Downloaded file size: {actual_size} bytes")
+                    
+                    # Проверяем размер файла
+                    if actual_size > settings.MAX_FILE_SIZE:
+                        os.remove(downloaded_video_path)
+                        return create_json_response(
+                            False, 
+                            f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
+                            status=400
+                        )
+                    
+                    # Проверяем квоту хранилища
+                    quota_error = validate_storage_quota(request.user, actual_size, request)
+                    if quota_error:
+                        os.remove(downloaded_video_path)
+                        return quota_error
+                    
+                    # Проверяем, есть ли хотя бы одно хранилище в системе
+                    selected_storage = None
+                    if has_any_storage():
+                        # Если есть хранилища, файлы должны загружаться только в хранилища
+                        selected_storage = select_optimal_storage(actual_size)
+                        if not selected_storage:
+                            os.remove(downloaded_video_path)
+                            error_msg = 'Нет доступного хранилища для загрузки файла. Проверьте, что хранилища активны и имеют достаточно места.'
+                            return create_json_response(False, error_msg, status=400)
+                    else:
+                        # Если хранилищ нет, используем старую логику с media папкой
+                        logger.info("Хранилища не настроены, используем стандартную папку media")
+                    
+                    # Подготовка папки пользователя в выбранном хранилище
+                    if selected_storage:
+                        if selected_storage.storage_type == 'local':
+                            user_folder = ensure_storage_user_folder_exists(selected_storage, request.user.id)
+                            if not user_folder:
+                                os.remove(downloaded_video_path)
+                                error_msg = 'Ошибка при создании папки в хранилище'
+                                return create_json_response(False, error_msg, status=500)
+                        else:
+                            # Для S3 используем стандартную папку как временное хранилище
+                            user_folder = ensure_user_folder_exists(request.user.id)
+                    else:
+                        # Если хранилищ нет, используем стандартную папку media
+                        user_folder = ensure_user_folder_exists(request.user.id)
                     
                     # Получаем имя файла из скачанного файла
                     original_filename = os.path.basename(downloaded_video_path)
@@ -2142,40 +2435,34 @@ def upload_from_url(request):
                         name, ext = os.path.splitext(original_filename)
                         original_filename = name[:200] + ext
                     filename = generate_unique_filename(user_folder, original_filename)
-                    file_path = os.path.join(user_folder, filename)
                     
                     # Перемещаем файл из временной директории в постоянную
                     try:
                         import shutil
-                        shutil.move(downloaded_video_path, file_path)
+                        if selected_storage and selected_storage.storage_type == 'local':
+                            file_path = os.path.join(user_folder, filename)
+                            shutil.move(downloaded_video_path, file_path)
+                            logger.info(f"File moved successfully to storage: {selected_storage.name}")
+                        else:
+                            file_path = os.path.join(user_folder, filename)
+                            shutil.move(downloaded_video_path, file_path)
+                            if selected_storage:
+                                logger.info(f"File moved successfully (S3 fallback)")
+                            else:
+                                logger.info(f"File moved successfully to media folder (no storages configured)")
                         
-                        # Получаем размер файла
-                        actual_size = os.path.getsize(file_path)
-                        logger.info(f"File moved successfully, size: {actual_size} bytes")
-                        
-                        # Проверяем размер файла
-                        if actual_size > settings.MAX_FILE_SIZE:
-                            os.remove(file_path)
-                            return create_json_response(
-                                False, 
-                                f'Файл слишком большой. Максимальный размер: {settings.MAX_FILE_SIZE / (1024 * 1024):.0f}MB', 
-                                status=400
-                            )
-                        
-                        # Проверяем квоту хранилища
-                        quota_error = validate_storage_quota(request.user, actual_size, request)
-                        if quota_error:
-                            os.remove(file_path)
-                            return quota_error
+                        # Определяем путь для сохранения в БД
+                        db_file_path = f'{request.user.id}/{filename}'
                         
                         # Создаем запись в БД
                         try:
                             file = UserFile.objects.create(
                                 user=request.user,
-                                file=f'{request.user.id}/{filename}',
+                                file=db_file_path,
                                 filename=filename,
                                 file_size=actual_size,
-                                folder=folder
+                                folder=folder,
+                                storage=selected_storage  # Может быть None, если хранилищ нет
                             )
                             logger.info(f"File record created in DB: {file.id}")
                         except Exception as e:

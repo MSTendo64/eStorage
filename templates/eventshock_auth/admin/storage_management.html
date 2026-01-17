@@ -1,0 +1,203 @@
+{% extends 'eventshock_auth/admin/base.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="fas fa-server me-2"></i>Управление хранилищами</h4>
+    <a href="{% url 'esadmin:storage_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Добавить хранилище
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Список хранилищ</h5>
+    </div>
+    <div class="card-body">
+        {% if storages %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Назв.</th>
+                        <th>Тип</th>
+                        <th>Статус</th>
+                        <th>Исп./макс.</th>
+                        <th>Файл.</th>
+                        <th>Приор.</th>
+                        <th>Действ.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in storages %}
+                    <tr>
+                        <td><strong>{{ item.storage.name }}</strong></td>
+                        <td>
+                            {% if item.storage.storage_type == 'local' %}
+                                <span class="badge bg-info">Локальное</span>
+                            {% else %}
+                                <span class="badge bg-primary">S3-совместимое</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.storage.is_active %}
+                                <span class="badge bg-success">Активно</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Неактивно</span>
+                            {% endif %}
+                            {% if item.storage.storage_type == 's3' and item.s3_status %}
+                                <br>
+                                {% if item.s3_status.is_available %}
+                                    <span class="badge bg-success mt-1" title="{{ item.s3_status.message }}">
+                                        <i class="fas fa-check-circle me-1"></i>S3 доступно
+                                    </span>
+                                {% elif item.s3_status.is_available == False %}
+                                    <span class="badge bg-danger mt-1" title="{{ item.s3_status.message }}">
+                                        <i class="fas fa-times-circle me-1"></i>S3 недоступно
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning mt-1" title="{{ item.s3_status.message }}">
+                                        <i class="fas fa-question-circle me-1"></i>Не проверено
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>{{ item.used_size_formatted }} / {{ item.storage.get_max_size_formatted }}</td>
+                        <td>{{ item.files_count }}</td>
+                        <td>{{ item.storage.priority }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if item.storage.storage_type == 's3' %}
+                                <button type="button" class="btn btn-outline-info test-connection-btn" 
+                                        data-storage-id="{{ item.storage.id }}" 
+                                        title="Проверить подключение к S3">
+                                    <i class="fas fa-plug"></i>
+                                </button>
+                                {% endif %}
+                                <a href="{% url 'esadmin:storage_edit' item.storage.id %}" 
+                                   class="btn btn-outline-primary" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'esadmin:storage_delete' item.storage.id %}" 
+                                   class="btn btn-outline-danger" title="Удалить">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="7">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if item.usage_percent > 90 %}bg-danger{% elif item.usage_percent > 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ item.usage_percent }}%"
+                                     aria-valuenow="{{ item.usage_percent }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ item.usage_percent }}% использовано</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Хранилища не найдены. 
+            <a href="{% url 'esadmin:storage_create' %}">Создайте первое хранилище</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно для результатов теста подключения -->
+<div class="modal fade" id="connectionTestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Результат проверки подключения</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="connectionTestResult"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testButtons = document.querySelectorAll('.test-connection-btn');
+    const modalElement = document.getElementById('connectionTestModal');
+    if (!modalElement) return;
+    
+    const modal = new bootstrap.Modal(modalElement);
+    const resultDiv = document.getElementById('connectionTestResult');
+    
+    testButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const storageId = this.getAttribute('data-storage-id');
+            const originalHtml = this.innerHTML;
+            
+            // Показываем индикатор загрузки
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            // Выполняем запрос
+            const url = '{% url "esadmin:storage_test_connection" 0 %}'.replace('0', storageId);
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Восстанавливаем кнопку
+                this.disabled = false;
+                this.innerHTML = originalHtml;
+                
+                // Показываем результат
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Подключение успешно!</strong><br>
+                            ${data.message}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <strong>Ошибка подключения</strong><br>
+                            ${data.message}
+                        </div>
+                    `;
+                }
+                
+                modal.show();
+            })
+            .catch(error => {
+                // Восстанавливаем кнопку
+                this.disabled = false;
+                this.innerHTML = originalHtml;
+                
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Ошибка при проверке подключения</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+                modal.show();
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

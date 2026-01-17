@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'ih2201fopweuhOHB@@DOQ}IUWGBDIOWdwq@#@#id!843109)'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['storage.eventshock.ru', '127.0.0.1', 'localhost', 's.eventshock.ru', '95.163.87.65']
 
@@ -29,19 +29,41 @@ INSTALLED_APPS = [
     'rest_framework',
 ]
 
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.locale.LocaleMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'utils.middleware.SessionValidationMiddleware',  # Проверка валидности сессии
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'utils.middleware.LanguageMiddleware',
-]
+# В DEBUG режиме можно временно отключить SecurityMiddleware для отладки
+# Раскомментируйте следующую строку, если редирект все еще происходит:
+# DEBUG_DISABLE_SECURITY_MIDDLEWARE = True
+
+DEBUG_DISABLE_SECURITY_MIDDLEWARE = False  # Установите True для полного отключения SecurityMiddleware в DEBUG
+
+if DEBUG and DEBUG_DISABLE_SECURITY_MIDDLEWARE:
+    # В DEBUG режиме полностью отключаем SecurityMiddleware
+    MIDDLEWARE = [
+        # 'django.middleware.security.SecurityMiddleware',  # Отключено в DEBUG
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.locale.LocaleMiddleware',
+        'corsheaders.middleware.CorsMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'utils.middleware.SessionValidationMiddleware',  # Проверка валидности сессии
+        'django.contrib.messages.middleware.MessageMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        'utils.middleware.LanguageMiddleware',
+    ]
+else:
+    MIDDLEWARE = [
+        'django.middleware.security.SecurityMiddleware',
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.locale.LocaleMiddleware',
+        'corsheaders.middleware.CorsMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'utils.middleware.SessionValidationMiddleware',  # Проверка валидности сессии
+        'django.contrib.messages.middleware.MessageMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        'utils.middleware.LanguageMiddleware',
+    ]
 
 ROOT_URLCONF = 'estorage.urls'
 
@@ -178,10 +200,22 @@ CHUNK_SIZE = 10485760  # 10MB
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 
-# Настройки безопасности
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# Настройки безопасности (только для production)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    # Явно отключаем все редиректы на HTTPS в режиме разработки
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_PROXY_SSL_HEADER = None  # Отключаем проверку заголовков прокси в DEBUG
+    # Дополнительно отключаем HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
 
 # Настройки сессий
 # Время жизни сессии в секундах (по умолчанию 2 недели)
@@ -215,9 +249,15 @@ CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1',
     'https://localhost',
 ]
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
+# Дополнительные настройки безопасности (только для production)
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+else:
+    SECURE_BROWSER_XSS_FILTER = False
+    SECURE_CONTENT_TYPE_NOSNIFF = False
+    X_FRAME_OPTIONS = 'SAMEORIGIN'  # Разрешаем iframe для разработки
 
 # Настройки кэширования
 CACHES = {
@@ -228,6 +268,11 @@ CACHES = {
 }
 
 # Добавьте эти настройки
+# Создаем директорию для логов, если её нет
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -241,7 +286,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': '/var/log/estorage/error.log',
+            'filename': os.path.join(LOG_DIR, 'error.log'),
             'formatter': 'verbose',
         },
         'console': {
