@@ -746,7 +746,7 @@
         .navbar {
             background: rgba(var(--bs-body-bg-rgb), 0.5) !important;
             backdrop-filter: blur(10px);
-            z-index: 8500 !important;
+            z-index: 1030 !important;
         }
 
         /* ... остальные стили ... */
@@ -1715,6 +1715,15 @@
     .modal {
         overflow-x: hidden;
         overflow-y: auto;
+        z-index: 1055 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1050 !important;
+    }
+
+    #previewModal {
+        z-index: 1055 !important;
     }
 
     .modal-dialog {
