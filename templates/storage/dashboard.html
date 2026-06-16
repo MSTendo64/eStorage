@@ -3341,7 +3341,7 @@ function uploadFileSimpleAsync(file, fileId) {
     formData.append('csrfmiddlewaretoken', getCsrfToken());
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/storage/dashboard/', true);
+    xhr.open('POST', window.location.href, true);
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     
     xhr.upload.onprogress = function(e) {

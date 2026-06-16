@@ -301,15 +301,11 @@ async def _upload_file_to_s3_async(storage: Storage, file_path: str, s3_key: str
             s3_config['region_name'] = storage.s3_region
         
         # Загружаем файл в S3
-        # Настраиваем конфигурацию для multipart upload
         from botocore.config import Config
+        from boto3.s3.transfer import TransferConfig
         
-        # Конфигурация для больших файлов: увеличиваем размер частей и таймауты
-        # Для некоторых S3-совместимых хранилищ multipart может работать некорректно,
-        # поэтому увеличиваем порог для multipart upload
-        config = Config(
-            multipart_threshold=100 * 1024 * 1024,  # 100 MB - порог для multipart upload (увеличен для совместимости)
-            max_multipart_size=100 * 1024 * 1024,   # 100 MB - размер каждой части
+        # Конфигурация клиента: таймауты и повторные попытки
+        client_config = Config(
             retries={
                 'max_attempts': 3,
                 'mode': 'adaptive'
@@ -318,15 +314,20 @@ async def _upload_file_to_s3_async(storage: Storage, file_path: str, s3_key: str
             read_timeout=600,  # 10 минут на чтение для больших файлов
         )
         
-        async with session.client('s3', **s3_config, config=config) as s3_client:
+        # Конфигурация передачи: multipart upload для больших файлов
+        transfer_config = TransferConfig(
+            multipart_threshold=100 * 1024 * 1024,  # 100 MB
+            multipart_chunksize=100 * 1024 * 1024,  # 100 MB
+        )
+        
+        async with session.client('s3', **s3_config, config=client_config) as s3_client:
             try:
                 with open(file_path, 'rb') as file_data:
-                    # Для файлов меньше порога используем простую загрузку
-                    # Для больших файлов upload_fileobj автоматически использует multipart
                     await s3_client.upload_fileobj(
                         file_data,
                         storage.s3_bucket_name,
-                        s3_key
+                        s3_key,
+                        Config=transfer_config,
                     )
                 logger.info(f"Файл успешно загружен в S3 хранилище '{storage.name}': {s3_key} (размер: {file_size} байт)")
                 return True
